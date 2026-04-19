@@ -40,8 +40,8 @@ Phase 3: 확장형 AI 생태계 (The Brains)
 - [x] Context Compression: 수백만 라인의 시뮬레이션 로그를 AI가 읽기 쉬운 요약본으로 압축하여 토큰 효율 극대화.
 
 Phase 4: 엔터프라이즈 리포팅 (The Output)
-- [ ] Snapshot 엔진: 32K 고해상도로 현재 분석 화면을 캡처하여 메모리에 유지.
-- [ ] Professional Report: 캡처된 시각화 데이터와 AI 분석 텍스트를 결합하여 1천만 원짜리 가치를 증명하는 고퀄리티 PDF 보고서 자동 생성.
+- [x] Snapshot 엔진: 32K 고해상도로 현재 분석 화면을 캡처하여 메모리에 유지.
+- [x] Professional Report: 캡처된 시각화 데이터와 AI 분석 텍스트를 결합하여 1천만 원짜리 가치를 증명하는 고퀄리티 PDF 보고서 자동 생성.
 
 Phase 5: 라이선스 및 배포 관리 (The Business)
 - [ ] License Manager: 오픈소스(Apache 2.0)와 엔터프라이즈(Proprietary) 기능을 분리하는 모듈형 빌드 시스템 및 Feature Flag 설정.

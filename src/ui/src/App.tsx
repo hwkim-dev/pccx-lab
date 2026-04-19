@@ -4,6 +4,7 @@ import { CanvasView } from "./CanvasView";
 import { PerfChart } from "./PerfChart";
 import { NodeEditor } from "./NodeEditor";
 import { ExtensionManager } from "./ExtensionManager";
+import { ReportGenerator } from "./ReportGenerator";
 import { Flex, Text, Button, TextField } from "@radix-ui/themes";
 import { Cpu, LayoutDashboard, BrainCircuit, Activity, Settings2 } from "lucide-react";
 
@@ -45,6 +46,8 @@ function App() {
           <button className="p-2 rounded-md hover:bg-gray-800 text-blue-400 transition-colors"><LayoutDashboard size={20} /></button>
           <button className="p-2 rounded-md hover:bg-gray-800 text-gray-500 hover:text-gray-300 transition-colors"><Activity size={20} /></button>
           <button className="p-2 rounded-md hover:bg-gray-800 text-gray-500 hover:text-gray-300 transition-colors" onClick={() => setActiveTab("extensions")}><Settings2 size={20} /></button>
+          <div className="flex-1" />
+          <ReportGenerator />
         </div>
 
         {/* Layout */}
