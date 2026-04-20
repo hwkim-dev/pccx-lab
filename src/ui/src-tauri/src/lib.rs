@@ -254,6 +254,72 @@ async fn run_verification(repo_path: String) -> Result<VerificationSummary, Stri
     })
 }
 
+#[derive(serde::Serialize)]
+struct TraceEntry {
+    name: String,
+    path: String,
+    size_bytes: u64,
+}
+
+/// Lists every `.pccx` file under the sibling pccx-FPGA repo's
+/// `hw/sim/work/<tb>/` tree so the UI can present a dropdown of
+/// available traces without hard-coding paths.
+#[tauri::command]
+fn list_pccx_traces(repo_path: String) -> Result<Vec<TraceEntry>, String> {
+    let work_root = format!("{}/hw/sim/work", repo_path);
+    let work_path = std::path::Path::new(&work_root);
+    if !work_path.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut entries = Vec::new();
+    let read = std::fs::read_dir(work_path)
+        .map_err(|e| format!("Cannot list {}: {}", work_root, e))?;
+    for dir in read.flatten() {
+        if !dir.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            // Legacy traces may sit directly under work/ — include them too.
+            if let Some(ext) = dir.path().extension() {
+                if ext == "pccx" {
+                    if let Ok(meta) = dir.metadata() {
+                        entries.push(TraceEntry {
+                            name: dir
+                                .path()
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("(unknown)")
+                                .to_string(),
+                            path: dir.path().to_string_lossy().to_string(),
+                            size_bytes: meta.len(),
+                        });
+                    }
+                }
+            }
+            continue;
+        }
+        let tb_dir = dir.path();
+        let Ok(inner) = std::fs::read_dir(&tb_dir) else { continue };
+        for file in inner.flatten() {
+            let p = file.path();
+            if p.extension().and_then(|s| s.to_str()) == Some("pccx") {
+                if let Ok(meta) = file.metadata() {
+                    entries.push(TraceEntry {
+                        name: p
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("(unknown)")
+                            .to_string(),
+                        path: p.to_string_lossy().to_string(),
+                        size_bytes: meta.len(),
+                    });
+                }
+            }
+        }
+    }
+
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(entries)
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -363,6 +429,7 @@ pub fn run() {
             generate_report,
             load_synth_report,
             run_verification,
+            list_pccx_traces,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

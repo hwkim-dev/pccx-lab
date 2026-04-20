@@ -57,3 +57,28 @@ def test_run_verification_full_suite(driver):
     # tri-state (Some(true) / Some(false) / None) so accept either truth
     # value but insist it got populated.
     assert summary["synth_timing_met"] in (True, False), summary
+
+
+@pytest.mark.skipif(not RUN_SCRIPT.exists(),
+                    reason=f"bridge script missing: {RUN_SCRIPT}")
+def test_list_pccx_traces_finds_generated(driver):
+    # Prime the work directory by running the suite first.
+    run = _invoke(driver, "run_verification", {"repoPath": str(SIBLING_FPGA)})
+    assert run["ok"], run
+
+    res = _invoke(driver, "list_pccx_traces", {"repoPath": str(SIBLING_FPGA)})
+    assert res["ok"], f"list_pccx_traces failed: {res.get('err')}"
+
+    traces = res["value"]
+    names = {t["name"] for t in traces}
+    # Every tb that ran should have a matching .pccx artefact.
+    for expected in ("tb_GEMM_dsp_packer_sign_recovery",
+                     "tb_mat_result_normalizer",
+                     "tb_GEMM_weight_dispatcher",
+                     "tb_FROM_mat_result_packer"):
+        assert expected in names, f"{expected} missing from {names}"
+
+    # Each entry must carry a plausible file size.
+    for t in traces:
+        assert t["size_bytes"] > 0, t
+        assert t["path"].endswith(".pccx"), t
