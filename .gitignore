@@ -1,39 +1,50 @@
-# Rust
+# ─── Rust ───────────────────────────────────────────────────────────
 target/
 Cargo.lock
 
-# Node
+# ─── Node / Frontend ───────────────────────────────────────────────
 node_modules/
 dist/
 
-# Sphinx
+# ─── Sphinx ─────────────────────────────────────────────────────────
 docs/_build/
 docs/ko/_build/
 
-# Python
+# ─── Python ─────────────────────────────────────────────────────────
 .venv/
 venv/
 __pycache__/
 *.pyc
 
-# CMake / C++ build output
+# ─── CMake / C++ build (legacy) ────────────────────────────────────
 build/
 cmake-build-*/
 
-# Qt installation (fetched by aqtinstall)
+# ─── Qt (legacy fetched by aqtinstall) ─────────────────────────────
 qt6/
 aqtinstall.log
 
-# Editor / IDE local state
+# ─── Generated trace files ─────────────────────────────────────────
+*.pccx
+output.pdf
+
+# ─── Editor / IDE ──────────────────────────────────────────────────
 .vscode/
 .idea/
 imgui.ini
+*.swp
+*.swo
+*~
 
-# Local tooling scratch (not committed)
+# ─── AI / Agent scratch ───────────────────────────────────────────
 .claude/
 .claudesignore
+.gemini/
 pccx-lab-bootstrap-task.md
 
-# OS
+# ─── Local reference material (external project mirrors, PDFs, etc.) ───
+reference_to_cheet/
+
+# ─── OS ────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
