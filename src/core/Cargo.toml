@@ -13,8 +13,12 @@ serde_json.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 bincode = "1.3.3"
+# VCD (IEEE 1364 §21) ingest for the Waveform panel.  Pure-Rust parser
+# with an MIT licence — safe for the Apache-2.0 public core.
+vcd = "0.7"
 
 [dev-dependencies]
 # pccx-core itself (via path) is used in integration tests
 # No extra test-only deps needed — the workspace provides everything
+tempfile = "3"
 

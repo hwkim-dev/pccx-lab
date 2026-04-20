@@ -16,6 +16,7 @@ pub mod roofline;
 pub mod report;
 pub mod bottleneck;
 pub mod coverage;
+pub mod vcd;
 
 // ─── Convenience re-exports (public API surface) ──────────────────────────────
 pub use pccx_format::{PccxFile, PccxHeader, PccxError, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64};
@@ -32,3 +33,4 @@ pub use roofline::{RooflinePoint, analyze as analyze_roofline};
 pub use report::render_markdown;
 pub use bottleneck::{detect as detect_bottlenecks, BottleneckInterval, BottleneckKind, DetectorConfig};
 pub use coverage::{merge_jsonl as merge_coverage_jsonl, CovBin, CovGroup, CrossTuple, MergedCoverage, CoverageError};
+pub use vcd::{parse_vcd_file, WaveformDump, SignalMeta, VcdChange, VcdError};
