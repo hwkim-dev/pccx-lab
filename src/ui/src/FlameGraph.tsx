@@ -332,17 +332,24 @@ export function FlameGraph() {
       if (step >= 30) {
         clearInterval(interval);
         // Wire up to the detect_bottlenecks IPC (ship-ready in core crate).
-        invoke<{ summary: string; recommendation: string }>("detect_bottlenecks", {
-          window: 256, threshold: 0.5,
-        }).then(res => {
-          setAiAnalysis({
-            text: res.summary || `Hottest span: [${bottleneck.name}] — ${bottleneck.duration.toLocaleString()} cycles at depth ${bottleneck.depth}.`,
-            rec:  res.recommendation || "No recommendation returned — check detect_bottlenecks contract.",
-          });
+        type BottleneckInterval = { kind: string; start_cycle: number; end_cycle: number; share: number; event_count: number };
+        invoke<BottleneckInterval[]>("detect_bottlenecks", {
+          windowCycles: 256, threshold: 0.5,
+        }).then(intervals => {
+          const worst = intervals.sort((a, b) => b.share - a.share)[0];
+          const text = worst
+            ? `Hotspot: ${worst.kind} dominated ${(worst.share * 100).toFixed(0)}% of window [${worst.start_cycle}, ${worst.end_cycle}] across ${worst.event_count} events.`
+            : `Hottest span: [${bottleneck.name}] — ${bottleneck.duration.toLocaleString()} cycles at depth ${bottleneck.depth}.`;
+          const rec = worst?.kind === "SystolicStall" ? "Systolic stall dominates — check weight-dispatcher K-stride alignment."
+                    : worst?.kind === "DmaRead"       ? "DMA reads dominate — increase AXI burst length 16→64 to hide DRAM latency."
+                    : worst?.kind === "DmaWrite"      ? "DMA writes dominate — coalesce result packer beats or add a drain FIFO."
+                    : worst?.kind === "BarrierSync"   ? "Barrier sync dominates — split the barrier tile_mask or overlap with the next op."
+                    : "No critical class dominated; workload is well-balanced.";
+          setAiAnalysis({ text, rec });
         }).catch(() => {
           setAiAnalysis({
             text: `Hottest span: [${bottleneck.name}] — ${bottleneck.duration.toLocaleString()} cycles at depth ${bottleneck.depth}.`,
-            rec:  "detect_bottlenecks IPC unavailable — showing static analysis. Try increasing AXI burst length 16→64.",
+            rec:  "detect_bottlenecks IPC returned no trace — load a .pccx first. Static hint: try AXI burst 16→64.",
           });
         });
       }
