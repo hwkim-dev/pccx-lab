@@ -1,1 +1,1 @@
-{ "round": 1, "phase": "judge" }
+{ "round": 1, "phase": "impl", "impl_tickets_inflight": ["T-1"], "impl_completed": ["T-2", "T-3"] }
