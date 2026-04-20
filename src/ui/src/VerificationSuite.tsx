@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { useTheme } from "./ThemeContext";
-import { CheckCircle, AlertOctagon, TerminalSquare, ShieldCheck, Bug, Activity } from "lucide-react";
+import { CheckCircle, AlertOctagon, TerminalSquare, ShieldCheck, Bug, Activity, Cpu } from "lucide-react";
+import { SynthStatusCard } from "./SynthStatusCard";
 
-type VerifyTab = "isa" | "api" | "uvm";
+type VerifyTab = "isa" | "api" | "uvm" | "synth";
+
+const DEFAULT_UTIL_PATH =
+  "../../../../pccx-FPGA-NPU-LLM-kv260/hw/build/reports/utilization_post_synth.rpt";
+const DEFAULT_TIMING_PATH =
+  "../../../../pccx-FPGA-NPU-LLM-kv260/hw/build/reports/timing_summary_post_synth.rpt";
 
 interface IsaResult {
   inst: string;
@@ -60,9 +66,10 @@ export function VerificationSuite() {
         
         <div className="flex bg-black/20 rounded p-1 gap-1" style={{ border: `1px solid ${theme.border}` }}>
           {[
-            { id: "isa", label: "ISA Dashboard", icon: <TerminalSquare size={14} /> },
-            { id: "api", label: "API Integrity", icon: <Activity size={14} /> },
-            { id: "uvm", label: "UVM Coverage", icon: <Bug size={14} /> },
+            { id: "isa",   label: "ISA Dashboard", icon: <TerminalSquare size={14} /> },
+            { id: "api",   label: "API Integrity", icon: <Activity size={14} />       },
+            { id: "uvm",   label: "UVM Coverage",  icon: <Bug size={14} />            },
+            { id: "synth", label: "Synth Status",  icon: <Cpu size={14} />            },
           ].map(t => (
             <button
               key={t.id}
@@ -150,6 +157,22 @@ export function VerificationSuite() {
                  Imports Synopsys `vdb` and Cadence `ucm` line coverages. Shows heatmaps of AXI transaction loss and edge-case hits.
                </p>
              </div>
+          )}
+
+          {activeTab === "synth" && (
+            <div className="flex flex-col h-full gap-3">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Cpu size={16} /> Post-Synthesis Status (pccx-FPGA)
+              </h3>
+              <SynthStatusCard
+                utilizationPath={DEFAULT_UTIL_PATH}
+                timingPath={DEFAULT_TIMING_PATH}
+              />
+              <p className="text-[11px] mt-1" style={{ color: theme.textMuted }}>
+                Paths are relative to the <code>pccx-lab</code> binary's working directory.
+                Override via props when embedding this widget elsewhere.
+              </p>
+            </div>
           )}
         </div>
 
