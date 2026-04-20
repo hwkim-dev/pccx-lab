@@ -17,6 +17,8 @@ pub mod report;
 pub mod bottleneck;
 pub mod coverage;
 pub mod vcd;
+pub mod vcd_writer;
+pub mod chrome_trace;
 
 // ─── Convenience re-exports (public API surface) ──────────────────────────────
 pub use pccx_format::{PccxFile, PccxHeader, PccxError, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64};
@@ -34,3 +36,5 @@ pub use report::render_markdown;
 pub use bottleneck::{detect as detect_bottlenecks, BottleneckInterval, BottleneckKind, DetectorConfig};
 pub use coverage::{merge_jsonl as merge_coverage_jsonl, CovBin, CovGroup, CrossTuple, MergedCoverage, CoverageError};
 pub use vcd::{parse_vcd_file, WaveformDump, SignalMeta, VcdChange, VcdError};
+pub use vcd_writer::{write_vcd, write_vcd_to};
+pub use chrome_trace::{write_chrome_trace, write_chrome_trace_to};
