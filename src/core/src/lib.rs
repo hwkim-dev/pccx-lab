@@ -11,6 +11,7 @@ pub mod simulator;
 pub mod license;
 pub mod hw_model;
 pub mod cycle_estimator;
+pub mod synth_report;
 
 // ─── Convenience re-exports (public API surface) ──────────────────────────────
 pub use pccx_format::{PccxFile, PccxHeader, PccxError, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64};
@@ -22,3 +23,4 @@ pub use license::{
 };
 pub use hw_model::{HardwareModel, AxiBusConfig, BramConfig, MacArrayConfig};
 pub use cycle_estimator::{CycleEstimator, TileOperation};
+pub use synth_report::{SynthReport, UtilSummary, TimingSummary, load_from_files};

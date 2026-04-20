@@ -119,6 +119,17 @@ fn generate_uvm_sequence_cmd(strategy: String) -> String {
     generate_uvm_sequence(&strategy)
 }
 
+/// Parses Vivado `report_utilization` and `report_timing_summary` text outputs
+/// and returns a combined SynthReport JSON. Used by the hardware dashboard
+/// to surface resource counts and critical-path slack at a glance.
+#[tauri::command]
+fn load_synth_report(
+    utilization_path: String,
+    timing_path: String,
+) -> Result<pccx_core::synth_report::SynthReport, String> {
+    pccx_core::synth_report::load_from_files(&utilization_path, &timing_path)
+}
+
 #[tauri::command]
 async fn generate_report(state: State<'_, AppState>) -> Result<String, String> {
     // MutexGuard must not be held across an await point (not Send).
@@ -158,6 +169,7 @@ pub fn run() {
             compress_trace_context,
             generate_uvm_sequence_cmd,
             generate_report,
+            load_synth_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
