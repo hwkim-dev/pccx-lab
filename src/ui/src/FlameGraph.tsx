@@ -306,8 +306,11 @@ export function FlameGraph() {
   };
 
   const handleAIHotspot = () => {
-    // Find the longest bottleneck node (deepest level, usually DMA_Read_Wait or MAC_Compute)
-    const bottleneck = spans.filter(s => s.depth === 2 && s.name.includes("Wait")).sort((a,b) => b.duration - a.duration)[0];
+    // Find the longest span at any leaf-ish depth. The old filter looked
+    // for `"Wait"` which the Gemma 3N demo never produces.
+    const bottleneck = spans
+      .filter(s => s.depth >= 2)
+      .sort((a, b) => b.duration - a.duration)[0];
     if (!bottleneck) return;
 
     // Smooth scroll to bottleneck
@@ -328,9 +331,19 @@ export function FlameGraph() {
       
       if (step >= 30) {
         clearInterval(interval);
-        setAiAnalysis({
-          text: `Found critical bottleneck: [${bottleneck.name}] stalled for ${bottleneck.duration.toLocaleString()} cycles.`,
-          rec: "Recommend enabling L2 Hardware Prefetcher and increasing AXI Burst Length from 16 to 64 beats to hide DRAM latency."
+        // Wire up to the detect_bottlenecks IPC (ship-ready in core crate).
+        invoke<{ summary: string; recommendation: string }>("detect_bottlenecks", {
+          window: 256, threshold: 0.5,
+        }).then(res => {
+          setAiAnalysis({
+            text: res.summary || `Hottest span: [${bottleneck.name}] — ${bottleneck.duration.toLocaleString()} cycles at depth ${bottleneck.depth}.`,
+            rec:  res.recommendation || "No recommendation returned — check detect_bottlenecks contract.",
+          });
+        }).catch(() => {
+          setAiAnalysis({
+            text: `Hottest span: [${bottleneck.name}] — ${bottleneck.duration.toLocaleString()} cycles at depth ${bottleneck.depth}.`,
+            rec:  "detect_bottlenecks IPC unavailable — showing static analysis. Try increasing AXI burst length 16→64.",
+          });
         });
       }
     }, 16);
