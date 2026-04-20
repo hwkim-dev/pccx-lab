@@ -19,9 +19,10 @@ mod tests {
     #[test]
     fn test_hw_model_peak_tops() {
         let hw = HardwareModel::pccx_reference();
-        // 32×32 MAC × 2 ops/MAC × 32 cores × 1 GHz = 2.097 TOPS
+        // 32×32 MAC × 2 ops/MAC × 32 cores × 1 GHz = 65.536 TOPS
         let tops = hw.peak_tops();
-        assert!(tops > 2.0 && tops < 3.0, "peak_tops should be ~2.05, got {tops}");
+        assert!(tops > 60.0 && tops < 70.0,
+            "peak_tops should be ~65.5, got {tops}");
     }
 
     #[test]
@@ -272,5 +273,120 @@ mod tests {
     fn test_license_malformed_rejected() {
         let result = validate_token("not.a.valid.token.with.too.many.parts.blah");
         assert!(result.is_err(), "Malformed token must be rejected");
+    }
+
+    // ─── Synthesis report parser ──────────────────────────────────────────────
+
+    const SAMPLE_UTIL: &str = r#"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64)
+| Design       : NPU_top
+| Device       : xck26-sfvc784-2LV-c
+| Design State : Synthesized
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------+-------+------------+------------+---------+------+------+--------+--------+------+------------+
+| Inst   | Mod   | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | URAM | DSP Blocks |
++--------+-------+------------+------------+---------+------+------+--------+--------+------+------------+
+| NPU_top | (top) |       5611 |       5570 |       0 |   41 | 8458 |     80 |      8 |   56 |          4 |
+"#;
+
+    const SAMPLE_TIMING_FAIL: &str = r#"
+| Design Timing Summary
+| ---------------------
+----------------------------------------------------------------
+
+    WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints  ...
+    -------      -------  ---------------------  -------------------
+     -9.792    -3615.208                   4194                28602  ...
+
+
+Timing constraints are not met.
+
+
+Clock         WNS(ns)   TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints
+-----         -------   -------  ---------------------  -------------------
+axi_clk         2.253     0.000                      0                 2118
+core_clk       -9.792 -3615.208                   4194                26484
+"#;
+
+    const SAMPLE_TIMING_PASS: &str = r#"
+| Design Timing Summary
+| ---------------------
+----------------------------------------------------------------
+
+    WNS(ns)      TNS(ns)  TNS Failing Endpoints  TNS Total Endpoints  ...
+    -------      -------  ---------------------  -------------------
+      0.450        0.000                      0                28602  ...
+
+
+All user specified timing constraints are met.
+"#;
+
+    #[test]
+    fn test_parse_utilization_extracts_top_row() {
+        let util = pccx_core::synth_report::parse_utilization(SAMPLE_UTIL);
+        assert_eq!(util.top_module, "NPU_top");
+        assert_eq!(util.total_luts, 5611);
+        assert_eq!(util.logic_luts, 5570);
+        assert_eq!(util.ffs,        8458);
+        assert_eq!(util.rams_36,    80);
+        assert_eq!(util.rams_18,    8);
+        assert_eq!(util.urams,      56);
+        assert_eq!(util.dsps,       4);
+    }
+
+    #[test]
+    fn test_parse_utilization_empty_input() {
+        let util = pccx_core::synth_report::parse_utilization("");
+        assert_eq!(util.top_module, "");
+        assert_eq!(util.total_luts, 0);
+    }
+
+    #[test]
+    fn test_parse_utilization_ignores_design_state() {
+        // Regression: the "| Design State : Synthesized" line must not be
+        // captured as the top module.
+        let text = "| Design State : Synthesized\n| Device       : xck26\n";
+        let util = pccx_core::synth_report::parse_utilization(text);
+        assert_eq!(util.top_module, "", "Design State must not become top_module");
+    }
+
+    #[test]
+    fn test_parse_timing_detects_failure() {
+        let t = pccx_core::synth_report::parse_timing(SAMPLE_TIMING_FAIL);
+        assert!(!t.is_timing_met, "Sample should be flagged as NOT met");
+        assert!((t.wns_ns - -9.792).abs() < 1e-6);
+        assert_eq!(t.failing_endpoints, 4194);
+        assert_eq!(t.total_endpoints, 28602);
+        assert_eq!(t.worst_clock, "core_clk", "Worst clock must be core_clk");
+    }
+
+    #[test]
+    fn test_parse_timing_detects_success() {
+        let t = pccx_core::synth_report::parse_timing(SAMPLE_TIMING_PASS);
+        assert!(t.is_timing_met, "Sample should be flagged as met");
+        assert!(t.wns_ns > 0.0, "Positive slack expected");
+        assert_eq!(t.failing_endpoints, 0);
+    }
+
+    #[test]
+    fn test_parse_timing_empty_stays_met() {
+        // If we cannot find the marker, parser defaults to met + zeros.
+        let t = pccx_core::synth_report::parse_timing("");
+        assert!(t.is_timing_met);
+        assert_eq!(t.wns_ns, 0.0);
+    }
+
+    #[test]
+    fn test_load_from_files_missing_path_errors() {
+        let r = pccx_core::synth_report::load_from_files(
+            "/nonexistent/util.rpt",
+            "/nonexistent/timing.rpt",
+        );
+        assert!(r.is_err(), "Should error when paths are missing");
     }
 }

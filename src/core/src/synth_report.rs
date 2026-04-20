@@ -133,13 +133,25 @@ pub fn parse_timing(text: &str) -> TimingSummary {
         i += 1;
     }
 
-    // Walk the Per-Clock summary for the worst clock name.
-    if let Some(pos) = text.find("TNS Failing Endpoints  TNS Total Endpoints") {
-        let tail = &text[pos..];
+    // Walk the Per-Clock summary for the worst clock name. The per-clock
+    // block is distinguishable from the design-level summary by a header
+    // line that starts with the literal "Clock" keyword (plus whitespace,
+    // plus "WNS" somewhere on the line).
+    let mut per_clock_idx: Option<usize> = None;
+    for (idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("Clock ") && trimmed.contains("WNS(ns)") {
+            per_clock_idx = Some(idx);
+            break;
+        }
+    }
+    if let Some(start) = per_clock_idx {
         let mut worst = ("".to_string(), f64::INFINITY);
-        for line in tail.lines().skip(2).take(20) {
+        for line in lines.iter().skip(start + 2).take(20) {
             let row = line.trim();
-            if row.is_empty() || row.starts_with('-') {
+            let is_divider = !row.is_empty()
+                && row.chars().all(|c| c == '-' || c.is_whitespace());
+            if row.is_empty() || is_divider {
                 break;
             }
             let cols: Vec<&str> = row.split_whitespace().collect();
