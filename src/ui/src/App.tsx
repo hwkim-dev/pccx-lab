@@ -86,7 +86,7 @@ function ResizeHandle({ direction = "horizontal" }: { direction?: "horizontal" |
 
 function AppInner() {
   const theme = useTheme();
-  const { lang, t } = useI18n();
+  const { t } = useI18n();
   const isDark = theme.mode === "dark";
   const [header, setHeader]       = useState<any>(null);
   const [license, setLicense]     = useState("");
@@ -112,7 +112,7 @@ function AppInner() {
 
   // Copilot Panel Component
   const renderCopilot = () => (
-      <div className="w-full h-full flex flex-col" style={{ background: theme.bgPanel, minWidth: 260 }}>
+      <div className="w-full h-full flex flex-col min-w-0 min-h-0" style={{ background: theme.bgPanel }}>
         <div className="flex items-center px-3 gap-2 shrink-0" style={{ height: 32, borderBottom: `1px solid ${border}` }}>
           <BrainCircuit size={13} style={{ color: theme.accent }} />
           <span style={{ fontSize: 11, fontWeight: 600, color: theme.textDim }}>AI Copilot</span>
@@ -166,17 +166,16 @@ function AppInner() {
               disabled={copilotBusy || !inputText.trim()} onClick={handleSend}>→</Button>
           </Flex>
           <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 3 }}>
-            {lang === "ko" ? "Enter 전송 · Shift+Enter 줄바꿈" : "Enter to send · Shift+Enter for newline"}
+            {t("copilot.kbdHint")}
           </div>
         </div>
       </div>
   );
 
-  // AI Chat
+  // AI Chat.  Seed with an i18n key instead of a literal so the idle line
+  // renders in whatever language is active when the component mounts.
   const [messages, setMessages]   = useState<ChatMessage[]>([
-    { role: "system", content: lang === "ko"
-        ? "AI Copilot 대기 중. .pccx 트레이스를 로드하면 분석을 시작합니다."
-        : "AI Copilot is idle. Load a .pccx trace to start analysing." },
+    { role: "system", content: t("copilot.idle") },
   ]);
   const [inputText, setInputText] = useState("");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("pccx_openai_key") || "");
@@ -200,9 +199,9 @@ function AppInner() {
         const lic: string = await invoke("get_license_info");
         setLicense(lic);
         const ctx: string = await invoke("compress_trace_context");
-        addMsg("system", `✓ 트레이스 로드 완료. ${ctx}`);
+        addMsg("system", `✓ ${t("copilot.traceLoaded")} ${ctx}`);
       } catch (e) {
-        addMsg("system", `⚠ 트레이스 로드 실패: ${e}`);
+        addMsg("system", `⚠ ${t("copilot.traceFailed")}: ${e}`);
       }
     })();
   }, []);
@@ -273,7 +272,7 @@ function AppInner() {
       const dt = performance.now() - t0;
       const count = payload.byteLength / 24;
       addMsg("system", `⚡ IPC: ${(payload.byteLength / 1024 / 1024).toFixed(2)} MB (${count.toLocaleString()} events) — ${dt.toFixed(1)} ms`);
-    } catch (e) { addMsg("system", `IPC 오류: ${e}`); }
+    } catch (e) { addMsg("system", `${t("copilot.ipcError")}: ${e}`); }
   };
 
   const handleSend = async () => {
@@ -289,20 +288,20 @@ function AppInner() {
           const low = text.toLowerCase();
           let reply = "";
           if (low.includes("병목") || low.includes("bottleneck")) {
-            reply = `컨텍스트: ${ctx}\n\n분석: AXI 버스 경합이 주요 병목. 32코어 동시 DMA 시 코어당 0.5 B/cycle.\n\n→ L2 프리페치 깊이 증가 또는 코어 그룹 스태거링 권장`;
+            reply = `${t("copilot.context")}: ${ctx}\n\n${t("copilot.bottleneck")}`;
           } else if (low.includes("uvm") || low.includes("testbench") || low.includes("코드")) {
             try {
               const s = low.includes("barrier") ? "barrier_reduction" : "l2_prefetch";
               const sv: string = await invoke("generate_uvm_sequence_cmd", { strategy: s });
-              reply = `UVM 시퀀스 (${s}):\n\n\`\`\`\n${sv}\n\`\`\`\n\n→ SV Editor 탭에서 편집 가능`;
-            } catch { reply = "UVM 생성 실패"; }
+              reply = `${t("copilot.uvmIntro")} (${s}):\n\n\`\`\`\n${sv}\n\`\`\`\n\n${t("copilot.uvmHint")}`;
+            } catch { reply = t("copilot.uvmFailed"); }
           } else if (low.includes("report") || low.includes("보고서")) {
-            reply = "Report 탭에서 섹션 선택 후 PDF를 생성할 수 있습니다.\n• Executive Summary\n• Hardware Config\n• Utilisation Heatmap\n• Bottleneck Analysis\n• Roofline Model";
+            reply = t("copilot.reportHint");
             setActiveTab("report");
           } else {
-            reply = `컨텍스트: ${ctx || "없음"}\n\n질문 예시:\n• "병목 분석"\n• "UVM testbench 생성"\n• "보고서 생성"\n• "roofline 분석"`;
+            reply = `${t("copilot.context")}: ${ctx || t("copilot.none")}\n\n${t("copilot.hintExamples")}`;
           }
-          addMsg("ai", reply + "\n(Real API 통신을 원하면 상단에 토큰을 입력하세요)");
+          addMsg("ai", `${reply}\n${t("copilot.hintApiKey")}`);
       } else {
          try {
             const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -321,13 +320,13 @@ function AppInner() {
             if (data.choices && data.choices[0]) {
                addMsg("ai", data.choices[0].message.content);
             } else {
-               addMsg("system", `API 응답 오류: ${data.error?.message || "Unknown error"}`);
+               addMsg("system", `${t("copilot.apiError")}: ${data.error?.message || "Unknown error"}`);
             }
          } catch (err: any) {
-            addMsg("system", `HTTP 오류: ${err.message}`);
+            addMsg("system", `${t("copilot.httpError")}: ${err.message}`);
          }
       }
-    } catch (e) { addMsg("ai", `오류: ${e}`); }
+    } catch (e) { addMsg("ai", `${t("copilot.error")}: ${e}`); }
     finally { setCopilotBusy(false); }
   };
 
@@ -374,16 +373,16 @@ function AppInner() {
           <Group orientation="horizontal" className="flex-1">
             {hasLeft && (
               <>
-                <Panel defaultSize={24} minSize={12} maxSize={70} style={{ minWidth: 240 }}>
+                <Panel defaultSize="24%" minSize="240px" maxSize="70%">
                    <Group orientation="vertical">
                      {copilotLeft && (
-                       <Panel defaultSize={bottomLeft ? 60 : 100} minSize={20}>
+                       <Panel defaultSize={bottomLeft ? "60%" : "100%"} minSize="20%">
                          {renderCopilot()}
                        </Panel>
                      )}
                      {copilotLeft && bottomLeft && <ResizeHandle direction="vertical" />}
                      {bottomLeft && (
-                       <Panel defaultSize={copilotLeft ? 40 : 100} minSize={20}>
+                       <Panel defaultSize={copilotLeft ? "40%" : "100%"} minSize="20%">
                          <BottomPanel dock={bottomDock} onDockChange={setBottomDock} onClose={() => setBottomVisible(false)} />
                        </Panel>
                      )}
@@ -392,10 +391,10 @@ function AppInner() {
                 <ResizeHandle />
               </>
             )}
-            <Panel defaultSize={hasLeft && hasRight ? 52 : (hasLeft || hasRight ? 76 : 100)} minSize={40}>
+            <Panel defaultSize={hasLeft && hasRight ? "52%" : (hasLeft || hasRight ? "76%" : "100%")} minSize="25%">
               <Group orientation="vertical">
-                <Panel defaultSize={hasBottomStack ? 68 : 100} minSize={30}>
-                  <div className="w-full h-full flex flex-col" style={{ background: bg }}>
+                <Panel defaultSize={hasBottomStack ? "68%" : "100%"} minSize="20%">
+                  <div className="w-full h-full flex flex-col min-w-0 min-h-0" style={{ background: bg }}>
                     <div className="flex items-center shrink-0 overflow-x-auto" style={{ height: 32, borderBottom: `1px solid ${border}`, background: panelBg }}>
                       {TABS.map(t => (
                         <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -448,16 +447,16 @@ function AppInner() {
                 {hasBottomStack && (
                   <>
                     <ResizeHandle direction="vertical" />
-                    <Panel defaultSize={32} minSize={10} maxSize={70}>
+                    <Panel defaultSize="32%" minSize="10%" maxSize="70%">
                        <Group orientation="horizontal">
                           {bottomBottom && (
-                            <Panel defaultSize={copilotBottom ? 60 : 100} minSize={20}>
+                            <Panel defaultSize={copilotBottom ? "60%" : "100%"} minSize="20%">
                               <BottomPanel dock={bottomDock} onDockChange={setBottomDock} onClose={() => setBottomVisible(false)} />
                             </Panel>
                           )}
                           {bottomBottom && copilotBottom && <ResizeHandle />}
                           {copilotBottom && (
-                            <Panel defaultSize={bottomBottom ? 40 : 100} minSize={20}>
+                            <Panel defaultSize={bottomBottom ? "40%" : "100%"} minSize="20%">
                               {renderCopilot()}
                             </Panel>
                           )}
@@ -470,16 +469,16 @@ function AppInner() {
             {hasRight && (
               <>
                 <ResizeHandle />
-                <Panel defaultSize={24} minSize={12} maxSize={70} style={{ minWidth: 240 }}>
+                <Panel defaultSize="24%" minSize="240px" maxSize="70%">
                   <Group orientation="vertical">
                     {copilotRight && (
-                      <Panel defaultSize={bottomRight ? 60 : 100} minSize={20}>
+                      <Panel defaultSize={bottomRight ? "60%" : "100%"} minSize="20%">
                         {renderCopilot()}
                       </Panel>
                     )}
                     {copilotRight && bottomRight && <ResizeHandle direction="vertical" />}
                     {bottomRight && (
-                      <Panel defaultSize={copilotRight ? 40 : 100} minSize={20}>
+                      <Panel defaultSize={copilotRight ? "40%" : "100%"} minSize="20%">
                         <BottomPanel dock={bottomDock} onDockChange={setBottomDock} onClose={() => setBottomVisible(false)} />
                       </Panel>
                     )}
