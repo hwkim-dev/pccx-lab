@@ -4,6 +4,12 @@ import { listen } from "@tauri-apps/api/event";
 import { useTheme } from "./ThemeContext";
 import { useLiveWindow } from "./hooks/useLiveWindow";
 import { useCycleCursor, attachCycleKeybindings, useGoToCycleInput } from "./hooks/useCycleCursor";
+// Round-6 T-3: RAF-coalesced redraw.  Mouse-move at 60–120 Hz used to
+// call draw() synchronously per event; now every draw() request is
+// funnelled through `sched.schedule("timeline", draw)` so at most one
+// draw fires per RAF frame (Perfetto raf-scheduler idiom — see
+// https://perfetto.dev/docs/contributing/ui-plugins).
+import { useRafScheduler } from "./hooks/useRafScheduler";
 
 const EVENT_COLORS: Record<number, { fill: string; label: string }> = {
   0: { fill: "#555555", label: "Unknown"         },
@@ -58,6 +64,9 @@ export function Timeline() {
   const goTo   = useGoToCycleInput(cursor);
 
   const vp = useRef({ offset: 0, cpp: 1, dragging: false, lastX: 0, selStart: -1 });
+
+  // Round-6 T-3: RAF-coalesced draw scheduler.
+  const sched = useRafScheduler();
 
   // Round-5 T-3: live event rate from the shared hook.  Used for the
   // "N events/s" header pill + empty-state overlay (FlameGraph R4
@@ -279,7 +288,15 @@ export function Timeline() {
     }
   }, [events, numCores, isDark, selection, selectedEvent, markers, theme]);
 
-  useEffect(() => { draw(); const ro = new ResizeObserver(draw); if (containerRef.current) ro.observe(containerRef.current); return () => ro.disconnect(); }, [draw]);
+  // Round-6 T-3: coalesced draw request helper.  Replaces every
+  // synchronous `draw()` call on the mouse-move hot path.  Initial
+  // mount still paints synchronously so first-frame render is
+  // immediate; subsequent invalidations coalesce.
+  const scheduleDraw = useCallback(() => {
+    sched.schedule("timeline", draw);
+  }, [sched, draw]);
+
+  useEffect(() => { draw(); const ro = new ResizeObserver(() => scheduleDraw()); if (containerRef.current) ro.observe(containerRef.current); return () => ro.disconnect(); }, [draw, scheduleDraw]);
 
   const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -294,8 +311,8 @@ export function Timeline() {
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) vp.current.offset += e.deltaY * vp.current.cpp * 0.5;
     }
     vp.current.offset = Math.max(0, vp.current.offset);
-    draw();
-  }, [draw]);
+    scheduleDraw();
+  }, [scheduleDraw]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.shiftKey) {
@@ -314,12 +331,12 @@ export function Timeline() {
 
     if (vp.current.selStart >= 0) {
       setSelection({ start: vp.current.selStart, end: vp.current.offset + mx * vp.current.cpp });
-      draw();
+      scheduleDraw();
     } else if (vp.current.dragging) {
       const dx = e.clientX - vp.current.lastX;
       vp.current.lastX = e.clientX;
       vp.current.offset = Math.max(0, vp.current.offset - dx * vp.current.cpp);
-      draw();
+      scheduleDraw();
     }
 
     if (mx < 0 || my < 0) { setTooltip(null); return; }
@@ -332,7 +349,7 @@ export function Timeline() {
         text: `${EVENT_COLORS[hit.type_id]?.label ?? "?"}\nCore: ${hit.core_id}\nStart: ${hit.start.toLocaleString()}\nDuration: ${hit.duration.toLocaleString()}\nEnd: ${(hit.start + hit.duration).toLocaleString()}`,
       });
     } else setTooltip(null);
-  }, [events, draw]);
+  }, [events, scheduleDraw]);
 
   const onMouseUp = useCallback((e: React.MouseEvent) => {
     if (vp.current.selStart >= 0) { vp.current.selStart = -1; }
@@ -344,17 +361,17 @@ export function Timeline() {
       const hCyc = vp.current.offset + mx * vp.current.cpp;
       const hCore = Math.floor(my / LANE_HEIGHT);
       const hit = events.find(ev => ev.core_id === hCore && hCyc >= ev.start && hCyc <= ev.start + ev.duration);
-      setSelectedEvent(hit ?? null); draw();
+      setSelectedEvent(hit ?? null); scheduleDraw();
     }
     vp.current.dragging = false;
-  }, [events, draw]);
+  }, [events, scheduleDraw]);
 
   const onDblClick = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const mx = e.clientX - rect.left - LANE_LABEL_W;
-    setMarkers(m => [...m, Math.round(vp.current.offset + mx * vp.current.cpp)]); draw();
-  }, [draw]);
+    setMarkers(m => [...m, Math.round(vp.current.offset + mx * vp.current.cpp)]); scheduleDraw();
+  }, [scheduleDraw]);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -380,8 +397,8 @@ export function Timeline() {
     if (snapToCycle && vp.current.cpp < 1) vp.current.cpp = 1;
   }, [snapToCycle, cursor.cycle]);
 
-  const fitAll = () => { if (!canvasRef.current || totalCycles === 0) return; vp.current.offset = 0; vp.current.cpp = totalCycles / (canvasRef.current.clientWidth - LANE_LABEL_W); setSelection(null); draw(); };
-  const zoomToSelection = () => { if (!selection || !canvasRef.current) return; const s = Math.min(selection.start, selection.end); const e = Math.max(selection.start, selection.end); vp.current.offset = s; vp.current.cpp = (e - s) / (canvasRef.current.clientWidth - LANE_LABEL_W); draw(); };
+  const fitAll = () => { if (!canvasRef.current || totalCycles === 0) return; vp.current.offset = 0; vp.current.cpp = totalCycles / (canvasRef.current.clientWidth - LANE_LABEL_W); setSelection(null); scheduleDraw(); };
+  const zoomToSelection = () => { if (!selection || !canvasRef.current) return; const s = Math.min(selection.start, selection.end); const e = Math.max(selection.start, selection.end); vp.current.offset = s; vp.current.cpp = (e - s) / (canvasRef.current.clientWidth - LANE_LABEL_W); scheduleDraw(); };
 
   const btnStyle: React.CSSProperties = { fontSize: 10, padding: "2px 8px", borderRadius: 3, background: theme.bgSurface, color: theme.textDim, border: `1px solid ${theme.border}`, cursor: "pointer" };
 
@@ -392,7 +409,7 @@ export function Timeline() {
         <span style={{ fontSize: 10, fontWeight: 700, color: dimText, letterSpacing: "0.05em" }}>TIMELINE</span>
         <button onClick={fitAll} style={btnStyle}>Fit All</button>
         {selection && <button onClick={zoomToSelection} style={{ ...btnStyle, background: theme.accentBg, color: theme.accent, borderColor: theme.accentDim }}>Zoom to Selection</button>}
-        <button onClick={() => { setMarkers([]); draw(); }} style={btnStyle}>Clear Markers</button>
+        <button onClick={() => { setMarkers([]); scheduleDraw(); }} style={btnStyle}>Clear Markers</button>
         {selection && <span style={{ fontSize: 9, color: theme.accent }}>Selected: {Math.abs(selection.end - selection.start).toLocaleString()} cycles</span>}
         {loading && <span style={{ fontSize: 10, color: dimText }} className="animate-pulse">Loading...</span>}
 

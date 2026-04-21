@@ -4,6 +4,11 @@ import { listen } from "@tauri-apps/api/event";
 import { useTheme } from "./ThemeContext";
 import { useLiveWindow } from "./hooks/useLiveWindow";
 import { useCycleCursor, useGoToCycleInput } from "./hooks/useCycleCursor";
+// Round-6 T-3: coalesce ResizeObserver + cursor-driven redraws into a
+// single RAF paint per frame (Perfetto raf-scheduler idiom).  A
+// rapid-fire flex resize used to call draw() per observer tick; the
+// scheduler reduces that to one paint per vsync.
+import { useRafScheduler } from "./hooks/useRafScheduler";
 import {
   Activity, ZoomIn, ZoomOut, Maximize2, Search, Download,
   Filter, X, Crosshair, Bookmark,
@@ -685,12 +690,21 @@ export function WaveformViewer() {
     drawCursor(cursorB, "B", theme.info);
   }, [rows, zoom, offset, cursorA, cursorB, selectedSig, theme, totalTicks, bookmarks]);
 
+  // Round-6 T-3 — RAF-coalesced draw scheduler.
+  const sched = useRafScheduler();
+  const scheduleDraw = useCallback(() => {
+    sched.schedule("waveform", draw);
+  }, [sched, draw]);
+
+  // Initial + dep-change paint stays synchronous so the first frame is
+  // immediate; every subsequent ResizeObserver / cursor-driven repaint
+  // coalesces via the scheduler.
   useEffect(() => { draw(); }, [draw]);
   useEffect(() => {
-    const ro = new ResizeObserver(() => draw());
+    const ro = new ResizeObserver(() => scheduleDraw());
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, [draw]);
+  }, [scheduleDraw]);
 
   // ─── Mouse handling ───────────────────────────────────────────────────────
 

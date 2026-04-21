@@ -4,6 +4,8 @@ import { Play, Pause, SkipForward, SkipBack, RotateCcw, Cpu, ChevronRight, Chevr
 import ELK, { type ElkNode, type ElkExtendedEdge } from "elkjs/lib/elk.bundled.js";
 import { invoke } from "@tauri-apps/api/core";
 import { useCycleCursor, attachCycleKeybindings, useGoToCycleInput } from "./hooks/useCycleCursor";
+import { useRafScheduler } from "./hooks/useRafScheduler";
+import { useVisibilityGate } from "./hooks/useVisibilityGate";
 
 /* ─────────────────────────────────────────────────────────────────────────
  * pccx v002 KV260 module hierarchy.
@@ -301,8 +303,24 @@ function walk(m: Module, depth: number, out: { m: Module; depth: number }[]) {
 export function HardwareVisualizer() {
   const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
+  // Round-6 T-3: two-layer canvas — `staticCanvasRef` paints the ELK
+  // box + label geometry once per layout change; `canvasRef` is the
+  // dynamic overlay redrawn per RAF (packet dot, state dots, cursor
+  // line).  Perfetto's "grid vs slice" compositing pattern, applied to
+  // the same HardwareVisualizer panel.
+  const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const rootRef      = useRef<HTMLDivElement>(null);
+  // Round-6 T-3: visibility gate — pauses the RAF loop when the panel
+  // is hidden (tab switched / docked panel collapsed).  Matches
+  // MDN Page Visibility + IntersectionObserver spec semantics; a tab
+  // switch stops CPU usage within one frame.  See useVisibilityGate.ts.
+  const panelVisible = useVisibilityGate(rootRef);
+  // Round-6 T-3: per-frame RAF scheduler.  Replaces both the legacy
+  // 50-ms interval cycle tick AND the full-canvas redraw effect with a
+  // coalesced dirty-commit pattern (Perfetto raf-scheduler idiom).
+  // See useRafScheduler.ts.
+  const sched = useRafScheduler();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ NPU_Top: true, MAT_CORE: true, MEM: true });
   const [selected, setSelected] = useState<string>("MAT_CORE");
   const [filter,   setFilter]   = useState("");
@@ -343,27 +361,43 @@ export function HardwareVisualizer() {
     cursor.setTotalCycles(maxCycle);
   }, [maxCycle, cursor]);
 
-  // Stable ref to the current cycle — used inside setInterval so the
-  // interval closure doesn't have to depend on `cycle` (which would
-  // re-subscribe on every tick and leak callbacks).
+  // Stable ref to the current cycle — sampled inside the RAF loop so
+  // the rAF closure doesn't have to depend on `cycle` (which would
+  // cancel + re-subscribe on every tick and leak callbacks).
   const cycleRef = useRef(cycle);
   useEffect(() => { cycleRef.current = cycle; }, [cycle]);
 
-  // Auto-advance — cycle-accurate: 1 cycle per tick at 1× speed,
-  // user-tunable via `cyclesPerTick` (≥ 1).  Shift-click on the
-  // SkipBack / SkipForward buttons jumps by 32 cycles (Verdi "big
-  // step" convention); plain clicks step by `cyclesPerTick`.
+  // Round-6 T-3: auto-advance is driven by a `requestAnimationFrame`
+  // loop using `performance.now()` delta rather than the legacy
+  // 50-ms interval.  Decouples cycle advancement from frame rate
+  // (browsers throttle RAF to 60 Hz; off-screen tabs pause
+  // automatically per MDN spec + our `useVisibilityGate` guard).
+  // Cycle value semantics stay identical to T-1: at 1× speed and
+  // default `cyclesPerTick=1`, we advance exactly 1 cycle per 1/60 s.
+  // See Perfetto raf-scheduler idiom (perfetto.dev/docs/contributing/ui-plugins).
   useEffect(() => {
-    if (!playing) return;
-    const step = Math.max(1, Math.floor(cyclesPerTick));
-    // 50 ms tick — the scheduling mechanism is T-3 territory; T-1
-    // just changes the VALUE semantics (1 cycle / tick at 1×).
-    const id = setInterval(() => {
-      const next = (cycleRef.current + Math.max(1, Math.round(step * speed))) % Math.max(1, maxCycle);
-      setCycle(next);
-    }, 50);
-    return () => clearInterval(id);
-  }, [playing, speed, cyclesPerTick, maxCycle, setCycle]);
+    if (!playing || !panelVisible) return;
+    const stepBase = Math.max(1, Math.floor(cyclesPerTick));
+    // Target the same ~20 Hz cycle-advance rate as the old 50 ms
+    // interval — step once per 50 ms-equivalent of elapsed wall-clock.
+    // Multiplied by `speed` to match the legacy semantics.
+    const CYCLE_PERIOD_MS = 50;
+    let lastTs = performance.now();
+    let rafId = 0;
+    const tick = (ts: number) => {
+      const dt = ts - lastTs;
+      if (dt >= CYCLE_PERIOD_MS) {
+        const ticks = Math.floor(dt / CYCLE_PERIOD_MS);
+        lastTs += ticks * CYCLE_PERIOD_MS;
+        const delta = Math.max(1, Math.round(stepBase * speed)) * ticks;
+        const next = (cycleRef.current + delta) % Math.max(1, maxCycle);
+        setCycle(next);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [playing, panelVisible, speed, cyclesPerTick, maxCycle, setCycle]);
 
   // Attach panel-scoped keyboard bindings for single-cycle control.
   useEffect(() => {
@@ -440,10 +474,27 @@ export function HardwareVisualizer() {
     return () => ro.disconnect();
   }, []);
 
-  /* ─── Block-diagram canvas (redraws on layout / cycle / theme) ── */
+  /* ─── Block-diagram canvas — Round-6 T-3 two-layer compositing ──
+   *
+   * Layer (a) — STATIC: painted exactly once per layout/theme/selected
+   * change into the back canvas (`staticCanvasRef`).  Contains the
+   * ELK-laid module boxes, header strips, text, and edge geometry.
+   * A `console.count('static-redraw')` hook stays in place during
+   * development; removed before commit.
+   *
+   * Layer (b) — DYNAMIC: painted per RAF into the front canvas
+   * (`canvasRef`).  Contains only what depends on `cycle` — edge
+   * "alive" highlight, packet dots, state dots / busy-pulse, cursor
+   * line, cycle label.  Coalesced through `sched.schedule("hwvis-dyn")`
+   * so mouse-driven cycle changes never fire more than one RAF draw.
+   *
+   * See research_findings.md T-C (Perfetto "grid vs slice" compositing)
+   * and MDN Page Visibility API — hidden tabs pause both layers via
+   * `useVisibilityGate`. */
 
+  // ── Static layer: ELK boxes + labels + edge geometry ────────────
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = staticCanvasRef.current;
     const wrap = containerRef.current;
     if (!canvas || !wrap) return;
     const dpr = window.devicePixelRatio || 1;
@@ -457,7 +508,6 @@ export function HardwareVisualizer() {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // If ELK hasn't populated yet, show a spinner-equivalent hint.
     if (Object.keys(layout).length === 0) {
       ctx.fillStyle = theme.textMuted;
       ctx.font = "10px Inter, sans-serif";
@@ -465,51 +515,29 @@ export function HardwareVisualizer() {
       return;
     }
 
-    // Draw edges first — use ELK-computed coordinates.
+    // Edge geometry — drawn "dim" here; the dynamic layer overlays
+    // the live highlight so we don't have to repaint this per cycle.
     for (const e of DIAGRAM_EDGES) {
       const a = layout[e.from]; const b = layout[e.to];
       if (!a || !b) continue;
-      const active = edgeAlive(e, cycle, traceEvents);
-      ctx.strokeStyle = active ? theme.accent : theme.borderDim;
-      ctx.lineWidth = active ? 2 : 1;
-      ctx.setLineDash(active ? [] : [3, 3]);
+      ctx.strokeStyle = theme.borderDim;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(a.x + a.w, a.y + a.h / 2);
       const mx = (a.x + a.w + b.x) / 2;
       ctx.bezierCurveTo(mx, a.y + a.h / 2, mx, b.y + b.h / 2, b.x, b.y + b.h / 2);
       ctx.stroke();
       ctx.setLineDash([]);
-
-      if (active && e.label) {
-        ctx.fillStyle = theme.accent;
-        ctx.font = "9px ui-monospace, monospace";
-        ctx.fillText(e.label, mx - 20, (a.y + a.h / 2 + b.y + b.h / 2) / 2 - 4);
-      }
-
-      // Animated packet for active bus
-      if (active) {
-        const phase = (cycle / 40) % 1;
-        const t = phase;
-        const midX = mx;
-        const ax = a.x + a.w, ay = a.y + a.h / 2;
-        const bx = b.x, by = b.y + b.h / 2;
-        // Quadratic approximation for the packet position
-        const x = (1 - t) * (1 - t) * ax + 2 * (1 - t) * t * midX + t * t * bx;
-        const y = (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * ay + t * t * by;
-        ctx.fillStyle = theme.accent;
-        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
-      }
     }
 
-    // Draw modules
+    // Module boxes + labels — static part (everything except state dot).
     ctx.font = "11px Inter, sans-serif";
     ctx.textBaseline = "middle";
     for (const [id, p] of Object.entries(layout)) {
-      const state = stateAtCycle(id, cycle);
       const mod = flat.find(n => n.m.id === id)?.m;
       const baseColor = mod ? KIND_COLOR[mod.kind] : theme.borderDim;
       const stroke = id === selected ? theme.accent : theme.border;
-      const isActive = state.state === "busy" || state.state === "stall" || state.state === "done";
 
       ctx.fillStyle = theme.bgSurface;
       ctx.strokeStyle = stroke;
@@ -519,46 +547,126 @@ export function HardwareVisualizer() {
       ctx.fill();
       ctx.stroke();
 
-      // Kind-coloured header strip
-      ctx.fillStyle = isActive ? baseColor : baseColor + "55";
+      // Dim header — dynamic layer will repaint in full colour when
+      // the module is active at the current cycle.
+      ctx.fillStyle = baseColor + "55";
       ctx.beginPath();
       ctx.roundRect(p.x, p.y, p.w, 18, [6, 6, 0, 0]);
       ctx.fill();
 
-      // Text
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "left";
       ctx.fillText(mod?.name ?? id, p.x + 6, p.y + 9);
-
-      // State dot
-      const dotColor = stateColor(state.state, theme);
-      ctx.fillStyle = dotColor;
-      ctx.beginPath(); ctx.arc(p.x + p.w - 10, p.y + 9, 4, 0, Math.PI * 2); ctx.fill();
-      if (state.state === "busy") {
-        // Round-5 T-3: ornamental — W3C WAAPI pattern.  Gated on
-        // `playing` so a paused timeline shows a steady busy-dot
-        // instead of a decorative breathing glow tied to real cycle
-        // state (Yuan OSDI 2014 honest-idle).
-        const pulse = playing ? 0.5 + 0.5 * Math.sin(cycle * 0.2) : 1.0;
-        ctx.globalAlpha = pulse * 0.4;
-        ctx.beginPath(); ctx.arc(p.x + p.w - 10, p.y + 9, 7, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-
-      // Note under header
-      if (p.h > 30) {
-        ctx.fillStyle = theme.textDim;
-        ctx.font = "9px ui-monospace, monospace";
-        ctx.fillText(state.note ?? state.state, p.x + 6, p.y + 32);
-        ctx.font = "11px Inter, sans-serif";
-      }
     }
+  }, [theme, selected, flat, layout]);
 
-    // Cycle label
-    ctx.fillStyle = theme.textMuted;
-    ctx.font = "10px ui-monospace, monospace";
-    ctx.fillText(`cycle ${cycle}`, rect.width - 90, rect.height - 10);
-  }, [cycle, theme, selected, flat, layout, traceEvents, playing]);
+  // ── Dynamic layer draw fn — captures latest cycle/traceEvents/etc.
+  // via closure, scheduled through RAF coalescer.
+  // Perfetto raf-scheduler idiom, see hooks/useRafScheduler.ts.
+  useEffect(() => {
+    const paint = () => {
+      const canvas = canvasRef.current;
+      const wrap = containerRef.current;
+      if (!canvas || !wrap) return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = wrap.getBoundingClientRect();
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width  = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width  = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      if (Object.keys(layout).length === 0) { ctx.restore(); return; }
+
+      // Live edge highlight + packet dot (dynamic overlay on top of
+      // the dim geometry painted by the static layer).
+      for (const e of DIAGRAM_EDGES) {
+        const a = layout[e.from]; const b = layout[e.to];
+        if (!a || !b) continue;
+        if (!edgeAlive(e, cycle, traceEvents)) continue;
+        ctx.strokeStyle = theme.accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(a.x + a.w, a.y + a.h / 2);
+        const mx = (a.x + a.w + b.x) / 2;
+        ctx.bezierCurveTo(mx, a.y + a.h / 2, mx, b.y + b.h / 2, b.x, b.y + b.h / 2);
+        ctx.stroke();
+
+        if (e.label) {
+          ctx.fillStyle = theme.accent;
+          ctx.font = "9px ui-monospace, monospace";
+          ctx.fillText(e.label, mx - 20, (a.y + a.h / 2 + b.y + b.h / 2) / 2 - 4);
+        }
+
+        // Packet dot — ornamental, along the bezier midpoint.
+        const phase = (cycle / 40) % 1;
+        const t = phase;
+        const ax = a.x + a.w, ay = a.y + a.h / 2;
+        const bx = b.x, by = b.y + b.h / 2;
+        const x = (1 - t) * (1 - t) * ax + 2 * (1 - t) * t * mx + t * t * bx;
+        const y = (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * ay + t * t * by;
+        ctx.fillStyle = theme.accent;
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Active-module header recolour + state dot + pulse.
+      ctx.font = "11px Inter, sans-serif";
+      ctx.textBaseline = "middle";
+      for (const [id, p] of Object.entries(layout)) {
+        const state = stateAtCycle(id, cycle);
+        const mod = flat.find(n => n.m.id === id)?.m;
+        const baseColor = mod ? KIND_COLOR[mod.kind] : theme.borderDim;
+        const isActive = state.state === "busy" || state.state === "stall" || state.state === "done";
+
+        if (isActive) {
+          // Repaint header in full colour on top of the static dim strip.
+          ctx.fillStyle = baseColor;
+          ctx.beginPath();
+          ctx.roundRect(p.x, p.y, p.w, 18, [6, 6, 0, 0]);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "left";
+          ctx.fillText(mod?.name ?? id, p.x + 6, p.y + 9);
+        }
+
+        const dotColor = stateColor(state.state, theme);
+        ctx.fillStyle = dotColor;
+        ctx.beginPath(); ctx.arc(p.x + p.w - 10, p.y + 9, 4, 0, Math.PI * 2); ctx.fill();
+        if (state.state === "busy") {
+          const pulse = playing ? 0.5 + 0.5 * Math.sin(cycle * 0.2) : 1.0;
+          ctx.globalAlpha = pulse * 0.4;
+          ctx.beginPath(); ctx.arc(p.x + p.w - 10, p.y + 9, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+
+        if (p.h > 30) {
+          ctx.fillStyle = theme.textDim;
+          ctx.font = "9px ui-monospace, monospace";
+          ctx.fillText(state.note ?? state.state, p.x + 6, p.y + 32);
+          ctx.font = "11px Inter, sans-serif";
+        }
+      }
+
+      ctx.fillStyle = theme.textMuted;
+      ctx.font = "10px ui-monospace, monospace";
+      ctx.fillText(`cycle ${cycle}`, rect.width - 90, rect.height - 10);
+      ctx.restore();
+    };
+
+    // Schedule through the RAF coalescer — repeated cycle changes
+    // within a single frame collapse to one paint.
+    sched.schedule("hwvis-dyn", paint);
+    return () => sched.cancel("hwvis-dyn");
+  }, [cycle, theme, selected, flat, layout, traceEvents, playing, sched]);
 
   return (
     <div ref={rootRef} tabIndex={0} className="w-full h-full flex flex-col outline-none" style={{ background: theme.bgPanel }}>
@@ -667,8 +775,12 @@ export function HardwareVisualizer() {
           </div>
         </div>
 
-        {/* Center: live block diagram */}
+        {/* Center: live block diagram — Round-6 T-3 two-layer compositing.
+            Static layer (module geometry + labels) paints once per layout
+            change; dynamic layer (cycle-driven highlight, packet dot,
+            pulse, cycle label) paints per RAF via useRafScheduler.  */}
         <div ref={containerRef} className="relative overflow-hidden" style={{ background: theme.bg }}>
+          <canvas ref={staticCanvasRef} className="absolute inset-0" />
           <canvas ref={canvasRef} className="absolute inset-0" />
         </div>
 

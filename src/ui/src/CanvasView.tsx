@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
 import { invoke } from "@tauri-apps/api/core";
+import { useVisibilityGate } from "./hooks/useVisibilityGate";
 
 // MAC array dimensions — must match HardwareModel::pccx_reference()
 const ROWS = 32;
@@ -28,6 +29,13 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
   animRef.current = animationEnabled;
   const mountRef  = useRef<HTMLDivElement>(null);
   const animIdRef = useRef<number>(0);
+  // Round-6 T-3: pause the RAF loop when the 3D-View tab is hidden or
+  // the panel is docked off-screen.  MDN Page Visibility API + DOM
+  // IntersectionObserver — an Apple-grade app never renders an
+  // off-screen tab (spec: https://w3c.github.io/page-visibility/).
+  const visible = useVisibilityGate(mountRef);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
 
   // Mouse state for orbit-like rotation
   const mouse = useRef({ dragging: false, lastX: 0, lastY: 0, rotX: 0.3, rotY: 0.4 });
@@ -154,9 +162,42 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
       });
 
     // ─── Pulsing animation: simulate live MAC activity ───────────────
+    // Round-6 T-3: visibility-gated RAF loop with sparse instance-
+    // colour updates via InstancedBufferAttribute.updateRange.  Only
+    // columns whose wave-scalar *differs* from the previous frame are
+    // re-uploaded to the GPU — cuts per-frame Webgl work from O(COUNT)
+    // to O(active columns).
+    //
+    // References:
+    //   - Three.js InstancedBufferAttribute.updateRange (https://threejs.org/docs/api/en/core/InstancedBufferAttribute.html)
+    //   - Three.js "How to Update Things" (https://threejs.org/manual/en/how-to-update-things.html)
+    //   - MDN Page Visibility API (https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
+    //
+    // Cache the baked per-instance colour so we don't pay a
+    // `getColorAt` per frame — reads from the InstancedBufferAttribute
+    // round-trip through a THREE.Color alloc and cost real time.
+    const baked: { r: number; g: number; b: number }[] = [];
+    for (let i = 0; i < COUNT; i++) {
+      const c = new THREE.Color();
+      mesh.getColorAt(i, c);
+      baked.push({ r: c.r, g: c.g, b: c.b });
+    }
+    // Last-applied scalar per column so we only touch dirty instances.
+    const lastWave = new Float32Array(COLS);
+    for (let i = 0; i < COLS; i++) lastWave[i] = NaN;
+    const DIRTY_EPS = 1 / 256; // 8-bit colour resolution threshold
+
     let phase = 0;
     const animate = () => {
       animIdRef.current = requestAnimationFrame(animate);
+
+      // Round-6 T-3: skip the entire loop body when the panel is not
+      // visible (tab hidden / docked panel collapsed).  Browsers
+      // already auto-throttle main-thread RAF on hidden tabs, but we
+      // additionally bail before touching the WebGL queue so the GPU
+      // goes idle within one frame.
+      if (!visibleRef.current) return;
+
       phase += 0.018;
 
       // Slow auto-rotate when not dragging
@@ -166,25 +207,41 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
       }
 
       if (animRef.current) {
-        // Ornamental — W3C WAAPI pattern 3.  Not a data source; the
-        // `animated` prop guards this branch so a paused player
-        // shows a static array instead of a decorative heartbeat.
-        // Travelling "wave" of activity across the array columns.
-        let wi = 0;
+        // Sparse update pattern: per-column wave scalar; only re-upload
+        // the instance colours whose column's scalar drifted by more
+        // than a JPEG-level threshold.  On an idle frame with stable
+        // wave, `setColorAt` fires for zero instances.
+        let dirtyMin = COUNT;
+        let dirtyMax = -1;
         for (let x = 0; x < COLS; x++) {
           const wave = 0.5 + 0.5 * Math.sin(phase * 2 - x * 0.4);
+          if (!Number.isNaN(lastWave[x]) && Math.abs(wave - lastWave[x]) < DIRTY_EPS) continue;
+          lastWave[x] = wave;
+          const scale = 0.85 + 0.15 * wave;
           for (let y = 0; y < ROWS; y++) {
-            // Combine per-core utilisation (baked) with wave animation
-            // We re-read the baked color and mix with wave
-            const col = new THREE.Color();
-            mesh.getColorAt(wi, col);
-            // Lerp brightness with wave
-            col.multiplyScalar(0.85 + 0.15 * wave);
-            mesh.setColorAt(wi, col);
-            wi++;
+            const idx = x * ROWS + y;
+            const b = baked[idx];
+            // Mul scale into the baked colour; write back sparsely.
+            const col = new THREE.Color(b.r * scale, b.g * scale, b.b * scale);
+            mesh.setColorAt(idx, col);
+            if (idx < dirtyMin) dirtyMin = idx;
+            if (idx > dirtyMax) dirtyMax = idx;
           }
         }
-        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        if (dirtyMax >= 0 && mesh.instanceColor) {
+          // Three.js InstancedBufferAttribute.updateRange — only push
+          // the dirty slice to the GPU instead of the full 1024-colour
+          // array.  `.clearUpdateRanges` / `.addUpdateRange` is r169+
+          // API; the `updateRange` property is the classic accessor
+          // that works on every Three version we bundle.
+          const attr = mesh.instanceColor;
+          // Typed as any because Three.js's InstancedBufferAttribute
+          // type predates the per-component `updateRange` narrowing.
+          const range = (attr as unknown as { updateRange: { offset: number; count: number } }).updateRange;
+          range.offset = dirtyMin * 3;
+          range.count  = (dirtyMax - dirtyMin + 1) * 3;
+          attr.needsUpdate = true;
+        }
       }
 
       renderer.render(scene, camera);

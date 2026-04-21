@@ -2,6 +2,11 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { useCycleCursor, attachCycleKeybindings, useGoToCycleInput } from "./hooks/useCycleCursor";
+// Round-6 T-3: RAF-coalesced draw — mouse-move redraws used to run
+// synchronously per event (up to 120 Hz on high-polling mice) causing
+// >16 ms main-thread frames on 100 k-event traces.  Perfetto
+// raf-scheduler idiom keeps it to one paint per frame.
+import { useRafScheduler } from "./hooks/useRafScheduler";
 
 interface Span {
   name: string;
@@ -148,6 +153,8 @@ export function FlameGraph() {
   // Round-6 T-1 — shared cycle cursor across every time-domain panel.
   const cursor = useCycleCursor();
   const goTo   = useGoToCycleInput(cursor);
+  // Round-6 T-3 — RAF-coalesced draw scheduler.
+  const sched = useRafScheduler();
   /** True when we fell through to the empty-state fallback (no trace
    * loaded).  Drives the toolbar `(synthetic)` badge so users never
    * mistake the placeholder for a real run. */
@@ -363,15 +370,21 @@ export function FlameGraph() {
     }
   }, [spans, theme, selected, diffMode, runB]);
 
-  useEffect(() => { 
-    draw(); 
-    const ro = new ResizeObserver(draw); 
+  // Round-6 T-3: RAF-coalesced draw request — collapses many dirty
+  // calls per frame into a single paint.
+  const scheduleDraw = useCallback(() => {
+    sched.schedule("flamegraph", draw);
+  }, [sched, draw]);
+
+  useEffect(() => {
+    draw();
+    const ro = new ResizeObserver(() => scheduleDraw());
     if (containerRef.current) {
         vp.current.cpp = totalCycles / (containerRef.current.clientWidth || 1000);
-        ro.observe(containerRef.current); 
+        ro.observe(containerRef.current);
     }
-    return () => ro.disconnect(); 
-  }, [draw, totalCycles]);
+    return () => ro.disconnect();
+  }, [draw, scheduleDraw, totalCycles]);
 
   const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -385,8 +398,8 @@ export function FlameGraph() {
       vp.current.offset += e.deltaX * vp.current.cpp * 0.5;
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) vp.current.offset += e.deltaY * vp.current.cpp * 0.5;
     }
-    draw();
-  }, [draw]);
+    scheduleDraw();
+  }, [scheduleDraw]);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -405,7 +418,7 @@ export function FlameGraph() {
       const dx = e.clientX - vp.current.lastX;
       vp.current.offset -= dx * vp.current.cpp;
       vp.current.lastX = e.clientX;
-      draw();
+      scheduleDraw();
       setTooltip(null);
       return;
     }
@@ -446,20 +459,24 @@ export function FlameGraph() {
     const targetOffset = bottleneck.start - (containerRef.current?.clientWidth || 800) * 0.1 * vp.current.cpp; // 10% from left
     const targetCpp = bottleneck.duration / ((containerRef.current?.clientWidth || 800) * 0.8); // Fit node into 80%
 
-    // Animate
+    // Round-6 T-3: animate via requestAnimationFrame instead of a
+    // 16-ms interval — the browser throttles RAF to the actual vsync
+    // rate, no setTimeout drift, and the loop pauses when the tab is
+    // hidden (MDN Page Visibility API).
     let step = 0;
     const startOff = vp.current.offset;
     const startCpp = vp.current.cpp;
-    const interval = setInterval(() => {
+    let rafId = 0;
+    const tick = () => {
       step++;
-      const t = step / 30; // 30 frames
+      const t = step / 30; // 30-frame ease
       const ease = 1 - Math.pow(1 - t, 3);
       vp.current.offset = startOff + (targetOffset - startOff) * ease;
       vp.current.cpp = startCpp + (targetCpp - startCpp) * ease;
-      draw();
-      
+      scheduleDraw();
+
       if (step >= 30) {
-        clearInterval(interval);
+        cancelAnimationFrame(rafId);
         // Wire up to the detect_bottlenecks IPC (ship-ready in core crate).
         type BottleneckInterval = { kind: string; start_cycle: number; end_cycle: number; share: number; event_count: number };
         invoke<BottleneckInterval[]>("detect_bottlenecks", {
@@ -481,8 +498,11 @@ export function FlameGraph() {
             rec:  "detect_bottlenecks IPC returned no trace — load a .pccx first. Static hint: try AXI burst 16→64.",
           });
         });
+      } else {
+        rafId = requestAnimationFrame(tick);
       }
-    }, 16);
+    };
+    rafId = requestAnimationFrame(tick);
   };
 
   const btnStyle = { fontSize: 10, padding: "2px 8px", borderRadius: 3, background: theme.bgSurface, color: theme.textDim, border: `1px solid ${theme.border}`, cursor: "pointer", transition: "all 0.2s" };
@@ -585,7 +605,7 @@ export function FlameGraph() {
             (synthetic)
           </span>
         )}
-        <button aria-label="Fit flame graph to viewport" onClick={() => { if(containerRef.current) { vp.current.offset=0; vp.current.cpp = totalCycles / containerRef.current.clientWidth; draw(); setAiAnalysis(null); } }} style={btnStyle} className="hover:opacity-80">Fit All</button>
+        <button aria-label="Fit flame graph to viewport" onClick={() => { if(containerRef.current) { vp.current.offset=0; vp.current.cpp = totalCycles / containerRef.current.clientWidth; scheduleDraw(); setAiAnalysis(null); } }} style={btnStyle} className="hover:opacity-80">Fit All</button>
         <button aria-label="Find dominant bottleneck" onClick={handleAIHotspot} style={{ ...btnStyle, background: theme.accent, color: "#fff", border: `1px solid ${theme.accent}`, display: "flex", alignItems: "center", gap: 4 }} className="hover:opacity-80">
            Find Bottleneck
         </button>
