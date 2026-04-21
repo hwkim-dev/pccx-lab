@@ -3,6 +3,7 @@ use pccx_core::license::{get_license_info as core_license_info, validate_token, 
 use pccx_core::trace::NpuTrace;
 use pccx_core::hw_model::HardwareModel;
 use pccx_core::roofline::{analyze as analyze_roofline_fn, RooflinePoint};
+use pccx_core::live_window::{LiveSample, LiveWindow};
 use pccx_ai_copilot::{
     Extension, compress_context, generate_uvm_sequence,
     get_available_extensions, list_uvm_strategies as copilot_uvm_strategies,
@@ -251,6 +252,20 @@ fn load_synth_report(
     pccx_core::synth_report::load_from_files(&utilization_path, &timing_path)
 }
 
+/// Parses a Vivado `report_timing_summary -quiet -no_header` text file
+/// into a full `TimingReport` — the Round-4 T-2 replacement for the
+/// synth_report shim. Powers SynthStatusCard and the Dim-6 signoff
+/// panel, exposing per-clock WNS/TNS/period so the UI can render the
+/// critical-path row directly without re-parsing in JS.
+#[tauri::command]
+fn load_timing_report(
+    path: String,
+) -> Result<pccx_core::vivado_timing::TimingReport, String> {
+    let txt = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read timing report '{}': {}", path, e))?;
+    pccx_core::vivado_timing::parse_timing_report(&txt).map_err(|e| e.to_string())
+}
+
 #[derive(serde::Serialize, Debug, PartialEq)]
 struct TbResult {
     name: String,
@@ -455,6 +470,27 @@ fn list_api_calls(
     Ok(pccx_core::api_ring::list_from_trace(trace))
 }
 
+/// Round-4 T-1: reduces the cached trace into a `LiveWindow` ring of
+/// `LiveSample`s so the UI panels (BottomPanel/PerfChart/Roofline)
+/// can poll real MAC/DMA/stall ratios at 2 Hz instead of inventing
+/// them via `Math.random`. Returns an empty `Vec` when no trace is
+/// loaded — the UI must render its empty-state placeholder, never a
+/// synthetic curve (Yuan OSDI 2014 loud-fallback).
+#[tauri::command]
+fn fetch_live_window(
+    window_cycles: Option<u64>,
+    state: State<'_, AppState>,
+) -> Result<Vec<LiveSample>, String> {
+    let trace_guard = state.trace.lock().unwrap();
+    let Some(trace) = trace_guard.as_ref() else {
+        return Ok(Vec::new());
+    };
+    // Default to 256-cycle windows — same as detect_bottlenecks
+    // so panels line up with the hotspot scan grid.
+    let win = window_cycles.unwrap_or(256);
+    Ok(LiveWindow::from_trace(trace, win).snapshot())
+}
+
 /// Lists every `.pccx` file under the sibling pccx-FPGA repo's
 /// `hw/sim/work/<tb>/` tree so the UI can present a dropdown of
 /// available traces without hard-coding paths.
@@ -626,6 +662,7 @@ pub fn run() {
             generate_uvm_sequence_cmd,
             generate_report,
             load_synth_report,
+            load_timing_report,
             run_verification,
             list_pccx_traces,
             analyze_roofline,
@@ -638,6 +675,7 @@ pub fn run() {
             export_chrome_trace,
             validate_isa_trace,
             list_api_calls,
+            fetch_live_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
