@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { Cpu, Timer, CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -22,6 +23,22 @@ export interface SynthReport {
     worst_clock: string;
   };
   device: string;
+}
+
+/** Mirrors `pccx_core::vivado_timing::TimingReport` across the Tauri bridge.
+ *  UG906 design-timing-summary + UG949 per-clock breakdown. */
+export interface TimingReport {
+  wns_ns:             number;
+  tns_ns:             number;
+  failing_endpoints:  number;
+  clock_domains:      ClockDomain[];
+}
+
+export interface ClockDomain {
+  name:       string;
+  wns_ns:     number;
+  tns_ns:     number;
+  period_ns:  number;
 }
 
 interface Props {
@@ -65,17 +82,23 @@ function Stat({ label, value, theme }: { label: string; value: number | string; 
 export function SynthStatusCard({ utilizationPath, timingPath, autoLoad = true }: Props) {
   const theme = useTheme();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // Dim-6 signoff panel: `load_timing_report` yields `TimingReport`
+  // in the same card.  Shared `err` collapses both IPC error branches.
+  const [timing, setTiming] = useState<TimingReport | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const load = async () => {
     setStatus({ kind: "loading" });
+    setErr(null);
     try {
       const report = await tauriInvoke<SynthReport>("load_synth_report", {
         utilizationPath,
         timingPath,
       });
       setStatus({ kind: "ok", report });
-    } catch (err) {
-      setStatus({ kind: "error", message: String(err) });
+    } catch (e) {
+      setStatus({ kind: "error", message: String(e) });
+      setErr(String(e));
     }
   };
 
@@ -84,6 +107,27 @@ export function SynthStatusCard({ utilizationPath, timingPath, autoLoad = true }
       void load();
     }
   }, [utilizationPath, timingPath, autoLoad]);
+
+  // UG906 structured timing: parses `report_timing_summary` text via
+  // `pccx_core::vivado_timing::parse_timing_report` on the Rust side.
+  useEffect(() => {
+    if (!autoLoad || !timingPath) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const t = await invoke<TimingReport>("load_timing_report", {
+          path: timingPath,
+        });
+        if (!cancelled) setTiming(t);
+      } catch (e) {
+        if (!cancelled) {
+          setTiming(null);
+          setErr(String(e));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [timingPath, autoLoad]);
 
   return (
     <div
@@ -121,7 +165,7 @@ export function SynthStatusCard({ utilizationPath, timingPath, autoLoad = true }
       {status.kind === "error" && (
         <div className="flex items-start gap-2" style={{ fontSize: 12 }}>
           <AlertTriangle size={14} style={{ color: theme.error, marginTop: 2 }} />
-          <span style={{ color: theme.error }}>{status.message}</span>
+          <span style={{ color: theme.error }}>{err ?? status.message}</span>
         </div>
       )}
 
@@ -170,6 +214,64 @@ export function SynthStatusCard({ utilizationPath, timingPath, autoLoad = true }
             </span>
           </div>
         </>
+      )}
+
+      {/* UG949 §4 timing-summary grouping — structured TimingReport from
+          `load_timing_report` (Dim-6 signoff).  Negative WNS/TNS renders
+          in theme.error per PrimeTime convention. */}
+      {timing && (
+        <div
+          className="flex flex-col gap-2 pt-2"
+          style={{ borderTop: `1px solid ${theme.border}` }}
+        >
+          <div className="flex items-center gap-2" style={{ fontSize: 11, color: theme.textMuted }}>
+            <Timer size={12} style={{ color: theme.accent }} />
+            <strong style={{ color: theme.text, fontSize: 12 }}>Timing Report</strong>
+            <span className="ml-auto">
+              <span style={{ color: timing.wns_ns < 0 ? theme.error : theme.success, fontWeight: 600 }}>
+                WNS {timing.wns_ns.toFixed(3)} ns
+              </span>
+              <span style={{ margin: "0 6px", color: theme.textFaint }}>·</span>
+              <span style={{ color: timing.tns_ns < 0 ? theme.error : theme.success, fontWeight: 600 }}>
+                TNS {timing.tns_ns.toFixed(3)} ns
+              </span>
+              <span style={{ margin: "0 6px", color: theme.textFaint }}>·</span>
+              <span style={{ color: timing.failing_endpoints > 0 ? theme.error : theme.textMuted }}>
+                {timing.failing_endpoints} failing
+              </span>
+            </span>
+          </div>
+          {timing.clock_domains.length > 0 && (
+            <table style={{ fontSize: 11, width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ color: theme.textMuted, textAlign: "left" }}>
+                  <th style={{ padding: "2px 6px", fontWeight: 500 }}>Clock</th>
+                  <th style={{ padding: "2px 6px", fontWeight: 500, textAlign: "right" }}>Period</th>
+                  <th style={{ padding: "2px 6px", fontWeight: 500, textAlign: "right" }}>WNS</th>
+                  <th style={{ padding: "2px 6px", fontWeight: 500, textAlign: "right" }}>TNS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timing.clock_domains.map(c => (
+                  <tr key={c.name} style={{ borderTop: `1px solid ${theme.borderDim}` }}>
+                    <td style={{ padding: "2px 6px", color: theme.text }}>{c.name}</td>
+                    <td style={{ padding: "2px 6px", textAlign: "right", color: theme.textDim }}>
+                      {c.period_ns.toFixed(3)} ns
+                    </td>
+                    <td style={{ padding: "2px 6px", textAlign: "right",
+                                  color: c.wns_ns < 0 ? theme.error : theme.textDim }}>
+                      {c.wns_ns.toFixed(3)}
+                    </td>
+                    <td style={{ padding: "2px 6px", textAlign: "right",
+                                  color: c.tns_ns < 0 ? theme.error : theme.textDim }}>
+                      {c.tns_ns.toFixed(3)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );
