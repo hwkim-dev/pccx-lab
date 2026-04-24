@@ -1,0 +1,22 @@
+[package]
+name = "pccx-lsp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+# Phase 2 scaffold — Language Server Protocol façade for pccx-ide.
+#
+# The final shape multiplexes over external LSP servers (verible for SV,
+# rust-analyzer, clangd, pylsp) plus an AI-driven completion / hover /
+# explanation layer backed by Claude Haiku+Sonnet.  This crate ships
+# only traits + wiring types today; concrete backends land during
+# Phase 2 proper (Weeks 6-9).
+
+[dependencies]
+pccx-core = { path = "../core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
