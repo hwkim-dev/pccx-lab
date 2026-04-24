@@ -6,10 +6,10 @@
 // Consumers (the UI's Report tab, CI logs, PR description snippets, …)
 // just need to string-concat the output; no heavy templating engine.
 
-use crate::hw_model::HardwareModel;
-use crate::roofline::{analyze, RooflinePoint};
-use crate::synth_report::SynthReport;
-use crate::trace::NpuTrace;
+use pccx_core::hw_model::HardwareModel;
+use pccx_core::roofline::{analyze, RooflinePoint};
+use pccx_core::synth_report::SynthReport;
+use pccx_core::trace::NpuTrace;
 
 /// Build a Markdown report that snapshots the state of a pccx-FPGA
 /// verification run. Any section whose input is `None` is silently
@@ -134,8 +134,8 @@ fn render_synth_section(synth: &SynthReport, out: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::synth_report::{TimingSummary, UtilSummary};
-    use crate::trace::NpuEvent;
+    use pccx_core::synth_report::{TimingSummary, UtilSummary};
+    use pccx_core::trace::NpuEvent;
 
     #[test]
     fn test_render_empty_is_graceful() {

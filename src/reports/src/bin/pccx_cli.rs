@@ -5,7 +5,8 @@
 use pccx_core::pccx_format::PccxFile;
 use pccx_core::trace::NpuTrace;
 use pccx_core::hw_model::HardwareModel;
-use pccx_core::{analyze_roofline, detect_bottlenecks, bottleneck::DetectorConfig, render_markdown};
+use pccx_core::{analyze_roofline, detect_bottlenecks, bottleneck::DetectorConfig};
+use pccx_reports::render_markdown;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};

@@ -1,0 +1,12 @@
+[package]
+name = "pccx-reports"
+version = "0.1.0"
+edition = "2021"
+
+# Report generator — Markdown / PDF / HTML output from a `pccx-core`
+# trace + synth report.  Kept separate so report formats can evolve
+# independently of the .pccx parser.
+
+[dependencies]
+pccx-core = { path = "../core" }
+anyhow.workspace = true

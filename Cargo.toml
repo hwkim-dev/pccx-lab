@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src/core",
+    "src/reports",
     "src/uvm_bridge",
     "src/ai_copilot"
 ]

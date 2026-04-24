@@ -228,7 +228,7 @@ fn generate_markdown_report(
         return Err("Need at least a loaded trace or a synth-report path pair".into());
     }
 
-    Ok(pccx_core::render_markdown(trace_opt, synth_opt.as_ref()))
+    Ok(pccx_reports::render_markdown(trace_opt, synth_opt.as_ref()))
 }
 
 /// Enumerates every UVM strategy the ai_copilot's sequence generator accepts.
