@@ -1,0 +1,55 @@
+openapi: "3.0.3"
+
+info:
+  title: pccx-remote
+  version: "0.1.0"
+  description: |
+    Phase 3 scaffold — no endpoints yet.
+
+    The real schema is authored here ahead of implementation so the
+    web-client + pccx-ide can begin generating typed clients against
+    a stable contract.  Under the WireGuard / QUIC tunnel the daemon
+    will expose:
+
+      * POST /v1/auth/login          (OIDC redirect initiation)
+      * GET  /v1/sessions            (list user's active sessions)
+      * POST /v1/sessions            (open a remote session)
+      * DEL  /v1/sessions/{id}       (kill-switch)
+      * POST /v1/traces              (upload .pccx, stream verdict)
+      * GET  /v1/reports/{id}        (fetch rendered report)
+      * WS   /v1/events              (audit-log subscription)
+
+    All paths gate on hardware-bound device keys + OIDC session +
+    per-project RBAC.  No endpoint is wired yet; this file documents
+    the intended surface so the client tooling is buildable from day
+    one.
+  contact:
+    name: hwkim-dev
+    url: https://github.com/hwkim-dev/pccx-lab
+
+servers:
+  - url: https://{host}:{port}/v1
+    description: Local WireGuard endpoint
+    variables:
+      host:
+        default: pccx-remote.local
+      port:
+        default: "8443"
+
+paths: {}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    deviceKey:
+      type: apiKey
+      in: header
+      name: X-Device-Key
+  schemas: {}
+
+security:
+  - bearerAuth: []
+    deviceKey: []

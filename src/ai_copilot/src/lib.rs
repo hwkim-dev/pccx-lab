@@ -261,6 +261,35 @@ pub fn list_uvm_strategies() -> Vec<&'static str> {
     ]
 }
 
+// ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
+//
+// Scaffolds for the Phase 2 IntelliSense + Phase 5 agent orchestration
+// work.  Today `pccx-ai-copilot` ships only static helpers for the
+// Tauri UI; these traits give Phase 2/5 implementations a stable place
+// to land without churning the crate interface.
+//
+// SEMVER NOTE: unstable until pccx-lab v0.3.
+
+/// Compresses long context (chat history, trace summary, doc excerpt)
+/// into a token-budgeted snippet suitable for feeding back into an LLM
+/// prompt.  Deterministic compressors (head/tail) and learned
+/// compressors (LLMLingua-style) both implement this trait.
+pub trait ContextCompressor {
+    /// Returns a snippet whose token count is <= `target_tokens`
+    /// (approximate; implementations decide the tokeniser).
+    fn compress(&self, input: &str, target_tokens: usize) -> String;
+    fn name(&self) -> &'static str;
+}
+
+/// Runs a single subagent task with the given prompt and context,
+/// returning the subagent's reply or a propagated error.
+/// Used by pccx-ide / pccx-remote to drive log-grinder, research-scout,
+/// doc-drafter patterns in parallel.
+pub trait SubagentRunner {
+    fn run(&self, task: &str, context: &str) -> anyhow::Result<String>;
+    fn name(&self) -> &'static str;
+}
+
 #[cfg(test)]
 mod uvm_tests {
     use super::*;

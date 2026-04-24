@@ -131,6 +131,57 @@ fn render_synth_section(synth: &SynthReport, out: &mut String) {
     out.push('\n');
 }
 
+// ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
+//
+// The `ReportFormat` trait lets callers pick a renderer at runtime (for
+// the pccx-ide "export as..." menu, CI logs, PR bodies).  Today only
+// `MarkdownFormat` ships; HTML, PDF, and Jupyter land during Phase 4.
+//
+// SEMVER NOTE: this trait is unstable until pccx-lab v0.3.  Breaking
+// changes land on minor bumps; downstream crates should pin the minor
+// version until the surface stabilises.
+
+/// A single report output format.  Implementations render a `.pccx`
+/// trace + optional synth report into the bytes of a specific file
+/// format.
+pub trait ReportFormat {
+    /// Produce the report as a byte stream.  Callers write this to a
+    /// file, a `<pre>` block, or the PR body as-is.
+    fn render(
+        &self,
+        trace: Option<&NpuTrace>,
+        synth: Option<&SynthReport>,
+    ) -> Vec<u8>;
+
+    /// Human-readable format name (e.g. `"Markdown"`, `"HTML"`).
+    fn name(&self) -> &'static str;
+
+    /// File extension including no leading dot (e.g. `"md"`, `"html"`).
+    fn extension(&self) -> &'static str;
+
+    /// IANA MIME type (e.g. `"text/markdown"`, `"application/pdf"`).
+    fn mime_type(&self) -> &'static str;
+}
+
+/// Markdown report format — wraps the existing `render_markdown` free
+/// function so callers can hold it behind a `Box<dyn ReportFormat>`.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct MarkdownFormat;
+
+impl ReportFormat for MarkdownFormat {
+    fn render(
+        &self,
+        trace: Option<&NpuTrace>,
+        synth: Option<&SynthReport>,
+    ) -> Vec<u8> {
+        render_markdown(trace, synth).into_bytes()
+    }
+
+    fn name(&self) -> &'static str { "Markdown" }
+    fn extension(&self) -> &'static str { "md" }
+    fn mime_type(&self) -> &'static str { "text/markdown" }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
