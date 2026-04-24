@@ -10,7 +10,29 @@ may carry breaking public-API changes.
 
 ## [Unreleased]
 
-_No changes yet._
+### Added
+
+- `LspMultiplexer` — per-`Language` registry of
+  `(CompletionProvider, HoverProvider, LocationProvider)` trait-object
+  triples.  Forwards queries to the registered triple; returns
+  `LspError::NoBackend` for unregistered languages.  Partial /
+  per-provider registration can be added later without breaking this
+  API.  (Phase 2 M2.1, A-slice.)
+- `NoopBackend` — reference backend implementing all three provider
+  traits with empty-data answers.  Used by unit tests and as a safe
+  default in pccx-ide before real backends register.
+- Unit tests covering empty-init, unregistered-language rejection,
+  full dispatch-through-noop, and register-replaces-existing
+  semantics.
+
+### Notes
+
+- `tower-lsp` / `lsp-types` are **not** added as dependencies in this
+  slice.  `tower_lsp::LanguageServer` is fully async while the
+  `CompletionProvider` / `HoverProvider` / `LocationProvider` surface
+  is sync; the tower-lsp adapter + sync-to-async bridge land together
+  during Phase 2 proper (Weeks 6-9) so the scaffold stays free of
+  runtime dependencies it does not yet exercise.
 
 ## [0.1.0] - 2026-04-24
 

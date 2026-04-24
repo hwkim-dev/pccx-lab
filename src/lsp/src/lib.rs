@@ -6,6 +6,8 @@
 // lands during Phase 2 proper.  Landing the crate now keeps the
 // dependency graph stable while implementation follows.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 pub const LSP_FAÇADE_API_VERSION: u32 = 1;
@@ -154,6 +156,201 @@ pub enum LspError {
     Internal(String),
 }
 
+// ─── Multiplexer (Phase 2 M2.1, A-slice) ─────────────────────────────
+//
+// `LspMultiplexer` routes a query to the right set of providers per
+// `Language`.  It is the call-site counterpart of `pccx_core::plugin`:
+// where `PluginRegistry<P>` holds a concrete `Vec<P>` (one plugin kind
+// per registry), the multiplexer holds three heterogeneous trait
+// objects per language because a single editor interaction touches
+// all three surfaces (complete / hover / locate) at once.
+//
+// The scaffold is intentionally minimal:
+//   - no async (the tower-lsp adapter lands in Phase 2 proper and
+//     wraps this type, not the other way around),
+//   - no dynamic reload (callers that need it wrap in Mutex / RwLock
+//     and swap backends between queries),
+//   - all three providers per language register atomically; partial
+//     registration can be added later without breaking this API.
+
+/// Provider triple the multiplexer stores per registered language.
+/// Kept as `Send + Sync` so the multiplexer can move across thread
+/// boundaries when pccx-ide spawns its async LSP adapter in Phase 2
+/// proper.
+struct LanguageBackends {
+    completion: Box<dyn CompletionProvider + Send + Sync>,
+    hover: Box<dyn HoverProvider + Send + Sync>,
+    location: Box<dyn LocationProvider + Send + Sync>,
+}
+
+/// Routes a query to the registered backend triple for its language.
+/// Returns `LspError::NoBackend` for any language that was never
+/// registered.
+#[derive(Default)]
+pub struct LspMultiplexer {
+    backends: HashMap<Language, LanguageBackends>,
+}
+
+impl LspMultiplexer {
+    /// Empty multiplexer with no languages registered.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Registers (or replaces) the provider triple for a language.
+    pub fn register(
+        &mut self,
+        language: Language,
+        completion: Box<dyn CompletionProvider + Send + Sync>,
+        hover: Box<dyn HoverProvider + Send + Sync>,
+        location: Box<dyn LocationProvider + Send + Sync>,
+    ) {
+        self.backends.insert(
+            language,
+            LanguageBackends {
+                completion,
+                hover,
+                location,
+            },
+        );
+    }
+
+    /// True iff `language` has a registered provider triple.
+    pub fn has(&self, language: Language) -> bool {
+        self.backends.contains_key(&language)
+    }
+
+    /// Languages currently registered, in unspecified order.
+    pub fn registered_languages(&self) -> Vec<Language> {
+        self.backends.keys().copied().collect()
+    }
+
+    fn dispatch(&self, language: Language) -> Result<&LanguageBackends, LspError> {
+        self.backends
+            .get(&language)
+            .ok_or(LspError::NoBackend { lang: language })
+    }
+
+    /// Forwards a completion query to the registered backend.
+    pub fn complete(
+        &self,
+        language: Language,
+        file: &str,
+        pos: SourcePos,
+        source: &str,
+    ) -> Result<Vec<Completion>, LspError> {
+        self.dispatch(language)?
+            .completion
+            .complete(language, file, pos, source)
+    }
+
+    /// Forwards a hover query to the registered backend.
+    pub fn hover(
+        &self,
+        language: Language,
+        file: &str,
+        pos: SourcePos,
+        source: &str,
+    ) -> Result<Option<Hover>, LspError> {
+        self.dispatch(language)?
+            .hover
+            .hover(language, file, pos, source)
+    }
+
+    /// Forwards a go-to-definition query to the registered backend.
+    pub fn definitions(
+        &self,
+        language: Language,
+        file: &str,
+        pos: SourcePos,
+        source: &str,
+    ) -> Result<Vec<SourceRange>, LspError> {
+        self.dispatch(language)?
+            .location
+            .definitions(language, file, pos, source)
+    }
+
+    /// Forwards a references query to the registered backend.
+    pub fn references(
+        &self,
+        language: Language,
+        file: &str,
+        pos: SourcePos,
+        source: &str,
+    ) -> Result<Vec<SourceRange>, LspError> {
+        self.dispatch(language)?
+            .location
+            .references(language, file, pos, source)
+    }
+}
+
+// ─── NoopBackend (Phase 2 M2.1, A-slice) ─────────────────────────────
+//
+// Reference backend used in unit tests and as a deliberate "no data"
+// answer in pccx-ide before a real backend (verible, rust-analyzer,
+// AI layer) has been registered for a language.  All three providers
+// return empty results rather than errors — "I have nothing for you
+// here" is a valid LSP answer and the editor should silently omit
+// the affordance rather than surface a failure toast.
+
+/// Empty-answer backend.  Implements all three provider traits and
+/// always returns "no data".
+pub struct NoopBackend;
+
+impl CompletionProvider for NoopBackend {
+    fn complete(
+        &self,
+        _language: Language,
+        _file: &str,
+        _pos: SourcePos,
+        _source: &str,
+    ) -> Result<Vec<Completion>, LspError> {
+        Ok(Vec::new())
+    }
+    fn name(&self) -> &'static str {
+        "noop"
+    }
+}
+
+impl HoverProvider for NoopBackend {
+    fn hover(
+        &self,
+        _language: Language,
+        _file: &str,
+        _pos: SourcePos,
+        _source: &str,
+    ) -> Result<Option<Hover>, LspError> {
+        Ok(None)
+    }
+    fn name(&self) -> &'static str {
+        "noop"
+    }
+}
+
+impl LocationProvider for NoopBackend {
+    fn definitions(
+        &self,
+        _language: Language,
+        _file: &str,
+        _pos: SourcePos,
+        _source: &str,
+    ) -> Result<Vec<SourceRange>, LspError> {
+        Ok(Vec::new())
+    }
+    fn references(
+        &self,
+        _language: Language,
+        _file: &str,
+        _pos: SourcePos,
+        _source: &str,
+    ) -> Result<Vec<SourceRange>, LspError> {
+        Ok(Vec::new())
+    }
+    fn name(&self) -> &'static str {
+        "noop"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,5 +387,139 @@ mod tests {
     #[test]
     fn api_version_is_one() {
         assert_eq!(LSP_FAÇADE_API_VERSION, 1);
+    }
+
+    // ─── Multiplexer + NoopBackend (M2.1 A-slice) ────────────────
+
+    fn origin() -> SourcePos {
+        SourcePos {
+            line: 0,
+            character: 0,
+        }
+    }
+
+    #[test]
+    fn noop_backend_returns_empty_completions() {
+        let out = NoopBackend
+            .complete(Language::SystemVerilog, "foo.sv", origin(), "")
+            .expect("noop completion");
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn noop_backend_returns_none_for_hover() {
+        let out = NoopBackend
+            .hover(Language::Rust, "foo.rs", origin(), "")
+            .expect("noop hover");
+        assert!(out.is_none());
+    }
+
+    #[test]
+    fn noop_backend_returns_empty_definitions_and_references() {
+        let defs = NoopBackend
+            .definitions(Language::Python, "a.py", origin(), "")
+            .expect("noop defs");
+        let refs = NoopBackend
+            .references(Language::Python, "a.py", origin(), "")
+            .expect("noop refs");
+        assert!(defs.is_empty());
+        assert!(refs.is_empty());
+    }
+
+    #[test]
+    fn multiplexer_starts_empty() {
+        let m = LspMultiplexer::new();
+        assert!(!m.has(Language::SystemVerilog));
+        assert!(m.registered_languages().is_empty());
+    }
+
+    #[test]
+    fn multiplexer_rejects_unregistered_language_with_no_backend() {
+        let m = LspMultiplexer::new();
+        let err = m
+            .complete(Language::Rust, "x.rs", origin(), "")
+            .expect_err("unregistered must error");
+        match err {
+            LspError::NoBackend { lang } => assert_eq!(lang, Language::Rust),
+            other => panic!("expected NoBackend, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn multiplexer_dispatches_to_registered_noop_backend() {
+        let mut m = LspMultiplexer::new();
+        m.register(
+            Language::SystemVerilog,
+            Box::new(NoopBackend),
+            Box::new(NoopBackend),
+            Box::new(NoopBackend),
+        );
+
+        assert!(m.has(Language::SystemVerilog));
+        assert_eq!(m.registered_languages(), vec![Language::SystemVerilog]);
+
+        assert!(m
+            .complete(Language::SystemVerilog, "t.sv", origin(), "")
+            .unwrap()
+            .is_empty());
+        assert!(m
+            .hover(Language::SystemVerilog, "t.sv", origin(), "")
+            .unwrap()
+            .is_none());
+        assert!(m
+            .definitions(Language::SystemVerilog, "t.sv", origin(), "")
+            .unwrap()
+            .is_empty());
+        assert!(m
+            .references(Language::SystemVerilog, "t.sv", origin(), "")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn multiplexer_register_replaces_existing_triple() {
+        // A completion provider tagged with a stable id so we can
+        // confirm the second register() call wins.
+        struct TaggedCompletion {
+            id: &'static str,
+        }
+        impl CompletionProvider for TaggedCompletion {
+            fn complete(
+                &self,
+                _: Language,
+                _: &str,
+                _: SourcePos,
+                _: &str,
+            ) -> Result<Vec<Completion>, LspError> {
+                Ok(vec![Completion {
+                    label: self.id.into(),
+                    detail: None,
+                    documentation: None,
+                    insert_text: self.id.into(),
+                    source: CompletionSource::Lsp,
+                }])
+            }
+            fn name(&self) -> &'static str {
+                "tagged"
+            }
+        }
+
+        let mut m = LspMultiplexer::new();
+        m.register(
+            Language::Rust,
+            Box::new(TaggedCompletion { id: "first" }),
+            Box::new(NoopBackend),
+            Box::new(NoopBackend),
+        );
+        m.register(
+            Language::Rust,
+            Box::new(TaggedCompletion { id: "second" }),
+            Box::new(NoopBackend),
+            Box::new(NoopBackend),
+        );
+
+        let out = m.complete(Language::Rust, "x.rs", origin(), "").unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].label, "second");
     }
 }
