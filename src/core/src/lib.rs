@@ -23,6 +23,7 @@ pub mod api_ring;
 pub mod live_window;
 pub mod vivado_timing;
 pub mod step_snapshot;
+pub mod plugin;
 
 // ─── Convenience re-exports (public API surface) ──────────────────────────────
 pub use pccx_format::{PccxFile, PccxHeader, PccxError, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64};
