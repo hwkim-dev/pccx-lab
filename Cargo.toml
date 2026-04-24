@@ -3,6 +3,7 @@ members = [
     "src/core",
     "src/reports",
     "src/verification",
+    "src/authoring",
     "src/uvm_bridge",
     "src/ai_copilot"
 ]

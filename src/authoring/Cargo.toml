@@ -1,0 +1,14 @@
+[package]
+name = "pccx-authoring"
+version = "0.1.0"
+edition = "2021"
+
+# Authoring pipeline — ISA and driver-API definitions as TOML data,
+# with lint + codegen emitters (SV pkg, C header, Rust bindings).
+# The phase-5D Model-to-ISA-API compiler roadmap item consumes these
+# specs as its ground-truth surface.
+
+[dependencies]
+serde.workspace = true
+toml = "1.1.2"
+thiserror.workspace = true
