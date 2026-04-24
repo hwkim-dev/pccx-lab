@@ -6,7 +6,8 @@ members = [
     "src/authoring",
     "src/evolve",
     "src/uvm_bridge",
-    "src/ai_copilot"
+    "src/ai_copilot",
+    "src/ui/src-tauri"
 ]
 resolver = "2"
 

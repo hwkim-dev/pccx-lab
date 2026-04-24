@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    srcui_lib::run()
+    pccx_ide_lib::run()
 }
