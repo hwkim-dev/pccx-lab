@@ -6,12 +6,12 @@
  * - Users must be able to discover every binding from inside the app
  *   via one well-known key (`?` or `F1`).
  *
- * This module only describes the map + the help modal. Individual
- * panels still own the concrete `window.addEventListener("keydown", …)`
- * wiring (WaveformViewer, FlameGraph, NodeEditor, CommandPalette);
- * this file reflects their intent for the user-facing cheat sheet.
+ * The actual key-to-command mapping lives in `keybindings.ts`; this
+ * module re-exports a backward-compatible `SHORTCUT_MAP` and the
+ * help modal / hook used by App.tsx.
  */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { getEffectiveKeybindings, COMMAND_LABELS, type KeyBinding } from "./keybindings";
 
 export interface Shortcut {
   key: string;
@@ -19,58 +19,40 @@ export interface Shortcut {
   action: string;
 }
 
-export const SHORTCUT_MAP: Shortcut[] = [
-  // File / navigation
-  { key: "Ctrl+O",        desc: "Open .pccx trace",                  action: "file.open" },
-  { key: "Ctrl+Shift+O",  desc: "Open VCD file in Waveform panel",   action: "file.openVcd" },
-  { key: "Ctrl+S",        desc: "Save session",                      action: "file.save" },
-  { key: "Ctrl+P",        desc: "Command Palette",                   action: "cmd.palette" },
-  // Editing / search
-  { key: "Ctrl+F",        desc: "Find event / signal",               action: "edit.find" },
-  { key: "Ctrl+G",        desc: "Go to cycle",                       action: "edit.goto" },
-  // Trace-centric
-  { key: "Ctrl+B",        desc: "Jump to next Waveform bookmark",    action: "waveform.nextBookmark" },
-  { key: "Ctrl+Shift+D",  desc: "Toggle Flame Graph diff mode",      action: "flame.diff" },
-  { key: "Ctrl+I",        desc: "Validate trace integrity",          action: "trace.validate" },
-  // View / layout
-  { key: "Ctrl+`",        desc: "Toggle AI Copilot panel",           action: "view.copilot" },
-  { key: "Ctrl+J",        desc: "Toggle Bottom Panel",               action: "view.bottom" },
-  { key: "F11",           desc: "Toggle fullscreen",                 action: "view.fullscreen" },
-  // Node editor
-  { key: "Shift+A",       desc: "Node Editor quick-add",             action: "nodes.add" },
-  { key: "Escape",        desc: "Close modal / menu",                action: "ui.escape" },
-  // Help
-  { key: "? or F1",       desc: "Show this shortcut help",           action: "help.shortcuts" },
-];
+/** Capitalise modifier names for display (ctrl -> Ctrl). */
+function formatKeyForDisplay(raw: string): string {
+  return raw
+    .split("+")
+    .map(part => {
+      if (part === "ctrl") return "Ctrl";
+      if (part === "shift") return "Shift";
+      if (part === "alt") return "Alt";
+      if (part === "escape") return "Escape";
+      // F-keys: F1 -> F1
+      if (/^f\d+$/.test(part)) return part.toUpperCase();
+      // Single chars: keep as-is (already human-readable)
+      return part.length === 1 ? part.toUpperCase() : part;
+    })
+    .join("+");
+}
+
+function toShortcut(kb: KeyBinding): Shortcut {
+  return {
+    key: formatKeyForDisplay(kb.key),
+    desc: COMMAND_LABELS[kb.command] ?? kb.command,
+    action: kb.command,
+  };
+}
+
+export const SHORTCUT_MAP: Shortcut[] = getEffectiveKeybindings().map(toShortcut);
 
 /**
- * Hook: call from the top-level shell to open the help overlay on
- * `?` or `F1`. Respects inputs and contenteditable targets.
+ * Hook: provides open/close state for the shortcut help overlay.
+ * Keyboard dispatch (? / F1 / Escape) is handled by the global
+ * dispatcher in App.tsx via handleMenuAction("help.shortcuts").
  */
 export function useShortcutHelp(): { open: boolean; setOpen: (v: boolean) => void } {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      const tag = (t?.tagName || "").toLowerCase();
-      const isInput = tag === "input" || tag === "textarea" || t?.isContentEditable === true;
-      if (isInput) return;
-      // Treat both literal "?" and F1 as help triggers.
-      const isQuestion = e.key === "?" || (e.shiftKey && e.key === "/");
-      const isF1 = e.key === "F1";
-      if (isQuestion || isF1) {
-        e.preventDefault();
-        setOpen((v) => !v);
-      } else if (e.key === "Escape" && open) {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
   return { open, setOpen };
 }
 
@@ -80,11 +62,12 @@ interface ShortcutHelpProps {
 }
 
 /**
- * Modal overlay listing every SHORTCUT_MAP entry. Focus-trapped by
+ * Modal overlay listing every effective keybinding. Focus-trapped by
  * `aria-modal="true"`; dismiss with `Escape` or the close button.
  */
 export function ShortcutHelp({ open, onClose }: ShortcutHelpProps): React.ReactElement | null {
   if (!open) return null;
+  const bindings = getEffectiveKeybindings().map(toShortcut);
   return (
     <div
       role="dialog"
@@ -127,7 +110,7 @@ export function ShortcutHelp({ open, onClose }: ShortcutHelpProps): React.ReactE
         </div>
         <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
           <tbody>
-            {SHORTCUT_MAP.map((s) => (
+            {bindings.map((s) => (
               <tr key={s.action} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <td style={{ padding: "6px 10px 6px 0", whiteSpace: "nowrap" }}>
                   <kbd

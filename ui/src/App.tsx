@@ -9,8 +9,8 @@ import { ThemeProvider, useTheme } from "./ThemeContext";
 import { I18nProvider, useI18n } from "./i18n";
 import { TitleBar }          from "./TitleBar";
 import { MenuBar }           from "./MenuBar";
-import { MainToolbar }       from "./MainToolbar";
 import { StatusBar }         from "./StatusBar";
+import FileTree              from "./FileTree";
 import { CanvasView }        from "./CanvasView";
 import { NodeEditor }        from "./NodeEditor";
 import { Timeline }          from "./Timeline";
@@ -28,13 +28,15 @@ import { BottomPanel }       from "./BottomPanel";
 import { ScenarioFlow }      from "./ScenarioFlow";
 import { TestbenchAuthor }   from "./TestbenchAuthor";
 import { ShortcutHelp, useShortcutHelp } from "./useShortcuts";
+import { matchKeybinding } from "./keybindings";
 
-import { Badge, Button, Flex, TextField } from "@radix-ui/themes";
+import { Button, Flex, TextField } from "@radix-ui/themes";
 import {
   LayoutDashboard, BrainCircuit, Activity,
-  Settings2, Zap, MessageSquare, Clock, FileText,
-  Code2, Sun, Moon, Box, Layers, Database, Cpu, ActivitySquare,
-  PanelLeftClose, PanelRightClose, PanelBottomClose, CheckCircle, PieChart
+  Settings2, Zap, Clock, FileText,
+  Code2, Box, Layers, Database, Cpu, ActivitySquare,
+  PanelLeftClose, PanelRightClose, PanelBottomClose, CheckCircle, PieChart,
+  FolderTree, Search, Blocks
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,18 +66,25 @@ const TABS: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
 
 function ResizeHandle({ direction = "horizontal" }: { direction?: "horizontal" | "vertical" }) {
   const theme = useTheme();
+  const isDark = theme.mode === "dark";
   return (
     <Separator
-      className={`group relative ${direction === "vertical" ? "h-[6px]" : "w-[6px]"} flex items-center justify-center hover:bg-[var(--accent)]`}
-      style={{ background: theme.borderDim, ["--accent" as any]: theme.accent, cursor: direction === "vertical" ? "row-resize" : "col-resize" }}
+      className={`group relative ${direction === "vertical" ? "h-[4px]" : "w-[4px]"} flex items-center justify-center`}
+      style={{
+        background: "transparent",
+        cursor: direction === "vertical" ? "row-resize" : "col-resize",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e: any) => e.currentTarget.style.background = isDark ? "rgba(0,152,255,0.2)" : "rgba(0,102,184,0.15)"}
+      onMouseLeave={(e: any) => e.currentTarget.style.background = "transparent"}
     >
       <div
-        className="transition-all group-hover:bg-white"
+        className="transition-opacity group-hover:opacity-100 opacity-0"
         style={{
           ...(direction === "vertical"
-            ? { width: 40, height: 3, borderRadius: 2 }
-            : { height: 40, width: 3, borderRadius: 2 }),
-          background: theme.textFaint,
+            ? { width: 32, height: 2, borderRadius: 1 }
+            : { height: 32, width: 2, borderRadius: 1 }),
+          background: theme.accent,
         }}
       />
     </Separator>
@@ -98,6 +107,8 @@ function AppInner() {
   const [bottomVisible, setBottomVisible]   = useState(true);
   const [bottomDock, setBottomDock]         = useState<"left" | "right" | "bottom">(() => (localStorage.getItem("pccx-bottom-dock") as any) || "bottom");
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<"files" | "search" | "modules">("files");
   const shortcutHelp = useShortcutHelp();
 
   useEffect(() => {
@@ -106,6 +117,32 @@ function AppInner() {
       return new Set(prev).add(activeTab);
     });
   }, [activeTab]);
+
+  // Global shortcut dispatcher (VS Code-style keybindings)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault();
+        setSidebarVisible(v => !v);
+        return;
+      }
+      const binding = matchKeybinding(e);
+      if (!binding) return;
+      e.preventDefault();
+      handleMenuAction(binding.command);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const handleSidebarFileOpen = (_path: string, _name: string) => {
+    setActiveTab("code");
+    if ((CodeEditor as any).openFile) {
+      (CodeEditor as any).openFile(_path, _name);
+    }
+  };
 
   // Persist dock choices
   useEffect(() => { localStorage.setItem("pccx-copilot-dock", copilotDock); }, [copilotDock]);
@@ -230,6 +267,9 @@ function AppInner() {
     switch (action) {
       case "view.copilot": setCopilotVisible(v => !v); break;
       case "view.bottom":  setBottomVisible(v => !v); break;
+      case "view.sidebar": setSidebarVisible(v => !v); break;
+      case "command.palette": setCmdPaletteOpen(true); break;
+      case "ui.escape": setCmdPaletteOpen(false); shortcutHelp.setOpen(false); break;
       case "view.fullscreen": win.setFullscreen(true); break;
       case "win.minimize": win.minimize(); break;
       case "win.maximize": win.toggleMaximize(); break;
@@ -394,22 +434,83 @@ function AppInner() {
       <CommandPalette open={cmdPaletteOpen} setOpen={setCmdPaletteOpen} onAction={handleMenuAction} />
       <ShortcutHelp open={shortcutHelp.open} onClose={() => shortcutHelp.setOpen(false)} />
       
-      {/* Title + Menu */}
-      <TitleBar subtitle={header?.trace?.cycles ? `${header.trace.cycles.toLocaleString()} cycles` : undefined}>
+      {/* Unified Toolbar (Xcode-style) */}
+      <TitleBar
+        subtitle={header?.trace?.cycles ? `${header.trace.cycles.toLocaleString()} cycles` : undefined}
+        onAction={handleMenuAction}
+      >
         <MenuBar onAction={handleMenuAction} />
-        <div className="flex-1" />
-        <button aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"} onClick={theme.toggle} className="mr-2 p-1 rounded hover:bg-white/10 transition-colors" title={isDark ? "Light mode" : "Dark mode"}>
-          {isDark ? <Sun size={13} className="text-yellow-400" /> : <Moon size={13} className="text-gray-600" />}
-        </button>
       </TitleBar>
-      <MainToolbar onAction={handleMenuAction} />
 
       {/* Main */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Resizable layout.
-            Left / Right columns collect any panel with matching dock state.
-            Center column hosts main tabs + any "bottom"-docked panels
-            stacked vertically. Resize handles between every pair. */}
+        {/* Left Activity Bar (VS Code / Xcode Navigator style) */}
+        <div className="flex flex-col items-center shrink-0 py-2 gap-1" style={{
+          width: 40,
+          background: theme.bgPanel,
+          borderRight: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+        }}>
+          {([
+            { id: "files" as const, icon: <FolderTree size={17} />, label: "Explorer" },
+            { id: "search" as const, icon: <Search size={17} />, label: "Search" },
+            { id: "modules" as const, icon: <Blocks size={17} />, label: "Modules" },
+          ]).map(item => {
+            const isActive = sidebarVisible && sidebarTab === item.id;
+            return (
+              <button key={item.id} title={item.label}
+                onClick={() => {
+                  if (sidebarTab === item.id) setSidebarVisible(v => !v);
+                  else { setSidebarTab(item.id); setSidebarVisible(true); }
+                }}
+                className="transition-all"
+                style={{
+                  padding: 7, borderRadius: 8, cursor: "pointer", border: "none",
+                  background: isActive ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
+                  color: isActive ? theme.accent : theme.textMuted,
+                }}>
+                {item.icon}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Left Sidebar Panel */}
+        {sidebarVisible && (
+          <div className="flex flex-col shrink-0" style={{
+            width: 240,
+            background: theme.bgPanel,
+            borderRight: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+          }}>
+            <div className="flex items-center px-3 shrink-0" style={{
+              height: 30,
+              borderBottom: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {sidebarTab === "files" ? "Explorer" : sidebarTab === "search" ? "Search" : "Modules"}
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {sidebarTab === "files" && (
+                <FileTree root={""} onFileOpen={handleSidebarFileOpen} />
+              )}
+              {sidebarTab === "search" && (
+                <div className="p-3">
+                  <input placeholder="Search files..." className="w-full px-2 py-1 rounded text-xs outline-none"
+                    style={{ background: theme.bgInput, color: theme.text, border: `0.5px solid ${theme.border}` }} />
+                  <p style={{ fontSize: 10, color: theme.textFaint, marginTop: 8 }}>Type to search across project files</p>
+                </div>
+              )}
+              {sidebarTab === "modules" && (
+                <div className="p-3">
+                  <p style={{ fontSize: 11, color: theme.textMuted }}>NPU module hierarchy</p>
+                  <p style={{ fontSize: 10, color: theme.textFaint, marginTop: 4 }}>Open a project to see modules</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Center + Right layout */}
         {(() => {
           const copilotLeft    = copilotVisible && copilotDock === "left";
           const copilotRight   = copilotVisible && copilotDock === "right";
@@ -446,34 +547,45 @@ function AppInner() {
               <Group orientation="vertical">
                 <Panel defaultSize={hasBottomStack ? "68%" : "100%"} minSize="20%">
                   <div className="w-full h-full flex flex-col min-w-0 min-h-0" style={{ background: bg }}>
-                    <div className="flex items-center shrink-0 overflow-x-auto" style={{ height: 32, borderBottom: `1px solid ${border}`, background: panelBg }}>
-                      {TABS.map(t => (
-                        <button key={t.id} onClick={() => setActiveTab(t.id)}
-                          className="flex items-center gap-1.5 px-3 h-full transition-colors shrink-0"
-                          style={{
-                            fontSize: 11, fontWeight: activeTab === t.id ? 600 : 400,
-                            color: activeTab === t.id ? theme.accent : theme.textMuted,
-                            borderBottom: activeTab === t.id ? `2px solid ${theme.accent}` : "2px solid transparent",
-                            borderRight: `1px solid ${border}`,
-                          }}>
-                          {t.icon} {t.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center shrink-0 overflow-x-auto gap-0.5 px-2" style={{
+                      height: 34,
+                      borderBottom: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+                      background: panelBg,
+                    }}>
+                      <div className="flex items-center gap-0.5 py-1 px-0.5 rounded-lg" style={{
+                        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                      }}>
+                        {TABS.map(t => {
+                          const isActive = activeTab === t.id;
+                          return (
+                            <button key={t.id} onClick={() => setActiveTab(t.id)}
+                              className="flex items-center gap-1 shrink-0"
+                              style={{
+                                fontSize: 11, fontWeight: isActive ? 600 : 400,
+                                color: isActive ? theme.text : theme.textMuted,
+                                padding: "4px 10px",
+                                borderRadius: 7,
+                                background: isActive
+                                  ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.9)")
+                                  : "transparent",
+                                boxShadow: isActive
+                                  ? (isDark ? "0 1px 3px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.1)")
+                                  : "none",
+                                transition: "all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)",
+                                cursor: "pointer",
+                                border: "none",
+                              }}>
+                              {t.icon}
+                              <span className="hidden xl:inline">{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                       <div className="flex-1" />
-                      <button aria-label="Run IPC benchmark" title="IPC Benchmark" onClick={handleTestIPC}
-                        className="px-2 h-full flex items-center justify-center transition-colors"
-                        style={{ color: theme.warning }}>
-                        <Zap size={13} />
-                      </button>
-                      <button aria-label="Toggle AI Copilot panel" title="AI Copilot" onClick={() => setCopilotVisible(v => !v)}
-                        className="px-2 h-full flex items-center justify-center transition-colors"
-                        style={{ color: copilotVisible ? theme.accent : theme.textMuted }}>
-                        <MessageSquare size={13} />
-                      </button>
-                      <div className="px-2">
+                      <div className="flex items-center gap-1">
                         {traceLoaded
-                          ? <Badge color="green" variant="soft" size="1">trace loaded</Badge>
-                          : <Badge color="gray"  variant="soft" size="1">no trace</Badge>}
+                          ? <span style={{ fontSize: 10, color: theme.success, padding: "2px 8px", borderRadius: 10, background: isDark ? "rgba(78,200,107,0.1)" : "rgba(56,138,52,0.06)" }}>loaded</span>
+                          : <span style={{ fontSize: 10, color: theme.textFaint, padding: "2px 8px", borderRadius: 10, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}>no trace</span>}
                       </div>
                     </div>
                     <div className="flex-1 overflow-hidden relative">
@@ -540,13 +652,27 @@ function AppInner() {
           );
         })()}
 
-        {/* Right Activity Bar (VS Code Secondary Side Bar style) */}
-        <aside role="toolbar" aria-label="Activity bar" aria-orientation="vertical" style={{ width: 42, background: theme.bgPanel, borderLeft: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, gap: 6, zIndex: 10 }}>
-          <button aria-label="Toggle AI Copilot panel" onClick={() => setCopilotVisible(v => !v)} title="AI Copilot" style={{ padding: 6, borderRadius: 4, cursor: "pointer", background: copilotVisible ? theme.bgHover : "transparent", transition: "all 0.15s" }}>
-            <BrainCircuit size={18} color={copilotVisible ? theme.accent : theme.textMuted} />
+        {/* Activity Bar (refined) */}
+        <aside role="toolbar" aria-label="Activity bar" aria-orientation="vertical" style={{
+          width: 40,
+          background: theme.bgPanel,
+          borderLeft: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+          display: "flex", flexDirection: "column", alignItems: "center",
+          paddingTop: 10, gap: 4, zIndex: 10,
+        }}>
+          <button aria-label="Toggle AI Copilot panel" onClick={() => setCopilotVisible(v => !v)} title="AI Copilot"
+            className="transition-all" style={{
+              padding: 7, borderRadius: 8, cursor: "pointer",
+              background: copilotVisible ? (isDark ? "rgba(0,152,255,0.12)" : "rgba(0,102,184,0.08)") : "transparent",
+            }}>
+            <BrainCircuit size={17} color={copilotVisible ? theme.accent : theme.textMuted} />
           </button>
-          <button aria-label="Toggle live telemetry panel" onClick={() => setBottomVisible(v => !v)} title="Live Telemetry" style={{ padding: 6, borderRadius: 4, cursor: "pointer", background: bottomVisible ? theme.bgHover : "transparent", transition: "all 0.15s" }}>
-            <Activity size={18} color={bottomVisible ? theme.success : theme.textMuted} />
+          <button aria-label="Toggle live telemetry panel" onClick={() => setBottomVisible(v => !v)} title="Live Telemetry"
+            className="transition-all" style={{
+              padding: 7, borderRadius: 8, cursor: "pointer",
+              background: bottomVisible ? (isDark ? "rgba(78,200,107,0.12)" : "rgba(56,138,52,0.08)") : "transparent",
+            }}>
+            <Activity size={17} color={bottomVisible ? theme.success : theme.textMuted} />
           </button>
         </aside>
       </div>
