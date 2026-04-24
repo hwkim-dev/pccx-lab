@@ -4,6 +4,7 @@ members = [
     "src/reports",
     "src/verification",
     "src/authoring",
+    "src/evolve",
     "src/uvm_bridge",
     "src/ai_copilot"
 ]

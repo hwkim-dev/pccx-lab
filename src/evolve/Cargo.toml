@@ -1,0 +1,13 @@
+[package]
+name = "pccx-evolve"
+version = "0.1.0"
+edition = "2021"
+
+# DSE / speculative-decoding / PRM-gated evolutionary loop primitives.
+# Roadmap home for Phase 5A (chip DSE) + 5D/5E (Model->ISA-API->RTL).
+# Current scope: speculative decoding data primitives (longest matching
+# prefix, per-step accept stats, p50/p95 aggregation) that the Sail
+# execute pass and the UVM scoreboard both reuse.
+
+[dependencies]
+serde.workspace = true
