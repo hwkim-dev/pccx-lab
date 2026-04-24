@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "./ThemeContext";
-import { Search, Play, FileText, Activity, Code2, Clock, Layers, Database } from "lucide-react";
+import { Search, Play, FileText, Activity, Code2, Clock, Layers, Database, Box, Settings2, CheckCircle, PieChart, Zap, ActivitySquare, LayoutDashboard, Download } from "lucide-react";
 
 interface CommandItem {
   id: string;
@@ -8,7 +8,7 @@ interface CommandItem {
   shortcut?: string;
   icon?: React.ReactNode;
   action: () => void;
-  category: "Files" | "View" | "Run" | "Analysis";
+  category: "Files" | "View" | "Run" | "Analysis" | "Tools";
 }
 
 export function CommandPalette({ open, setOpen, onAction }: { open: boolean, setOpen: (v: boolean) => void, onAction: (a: string) => void }) {
@@ -18,15 +18,32 @@ export function CommandPalette({ open, setOpen, onAction }: { open: boolean, set
   const inputRef = useRef<HTMLInputElement>(null);
 
   const ITEMS: CommandItem[] = [
+    // View
+    { id: "view.scenario", label: "Scenario Flow", icon: <Zap size={14}/>, category: "View", action: () => onAction("view.scenario") },
     { id: "view.timeline", label: "Timeline Analysis", shortcut: "F1", icon: <Clock size={14}/>, category: "View", action: () => onAction("view.timeline") },
     { id: "view.flamegraph", label: "Flame Graph", icon: <Layers size={14}/>, category: "View", action: () => onAction("view.flamegraph") },
-    { id: "view.hardware", label: "KV260 NPU Test", icon: <Activity size={14}/>, category: "View", action: () => onAction("view.hardware") },
-    { id: "view.memory", label: "DDR Memory Dump", icon: <Database size={14}/>, category: "View", action: () => onAction("view.memory") },
+    { id: "view.waves", label: "Waveform Viewer", icon: <ActivitySquare size={14}/>, category: "View", action: () => onAction("view.waves") },
+    { id: "view.hardware", label: "System Simulator", icon: <Activity size={14}/>, category: "View", action: () => onAction("view.hardware") },
+    { id: "view.memory", label: "Memory Dump", icon: <Database size={14}/>, category: "View", action: () => onAction("view.memory") },
     { id: "view.nodes", label: "Data Flow Editor", shortcut: "F2", icon: <Activity size={14}/>, category: "View", action: () => onAction("view.nodes") },
-    { id: "view.code", label: "SystemVerilog / UVM Editor", shortcut: "F3", icon: <Code2 size={14}/>, category: "View", action: () => onAction("view.code") },
+    { id: "view.code", label: "SV Editor", shortcut: "F3", icon: <Code2 size={14}/>, category: "View", action: () => onAction("view.code") },
+    { id: "view.tb_author", label: "Testbench Author", icon: <LayoutDashboard size={14}/>, category: "View", action: () => onAction("view.tb_author") },
     { id: "view.report", label: "Report Builder", shortcut: "F4", icon: <FileText size={14}/>, category: "View", action: () => onAction("view.report") },
-    { id: "run.start", label: "Start NPU Simulation", shortcut: "F5", icon: <Play size={14}/>, category: "Run", action: () => onAction("run.start") },
-    { id: "trace.benchmark", label: "Live Telemetry", shortcut: "Ctrl+B", icon: <Activity size={14}/>, category: "Analysis", action: () => onAction("trace.benchmark") },
+    { id: "view.canvas", label: "3D View", icon: <Box size={14}/>, category: "View", action: () => onAction("view.canvas") },
+    { id: "view.extensions", label: "Extensions", icon: <Settings2 size={14}/>, category: "View", action: () => onAction("view.extensions") },
+    { id: "view.verify", label: "Verification Suite", icon: <CheckCircle size={14}/>, category: "View", action: () => onAction("verify.isa") },
+    { id: "view.copilot", label: "Toggle AI Copilot", icon: <Activity size={14}/>, category: "View", action: () => onAction("view.copilot") },
+    { id: "view.bottom", label: "Toggle Bottom Panel", icon: <Activity size={14}/>, category: "View", action: () => onAction("view.bottom") },
+    // Analysis
+    { id: "analysis.roofline", label: "Roofline Analysis", icon: <PieChart size={14}/>, category: "Analysis", action: () => onAction("analysis.roofline") },
+    { id: "trace.benchmark", label: "IPC Benchmark", shortcut: "Ctrl+B", icon: <Zap size={14}/>, category: "Analysis", action: () => onAction("trace.benchmark") },
+    { id: "analysis.pdf", label: "Generate PDF Report", icon: <FileText size={14}/>, category: "Analysis", action: () => onAction("analysis.pdf") },
+    // Run
+    { id: "run.start", label: "Start Simulation", shortcut: "F5", icon: <Play size={14}/>, category: "Run", action: () => onAction("run.start") },
+    // Files
+    { id: "file.openVcd", label: "Open VCD File", icon: <ActivitySquare size={14}/>, category: "Files", action: () => onAction("file.openVcd") },
+    { id: "tools.vcd", label: "Export as VCD", icon: <Download size={14}/>, category: "Files", action: () => onAction("tools.vcd") },
+    { id: "tools.chromeTrace", label: "Export as Chrome Trace", icon: <Download size={14}/>, category: "Files", action: () => onAction("tools.chromeTrace") },
   ];
 
   const filtered = ITEMS.filter(item => item.label.toLowerCase().includes(query.toLowerCase()) || item.category.toLowerCase().includes(query.toLowerCase()));

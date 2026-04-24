@@ -2,6 +2,10 @@
 @import "@radix-ui/themes/styles.css";
 
 :root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  --ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -24,6 +28,14 @@ body {
   min-height: 100vh;
   background-color: #1a1a1a;
   overflow: hidden;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
 }
 
 #root {
@@ -43,3 +55,19 @@ body {
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* Skeleton shimmer for loading placeholders */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #333333 50%, #2a2a2a 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.8s var(--ease-apple) infinite;
+  border-radius: 6px;
+}
+[data-theme="light"] .skeleton {
+  background: linear-gradient(90deg, #e5e5e5 25%, #f0f0f0 50%, #e5e5e5 75%);
+  background-size: 800px 100%;
+}

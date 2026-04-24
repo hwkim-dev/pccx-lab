@@ -17,9 +17,15 @@
 //     in-memory `tokio::io::duplex` pair for tests).  The typed
 //     `lsp-types` envelope + request/response correlation land in
 //     the next slice.
+//   M2.2 — `SvKeywordProvider` (IEEE 1800-2017 keyword completion)
+//     and `SvHoverProvider` stub for SystemVerilog, wired through to
+//     a `sv_completions` Tauri command for Monaco.
 // What remains for Phase 2 proper: typed `lsp-types` envelope +
 // request/response correlation, a concrete verible backend, and the
 // tower-lsp adapter that serves the stack to Monaco.
+
+pub mod sv_hover;
+pub mod sv_provider;
 
 use std::collections::HashMap;
 use std::ffi::OsString;

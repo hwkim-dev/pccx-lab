@@ -651,6 +651,49 @@ async fn generate_report(state: State<'_, AppState>) -> Result<String, String> {
     }
 }
 
+// ─── LSP: SV keyword completions (Phase 2 M2.2) ─────────────────────────────
+
+/// Returns the full set of SystemVerilog keyword completions from the
+/// in-process `SvKeywordProvider`.  The Monaco editor calls this once
+/// on mount to seed its auto-complete dictionary; future slices will
+/// add position-aware filtering via tree-sitter.
+#[tauri::command]
+fn sv_completions() -> Vec<serde_json::Value> {
+    use pccx_lsp::sv_provider::SvKeywordProvider;
+    use pccx_lsp::CompletionProvider;
+    let provider = SvKeywordProvider::new();
+    let pos = pccx_lsp::SourcePos { line: 0, character: 0 };
+    let completions = provider
+        .complete(pccx_lsp::Language::SystemVerilog, "", pos, "")
+        .unwrap_or_default();
+    completions
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "label": c.label,
+                "detail": c.detail,
+                "insertText": c.insert_text,
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn parse_sv_file(path: String) -> Result<serde_json::Value, String> {
+    let source = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read '{}': {}", path, e))?;
+    let result = pccx_authoring::sv_parser::parse_sv(&source, &path);
+    serde_json::to_value(&result).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn generate_sv_docs(path: String) -> Result<String, String> {
+    let source = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Cannot read '{}': {}", path, e))?;
+    let result = pccx_authoring::sv_parser::parse_sv(&source, &path);
+    Ok(pccx_authoring::sv_parser::generate_module_docs(&result))
+}
+
 // ─── App Entry Point ──────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -691,6 +734,9 @@ pub fn run() {
             list_api_calls,
             fetch_live_window,
             step_to_cycle,
+            sv_completions,
+            parse_sv_file,
+            generate_sv_docs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { invoke } from "@tauri-apps/api/core";
 import { Play, Sparkles, TerminalSquare, X, Activity } from "lucide-react";
 import { useTheme } from "./ThemeContext";
 import { monarchSv, systemverilogLanguageConfig } from "./monarch_sv";
+import { ensureMonacoReady } from "./monacoSetup";
 
 // ─── Templates ────────────────────────────────────────────────────────────────
 
@@ -194,14 +196,23 @@ endclass`,
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface OpenFile {
+  path: string;
+  name: string;
+  content: string;
+  savedContent: string;
+}
+
 export function CodeEditor() {
   const theme = useTheme();
+  const [monacoReady, setMonacoReady] = useState(false);
   const [activeFile, setActiveFile] = useState("interface_def");
   const [files, setFiles] = useState<Record<string, string>>(() => {
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(TEMPLATES)) out[k] = v.code;
     return out;
   });
+  const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
 
   // AI Copilot state
   const [aiBoxOpen, setAiBoxOpen] = useState(false);
@@ -213,7 +224,61 @@ export function CodeEditor() {
   const [simLogs, setSimLogs] = useState<string[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  useEffect(() => {
+    ensureMonacoReady().then(() => setMonacoReady(true));
+  }, []);
+
+  const openFileFromPath = useCallback(async (path: string, name: string) => {
+    const existing = openFiles.find(f => f.path === path);
+    if (existing) {
+      setActiveFile(`file:${path}`);
+      return;
+    }
+    try {
+      const content: string = await invoke("read_text_file", { path });
+      setOpenFiles(prev => [...prev, { path, name, content, savedContent: content }]);
+      setFiles(f => ({ ...f, [`file:${path}`]: content }));
+      setActiveFile(`file:${path}`);
+    } catch (e) {
+      console.error("Failed to open file:", e);
+    }
+  }, [openFiles]);
+
+  const saveCurrentFile = useCallback(async () => {
+    if (!activeFile.startsWith("file:")) return;
+    const path = activeFile.slice(5);
+    const content = files[activeFile] ?? "";
+    try {
+      await invoke("write_text_file", { path, content });
+      setOpenFiles(prev => prev.map(f => f.path === path ? { ...f, savedContent: content, content } : f));
+    } catch (e) {
+      console.error("Failed to save:", e);
+    }
+  }, [activeFile, files]);
+
+  const closeOpenFile = useCallback((path: string) => {
+    setOpenFiles(prev => prev.filter(f => f.path !== path));
+    setFiles(f => { const next = { ...f }; delete next[`file:${path}`]; return next; });
+    if (activeFile === `file:${path}`) setActiveFile("interface_def");
+  }, [activeFile]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveCurrentFile();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [saveCurrentFile]);
+
+  (CodeEditor as any).openFile = openFileFromPath;
+
   const currentCode = files[activeFile] ?? "";
+  const isFileTab = activeFile.startsWith("file:");
+  const currentOpenFile = isFileTab ? openFiles.find(f => `file:${f.path}` === activeFile) : null;
+  const isDirty = currentOpenFile ? files[activeFile] !== currentOpenFile.savedContent : false;
 
   const isDark = theme.mode === "dark";
   const bg      = theme.bgEditor;
@@ -279,6 +344,14 @@ export function CodeEditor() {
 
   const lineCount = currentCode.split("\n").length;
 
+  if (!monacoReady) {
+    return (
+      <div style={{ padding: 24, color: theme.textMuted }}>
+        Loading editor...
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full flex flex-col relative" style={{ background: bg }}>
       {/* ─── Toolbar ─── */}
@@ -305,6 +378,19 @@ export function CodeEditor() {
             {k.replace("gen_", "")}
           </button>
         ))}
+        {openFiles.map(f => {
+          const tabKey = `file:${f.path}`;
+          const isActive = activeFile === tabKey;
+          const fileDirty = files[tabKey] !== f.savedContent;
+          return (
+            <button key={tabKey} onClick={() => setActiveFile(tabKey)} className="flex items-center gap-1 transition-colors duration-150"
+              style={{ fontSize: 11, padding: "0 8px 0 14px", height: "100%", color: isActive ? theme.accent : lineCol, borderBottom: isActive ? `2px solid ${theme.accent}` : "2px solid transparent", background: isActive ? theme.accentBg : "transparent", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap" }}>
+              {fileDirty && <span style={{ color: theme.warning }}>●</span>}
+              {f.name}
+              <span onClick={e => { e.stopPropagation(); closeOpenFile(f.path); }} style={{ marginLeft: 4, padding: "0 2px", color: lineCol, cursor: "pointer", fontSize: 10 }}>×</span>
+            </button>
+          );
+        })}
 
         <div className="flex-1" />
 
@@ -384,7 +470,10 @@ export function CodeEditor() {
 
       {/* ─── Footer Status ─── */}
       <div className="flex items-center px-3 shrink-0" style={{ height: 22, borderTop: `1px solid ${border}`, background: bgAlt }}>
-        <span style={{ fontSize: 9, color: lineCol }}>{TEMPLATES[activeFile]?.label ?? activeFile} — {lineCount} lines — SystemVerilog</span>
+        <span style={{ fontSize: 9, color: lineCol }}>
+          {isDirty && <span style={{ color: theme.warning }}>● </span>}
+          {currentOpenFile ? currentOpenFile.name : (TEMPLATES[activeFile]?.label ?? activeFile)} — {lineCount} lines — SystemVerilog
+        </span>
         <div className="flex-1" />
         <span style={{ fontSize: 9, color: lineCol }}>UTF-8 · LF · SystemVerilog</span>
       </div>

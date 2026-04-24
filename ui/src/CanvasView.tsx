@@ -162,16 +162,10 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
       });
 
     // ─── Pulsing animation: simulate live MAC activity ───────────────
-    // Round-6 T-3: visibility-gated RAF loop with sparse instance-
-    // colour updates via InstancedBufferAttribute.updateRange.  Only
-    // columns whose wave-scalar *differs* from the previous frame are
-    // re-uploaded to the GPU — cuts per-frame Webgl work from O(COUNT)
-    // to O(active columns).
-    //
-    // References:
-    //   - Three.js InstancedBufferAttribute.updateRange (https://threejs.org/docs/api/en/core/InstancedBufferAttribute.html)
-    //   - Three.js "How to Update Things" (https://threejs.org/manual/en/how-to-update-things.html)
-    //   - MDN Page Visibility API (https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
+    // Visibility-gated RAF loop with sparse instance-colour updates.
+    // Only columns whose wave-scalar differs from the previous frame
+    // trigger setColorAt — cuts per-frame work from O(COUNT) to
+    // O(active columns).
     //
     // Cache the baked per-instance colour so we don't pay a
     // `getColorAt` per frame — reads from the InstancedBufferAttribute
@@ -186,6 +180,9 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
     const lastWave = new Float32Array(COLS);
     for (let i = 0; i < COLS; i++) lastWave[i] = NaN;
     const DIRTY_EPS = 1 / 256; // 8-bit colour resolution threshold
+    // Pre-allocated Color for reuse in the animate loop (avoids per-
+    // instance allocation on every dirty column each frame).
+    const tmpColor = new THREE.Color();
 
     let phase = 0;
     const animate = () => {
@@ -207,12 +204,11 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
       }
 
       if (animRef.current) {
-        // Sparse update pattern: per-column wave scalar; only re-upload
-        // the instance colours whose column's scalar drifted by more
-        // than a JPEG-level threshold.  On an idle frame with stable
-        // wave, `setColorAt` fires for zero instances.
-        let dirtyMin = COUNT;
-        let dirtyMax = -1;
+        // Sparse update: per-column wave scalar; only re-upload the
+        // instance colours whose column's scalar drifted by more than
+        // an 8-bit threshold.  On a stable frame `setColorAt` fires
+        // for zero instances.
+        let anyDirty = false;
         for (let x = 0; x < COLS; x++) {
           const wave = 0.5 + 0.5 * Math.sin(phase * 2 - x * 0.4);
           if (!Number.isNaN(lastWave[x]) && Math.abs(wave - lastWave[x]) < DIRTY_EPS) continue;
@@ -221,26 +217,13 @@ export function CanvasView({ animated = true, isPlaying }: CanvasViewProps = {})
           for (let y = 0; y < ROWS; y++) {
             const idx = x * ROWS + y;
             const b = baked[idx];
-            // Mul scale into the baked colour; write back sparsely.
-            const col = new THREE.Color(b.r * scale, b.g * scale, b.b * scale);
-            mesh.setColorAt(idx, col);
-            if (idx < dirtyMin) dirtyMin = idx;
-            if (idx > dirtyMax) dirtyMax = idx;
+            tmpColor.setRGB(b.r * scale, b.g * scale, b.b * scale);
+            mesh.setColorAt(idx, tmpColor);
           }
+          anyDirty = true;
         }
-        if (dirtyMax >= 0 && mesh.instanceColor) {
-          // Three.js InstancedBufferAttribute.updateRange — only push
-          // the dirty slice to the GPU instead of the full 1024-colour
-          // array.  `.clearUpdateRanges` / `.addUpdateRange` is r169+
-          // API; the `updateRange` property is the classic accessor
-          // that works on every Three version we bundle.
-          const attr = mesh.instanceColor;
-          // Typed as any because Three.js's InstancedBufferAttribute
-          // type predates the per-component `updateRange` narrowing.
-          const range = (attr as unknown as { updateRange: { offset: number; count: number } }).updateRange;
-          range.offset = dirtyMin * 3;
-          range.count  = (dirtyMax - dirtyMin + 1) * 3;
-          attr.needsUpdate = true;
+        if (anyDirty && mesh.instanceColor) {
+          mesh.instanceColor.needsUpdate = true;
         }
       }
 

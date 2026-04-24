@@ -91,6 +91,7 @@ function AppInner() {
   const [header, setHeader]       = useState<any>(null);
   const [license, setLicense]     = useState("");
   const [activeTab, setActiveTab] = useState<ActiveTab>("timeline");
+  const [visitedTabs, setVisitedTabs] = useState<Set<ActiveTab>>(() => new Set(["timeline"]));
   const [traceLoaded, setTraceLoaded] = useState(false);
   const [copilotVisible, setCopilotVisible] = useState(true);
   const [copilotDock, setCopilotDock]       = useState<"left" | "right" | "bottom">(() => (localStorage.getItem("pccx-copilot-dock") as any) || "right");
@@ -98,6 +99,13 @@ function AppInner() {
   const [bottomDock, setBottomDock]         = useState<"left" | "right" | "bottom">(() => (localStorage.getItem("pccx-bottom-dock") as any) || "bottom");
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const shortcutHelp = useShortcutHelp();
+
+  useEffect(() => {
+    setVisitedTabs(prev => {
+      if (prev.has(activeTab)) return prev;
+      return new Set(prev).add(activeTab);
+    });
+  }, [activeTab]);
 
   // Persist dock choices
   useEffect(() => { localStorage.setItem("pccx-copilot-dock", copilotDock); }, [copilotDock]);
@@ -334,6 +342,49 @@ function AppInner() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
+  const TraceLoadingSkeleton = () => (
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, width: "100%", height: "100%" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="skeleton" style={{ width: 80, height: 20 }} />
+        <div className="skeleton" style={{ width: 60, height: 20 }} />
+        <div className="skeleton" style={{ width: 120, height: 20 }} />
+        <div style={{ flex: 1 }} />
+        <div className="skeleton" style={{ width: 200, height: 20 }} />
+      </div>
+      {Array.from({ length: 8 }, (_, i) => (
+        <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="skeleton" style={{ width: 56, height: 18 }} />
+          <div className="skeleton" style={{ flex: 1, height: 18 }} />
+        </div>
+      ))}
+      <div style={{ flex: 1 }} />
+      <div style={{ display: "flex", gap: 12 }}>
+        <div className="skeleton" style={{ width: 120, height: 60 }} />
+        <div className="skeleton" style={{ width: 120, height: 60 }} />
+        <div className="skeleton" style={{ width: 120, height: 60 }} />
+      </div>
+    </div>
+  );
+
+  function renderTabContent(id: ActiveTab) {
+    switch (id) {
+      case "timeline":   return <Timeline />;
+      case "flamegraph": return <FlameGraph />;
+      case "hardware":   return <HardwareVisualizer />;
+      case "memory":     return <MemoryDump />;
+      case "waves":      return <WaveformViewer />;
+      case "nodes":      return <NodeEditor />;
+      case "canvas":     return <CanvasView />;
+      case "code":       return <CodeEditor />;
+      case "report":     return <ReportBuilder />;
+      case "extensions": return <ExtensionManager />;
+      case "verify":     return <VerificationSuite />;
+      case "roofline":   return <Roofline />;
+      case "scenario":   return <ScenarioFlow />;
+      case "tb_author":  return <TestbenchAuthor />;
+    }
+  }
+
   const bg      = theme.bg;
   const panelBg = theme.bgPanel;
   const border  = theme.border;
@@ -425,21 +476,20 @@ function AppInner() {
                           : <Badge color="gray"  variant="soft" size="1">no trace</Badge>}
                       </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      {activeTab === "timeline"   && <Timeline />}
-                      {activeTab === "flamegraph" && <FlameGraph />}
-                      {activeTab === "hardware"   && <HardwareVisualizer />}
-                      {activeTab === "memory"     && <MemoryDump />}
-                      {activeTab === "waves"      && <WaveformViewer />}
-                      {activeTab === "nodes"      && <NodeEditor />}
-                      {activeTab === "canvas"     && <CanvasView />}
-                      {activeTab === "code"       && <CodeEditor />}
-                      {activeTab === "report"     && <ReportBuilder />}
-                      {activeTab === "extensions" && <ExtensionManager />}
-                      {activeTab === "verify"     && <VerificationSuite />}
-                      {activeTab === "roofline"   && <Roofline />}
-                      {activeTab === "scenario"   && <ScenarioFlow />}
-                      {activeTab === "tb_author"  && <TestbenchAuthor />}
+                    <div className="flex-1 overflow-hidden relative">
+                      {TABS.map(tab => (
+                        <div
+                          key={tab.id}
+                          style={{
+                            display: activeTab === tab.id ? 'flex' : 'none',
+                            flexDirection: 'column',
+                            width: '100%',
+                            height: '100%',
+                          }}
+                        >
+                          {visitedTabs.has(tab.id) ? renderTabContent(tab.id) : <TraceLoadingSkeleton />}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </Panel>

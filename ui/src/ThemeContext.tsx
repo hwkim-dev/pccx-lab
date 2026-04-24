@@ -4,8 +4,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 
 const DARK = {
   mode: "dark" as const,
-  // Backgrounds (neutral charcoal, no blue tint)
-  bg:        "#1a1a1a",  // deepest
+  // Backgrounds (neutral charcoal, warmer Apple-style blacks)
+  bg:        "#1c1c1e",  // deepest (Apple dark mode)
   bgEditor:  "#1e1e1e",  // main editor
   bgPanel:   "#252526",  // panels / sidebars
   bgSurface: "#2d2d2d",  // elevated cards
@@ -28,11 +28,23 @@ const DARK = {
   warning: "#e5a400",
   error:   "#f14c4c",
   info:    "#3794ff",
+  // Typography
+  fontSans: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui, sans-serif',
+  fontMono: '"JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace',
+  // Radius
+  radiusSm: 6,
+  radiusMd: 10,
+  radiusLg: 14,
+  // Animation
+  ease: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+  // Elevation
+  shadowSm: "0 1px 2px rgba(0,0,0,0.08)",
+  shadowMd: "0 4px 12px rgba(0,0,0,0.12)",
 };
 
 const LIGHT = {
   mode: "light" as const,
-  bg:        "#f5f5f5",
+  bg:        "#f2f2f7",  // Apple-style light
   bgEditor:  "#ffffff",
   bgPanel:   "#f0f0f0",
   bgSurface: "#e8e8e8",
@@ -51,6 +63,18 @@ const LIGHT = {
   warning: "#bf8803",
   error:   "#cd3131",
   info:    "#1a85ff",
+  // Typography
+  fontSans: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui, sans-serif',
+  fontMono: '"JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace',
+  // Radius
+  radiusSm: 6,
+  radiusMd: 10,
+  radiusLg: 14,
+  // Animation
+  ease: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+  // Elevation
+  shadowSm: "0 1px 2px rgba(0,0,0,0.04)",
+  shadowMd: "0 4px 12px rgba(0,0,0,0.06)",
 };
 
 type Theme = (typeof DARK | typeof LIGHT) & { toggle: () => void };

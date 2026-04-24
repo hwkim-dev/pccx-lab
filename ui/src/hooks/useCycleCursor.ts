@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { createRafScheduler, type RafScheduler } from "./useRafScheduler";
 
 // ─── Module-level shared store ──────────────────────────────────────────────
 // A single cycle cursor is shared across every time-domain panel so the
@@ -17,16 +19,115 @@ export interface CycleCursorSnapshot {
   totalCycles:  number;
 }
 
+// ─── RegisterSnapshot IPC types ─────────────────────────────────────────────
+// Mirrors `pccx_core::step_snapshot::{CoreState, RegisterSnapshot}`.
+// Field names match Rust serde defaults (snake_case).
+
+export interface CoreState {
+  core_id:          number;
+  event_type_id:    number;
+  event_start:      number;
+  cycles_remaining: number;
+}
+
+export interface RegisterSnapshot {
+  cycle:          number;
+  total_cycles:   number;
+  cores:          CoreState[];
+  mac_active:     number;
+  dma_active:     number;
+  stall_active:   number;
+  barrier_active: number;
+  events_retired: number;
+}
+
 type Listener = (s: CycleCursorSnapshot) => void;
 
 let cursorState: CycleCursorSnapshot = { cycle: 0, totalCycles: 1024 };
 const listeners = new Set<Listener>();
+
+// ─── IPC debounce + LRU cache (module-level, shared across panels) ──────────
+// The IPC machinery is global because the cursor is global — N mounted
+// panels scrubbing the same cycle must coalesce into a single invoke,
+// not N redundant round-trips.
+//
+// Cache: Map<cycle, RegisterSnapshot>.  Insertion-order iteration gives
+// FIFO eviction (not true LRU — lookups don't promote), which is close
+// enough for the slider scrub pattern where locality is temporal and
+// the oldest entry is almost always the coldest.
+// 128 entries * ~1 KB JSON ≈ 128 KB — negligible.
+
+const MAX_SNAPSHOT_CACHE = 128;
+const snapshotCache = new Map<number, RegisterSnapshot>();
+let snapshotState: RegisterSnapshot | null = null;
+let snapshotLoading = false;
+
+// Monotonic generation counter — guards against out-of-order IPC
+// completions when the user scrubs faster than the round-trip latency.
+let ipcGeneration = 0;
+
+type SnapshotListener = (s: RegisterSnapshot | null, loading: boolean) => void;
+const snapshotListeners = new Set<SnapshotListener>();
+
+function emitSnapshot(s: RegisterSnapshot | null, loading: boolean) {
+  snapshotState = s;
+  snapshotLoading = loading;
+  for (const l of snapshotListeners) l(s, loading);
+}
+
+// Module-level RAF scheduler — coalesces rapid setCycle calls into one
+// IPC per animation frame.  Created lazily (SSR / test safety) and
+// never disposed because the cursor outlives every component.
+let ipcScheduler: RafScheduler | null = null;
+function getIpcScheduler(): RafScheduler {
+  if (!ipcScheduler) ipcScheduler = createRafScheduler();
+  return ipcScheduler;
+}
+
+/** Schedule a debounced `step_to_cycle` IPC for the given cycle.
+ *  Called automatically whenever the shared cursor moves. */
+function scheduleSnapshotFetch(cycle: number) {
+  // Bump generation on every cursor move — including cache hits — so
+  // any older in-flight IPC is orphaned when it completes. Without
+  // this, a cache-hit at cycle 0 followed by a late IPC-100 return
+  // would overwrite the snapshot with stale cycle-100 data.
+  const gen = ++ipcGeneration;
+
+  // Cache hit — serve immediately, skip IPC entirely.
+  const cached = snapshotCache.get(cycle);
+  if (cached) {
+    emitSnapshot(cached, false);
+    return;
+  }
+  emitSnapshot(snapshotState, true);
+
+  getIpcScheduler().schedule("cycle-cursor-ipc", async () => {
+    try {
+      const result = await invoke<RegisterSnapshot>("step_to_cycle", { cycle });
+      // Drop if the cursor moved on while the IPC was in flight.
+      if (gen !== ipcGeneration) return;
+      // LRU eviction — delete the oldest entry (first key in insertion order).
+      if (snapshotCache.size >= MAX_SNAPSHOT_CACHE) {
+        const oldest = snapshotCache.keys().next().value;
+        if (oldest !== undefined) snapshotCache.delete(oldest);
+      }
+      snapshotCache.set(cycle, result);
+      emitSnapshot(result, false);
+    } catch (e) {
+      if (gen !== ipcGeneration) return;
+      console.error("[useCycleCursor] step_to_cycle IPC failed:", e);
+      emitSnapshot(null, false);
+    }
+  });
+}
 
 function emit(next: CycleCursorSnapshot) {
   // Re-create the object so React `useSyncExternalStore`-ish equality
   // checks always see a new reference; cheap — just two numbers.
   cursorState = { cycle: next.cycle, totalCycles: next.totalCycles };
   for (const l of listeners) l(cursorState);
+  // Trigger debounced IPC for the new cycle.
+  scheduleSnapshotFetch(next.cycle);
 }
 
 function setCycleGlobal(next: number) {
@@ -40,6 +141,8 @@ function setCycleGlobal(next: number) {
 function setTotalCyclesGlobal(total: number) {
   const t = Math.max(1, Math.floor(total));
   if (t === cursorState.totalCycles) return;
+  // New trace loaded — cached snapshots are invalid.
+  snapshotCache.clear();
   // Keep the cursor in-bounds when the trace shrinks.
   const nextCycle = Math.min(cursorState.cycle, t);
   emit({ cycle: nextCycle, totalCycles: t });
@@ -66,15 +169,32 @@ export interface CycleCursor {
   /** Update the shared upper bound; usually fed by the panel that
    *  owns the ground-truth trace (Timeline / FlameGraph). */
   setTotalCycles: (total: number) => void;
+  /** Cached register-level snapshot for the current cycle (from
+   *  `step_to_cycle` IPC). `null` before the first fetch or on error. */
+  snapshot:        RegisterSnapshot | null;
+  /** `true` while a `step_to_cycle` IPC is in flight for the current
+   *  cycle. Cache hits never set this — only wire round-trips. */
+  snapshotLoading: boolean;
 }
 
 export function useCycleCursor(): CycleCursor {
   const [snap, setSnap] = useState<CycleCursorSnapshot>(cursorState);
+  const [ipcSnap, setIpcSnap] = useState<RegisterSnapshot | null>(snapshotState);
+  const [ipcLoading, setIpcLoading] = useState(snapshotLoading);
 
   useEffect(() => {
     const fn: Listener = s => setSnap(s);
     listeners.add(fn);
     return () => { listeners.delete(fn); };
+  }, []);
+
+  useEffect(() => {
+    const fn: SnapshotListener = (s, loading) => {
+      setIpcSnap(s);
+      setIpcLoading(loading);
+    };
+    snapshotListeners.add(fn);
+    return () => { snapshotListeners.delete(fn); };
   }, []);
 
   const setCycle = useCallback((n: number) => setCycleGlobal(n), []);
@@ -127,15 +247,17 @@ export function useCycleCursor(): CycleCursor {
   const setTotalCycles = useCallback((total: number) => setTotalCyclesGlobal(total), []);
 
   return useMemo<CycleCursor>(() => ({
-    cycle:        snap.cycle,
-    totalCycles:  snap.totalCycles,
+    cycle:           snap.cycle,
+    totalCycles:     snap.totalCycles,
     setCycle,
     stepBy,
     stepEdge,
     goToCycle,
     goToCyclePrompt,
     setTotalCycles,
-  }), [snap, setCycle, stepBy, stepEdge, goToCycle, goToCyclePrompt, setTotalCycles]);
+    snapshot:        ipcSnap,
+    snapshotLoading: ipcLoading,
+  }), [snap, setCycle, stepBy, stepEdge, goToCycle, goToCyclePrompt, setTotalCycles, ipcSnap, ipcLoading]);
 }
 
 // ─── Keyboard helper — wires the common panel bindings in one place ─────────
@@ -240,6 +362,11 @@ export function useGoToCycleInput(cursor: CycleCursor): {
 export function __resetCycleCursorForTests__(): void {
   cursorState = { cycle: 0, totalCycles: 1024 };
   listeners.forEach(l => l(cursorState));
+  snapshotCache.clear();
+  snapshotState = null;
+  snapshotLoading = false;
+  ipcGeneration = 0;
+  snapshotListeners.forEach(l => l(null, false));
 }
 
 // ─── Ref-based helper for sites that don't want the re-render cost ──────────

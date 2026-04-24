@@ -6,20 +6,25 @@ authors.workspace = true
 repository.workspace = true
 license.workspace = true
 rust-version.workspace = true
-# Secure remote backend daemon — Phase 3 scaffold.
+# Secure remote backend daemon — Phase 3.
 #
-# Target feature set (roadmap §Phase 3):
-#   * WireGuard or mTLS-over-QUIC tunnel with hardware-bound device keys.
-#   * OIDC SSO + hardware 2FA, per-user RBAC, per-project scopes.
-#   * Zero-trust audit log (append-only store).
-#   * Per-session overlayfs sandbox, kill-switch API.
-#   * Optional web client (WASM) parity with the native Tauri IDE.
-#
-# Currently empty scaffold — lands as a workspace member now so the
-# dependency graph + CI surface are stable while auth / tunnel /
-# session machinery lands incrementally.
+# Feature set:
+#   * HTTP REST API for remote trace analysis sessions.
+#   * Session management (create / list / destroy).
+#   * Health + OpenAPI spec endpoints.
+#   * Future: WireGuard or mTLS-over-QUIC tunnel, OIDC SSO + hardware
+#     2FA, per-user RBAC, zero-trust audit log, per-session overlayfs
+#     sandbox, kill-switch API, optional WASM web client.
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+uuid = { version = "1", features = ["v4"] }
 pccx-core = { path = "../core" }
-pccx-reports = { path = "../reports" }
-pccx-verification = { path = "../verification" }
+
+[[bin]]
+name = "pccx-server"
+path = "src/bin/pccx_server.rs"
