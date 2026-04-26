@@ -375,6 +375,317 @@ pub async fn serve(addr: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// ─── M3.1 / M3.2: session lifecycle + RBAC + audit log ────────────
+
+/// Returns current UNIX time in whole seconds.  Used throughout the
+/// session manager so tests can manipulate `last_active` directly
+/// rather than sleeping.
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+// ─── identity newtypes ────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SessionId(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct UserId(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ProjectId(pub String);
+
+// ─── RBAC ─────────────────────────────────────────────────────────
+
+/// Roles a user may hold within a project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Role {
+    Owner,
+    Maintainer,
+    Viewer,
+}
+
+/// Actions that can be performed against a project resource.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Action {
+    Read,
+    Write,
+    Execute,
+    Admin,
+}
+
+/// A single rule associating a role with the actions it permits.
+#[derive(Debug, Clone)]
+pub struct RbacRule {
+    pub role: Role,
+    pub actions: Vec<Action>,
+}
+
+/// Casbin-style policy table.  Look up with `can()` or `check()`.
+#[derive(Debug, Clone)]
+pub struct RbacPolicy {
+    rules: Vec<RbacRule>,
+}
+
+/// Returned when an RBAC check fails.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccessDenied {
+    pub role: Role,
+    pub action: Action,
+    pub reason: String,
+}
+
+impl std::fmt::Display for AccessDenied {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} may not perform {:?}: {}", self.role, self.action, self.reason)
+    }
+}
+
+impl RbacPolicy {
+    /// Default policy:
+    ///   Owner     — Read, Write, Execute, Admin
+    ///   Maintainer — Read, Write, Execute
+    ///   Viewer     — Read
+    pub fn default() -> Self {
+        Self {
+            rules: vec![
+                RbacRule {
+                    role: Role::Owner,
+                    actions: vec![Action::Read, Action::Write, Action::Execute, Action::Admin],
+                },
+                RbacRule {
+                    role: Role::Maintainer,
+                    actions: vec![Action::Read, Action::Write, Action::Execute],
+                },
+                RbacRule {
+                    role: Role::Viewer,
+                    actions: vec![Action::Read],
+                },
+            ],
+        }
+    }
+
+    /// Returns `true` if `role` is permitted to perform `action`.
+    pub fn can(&self, role: &Role, action: &Action) -> bool {
+        self.rules
+            .iter()
+            .filter(|r| &r.role == role)
+            .any(|r| r.actions.contains(action))
+    }
+
+    /// Checks whether the session's role permits `action`.
+    /// Returns `Ok(())` or an `Err(AccessDenied)`.
+    pub fn check(&self, session: &ManagedSession, action: &Action) -> Result<(), AccessDenied> {
+        if self.can(&session.role, action) {
+            Ok(())
+        } else {
+            Err(AccessDenied {
+                role: session.role,
+                action: *action,
+                reason: "role does not include this action".to_string(),
+            })
+        }
+    }
+}
+
+// ─── managed session ──────────────────────────────────────────────
+
+/// Lifecycle state of a `ManagedSession` inside the `SessionManager`.
+///
+/// Named `ManagedSessionState` to avoid colliding with the existing
+/// `SessionState { Connected, Disconnected }` used by `RemoteSession`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ManagedSessionState {
+    Active,
+    Idle,
+    Terminated,
+}
+
+/// A server-side session tracked by `SessionManager`.
+#[derive(Debug, Clone)]
+pub struct ManagedSession {
+    pub id: SessionId,
+    pub user: UserId,
+    pub project: ProjectId,
+    pub role: Role,
+    /// UNIX timestamp (seconds) when the session was created.
+    pub created_at: u64,
+    /// UNIX timestamp (seconds) of the most recent activity.
+    /// `pub` so tests can back-date it without sleeping.
+    pub last_active: u64,
+    pub state: ManagedSessionState,
+}
+
+// ─── session errors ───────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SessionError {
+    MaxSessionsReached,
+    NotFound,
+    AlreadyTerminated,
+}
+
+impl std::fmt::Display for SessionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MaxSessionsReached => write!(f, "session limit reached"),
+            Self::NotFound => write!(f, "session not found"),
+            Self::AlreadyTerminated => write!(f, "session is already terminated"),
+        }
+    }
+}
+
+// ─── session manager ──────────────────────────────────────────────
+
+/// Tracks all managed sessions, enforces the session cap, and reaps
+/// sessions that have been idle longer than `idle_timeout`.
+pub struct SessionManager {
+    sessions: HashMap<SessionId, ManagedSession>,
+    max_sessions: usize,
+    idle_timeout: std::time::Duration,
+}
+
+impl SessionManager {
+    pub fn new(max_sessions: usize, idle_timeout: std::time::Duration) -> Self {
+        Self {
+            sessions: HashMap::new(),
+            max_sessions,
+            idle_timeout,
+        }
+    }
+
+    /// Create and register a new `ManagedSession`.
+    /// Returns `Err(SessionError::MaxSessionsReached)` when the cap is hit.
+    pub fn create_session(
+        &mut self,
+        user: UserId,
+        project: ProjectId,
+        role: Role,
+    ) -> Result<SessionId, SessionError> {
+        let active = self
+            .sessions
+            .values()
+            .filter(|s| s.state != ManagedSessionState::Terminated)
+            .count();
+        if active >= self.max_sessions {
+            return Err(SessionError::MaxSessionsReached);
+        }
+        let id = SessionId(Uuid::new_v4().to_string());
+        let now = now_secs();
+        let session = ManagedSession {
+            id: id.clone(),
+            user,
+            project,
+            role,
+            created_at: now,
+            last_active: now,
+            state: ManagedSessionState::Active,
+        };
+        self.sessions.insert(id.clone(), session);
+        Ok(id)
+    }
+
+    /// Look up a session by id.
+    pub fn get_session(&self, id: &SessionId) -> Option<&ManagedSession> {
+        self.sessions.get(id)
+    }
+
+    /// Update `last_active` to now; sets state to `Active` if it was `Idle`.
+    /// Returns `Err(SessionError::NotFound)` for unknown ids.
+    pub fn touch_session(&mut self, id: &SessionId) -> Result<(), SessionError> {
+        let sess = self.sessions.get_mut(id).ok_or(SessionError::NotFound)?;
+        if sess.state == ManagedSessionState::Terminated {
+            return Err(SessionError::AlreadyTerminated);
+        }
+        sess.last_active = now_secs();
+        sess.state = ManagedSessionState::Active;
+        Ok(())
+    }
+
+    /// Terminate a session.  Idempotent: calling on an already-terminated
+    /// session returns `Err(SessionError::AlreadyTerminated)`.
+    pub fn terminate_session(&mut self, id: &SessionId) -> Result<(), SessionError> {
+        let sess = self.sessions.get_mut(id).ok_or(SessionError::NotFound)?;
+        if sess.state == ManagedSessionState::Terminated {
+            return Err(SessionError::AlreadyTerminated);
+        }
+        sess.state = ManagedSessionState::Terminated;
+        Ok(())
+    }
+
+    /// Terminate all sessions whose `last_active` is older than `idle_timeout`.
+    /// Returns the ids of sessions that were reaped.
+    pub fn reap_idle_sessions(&mut self) -> Vec<SessionId> {
+        let cutoff = now_secs().saturating_sub(self.idle_timeout.as_secs());
+        let mut reaped = Vec::new();
+        for sess in self.sessions.values_mut() {
+            if sess.state != ManagedSessionState::Terminated && sess.last_active < cutoff {
+                sess.state = ManagedSessionState::Terminated;
+                reaped.push(sess.id.clone());
+            }
+        }
+        reaped
+    }
+
+    /// Number of sessions that are not yet terminated.
+    pub fn active_count(&self) -> usize {
+        self.sessions
+            .values()
+            .filter(|s| s.state != ManagedSessionState::Terminated)
+            .count()
+    }
+}
+
+// ─── audit log ────────────────────────────────────────────────────
+
+/// Result of an audited action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AuditResult {
+    Allowed,
+    Denied(String),
+}
+
+/// One entry in the append-only audit log.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditEntry {
+    /// UNIX timestamp (seconds) when the event was recorded.
+    pub timestamp: u64,
+    pub session_id: String,
+    pub user: String,
+    pub action: String,
+    pub result: AuditResult,
+}
+
+/// Append-only in-memory audit log.  In Phase 3 M3.3 this will be
+/// backed by SQLite WAL + S3 replication; the interface is stable now.
+pub struct AuditLog {
+    entries: Vec<AuditEntry>,
+}
+
+impl AuditLog {
+    pub fn new() -> Self {
+        Self { entries: Vec::new() }
+    }
+
+    /// Append an entry.  Entries are never removed.
+    pub fn record(&mut self, entry: AuditEntry) {
+        self.entries.push(entry);
+    }
+
+    /// All entries belonging to `session_id`, in insertion order.
+    pub fn entries_for_session<'a>(&'a self, id: &str) -> Vec<&'a AuditEntry> {
+        self.entries.iter().filter(|e| e.session_id == id).collect()
+    }
+
+    /// All entries whose `timestamp >= since`, in insertion order.
+    pub fn entries_since(&self, since: u64) -> Vec<&AuditEntry> {
+        self.entries.iter().filter(|e| e.timestamp >= since).collect()
+    }
+}
+
 // ─── tests ─────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -586,5 +897,243 @@ mod tests {
         };
         let json = serde_json::to_string(&hc).unwrap();
         assert!(json.contains("\"loaded_traces\":[]"));
+    }
+
+    // ─── session manager tests ───────────────────────────────────
+
+    fn make_manager(max: usize) -> SessionManager {
+        SessionManager::new(max, std::time::Duration::from_secs(1800))
+    }
+
+    fn uid(s: &str) -> UserId { UserId(s.to_string()) }
+    fn pid(s: &str) -> ProjectId { ProjectId(s.to_string()) }
+
+    #[test]
+    fn session_create_and_get() {
+        let mut mgr = make_manager(10);
+        let id = mgr.create_session(uid("alice"), pid("proj-a"), Role::Viewer).unwrap();
+        let sess = mgr.get_session(&id).unwrap();
+        assert_eq!(sess.id, id);
+        assert_eq!(sess.user, uid("alice"));
+        assert_eq!(sess.role, Role::Viewer);
+        assert_eq!(sess.state, ManagedSessionState::Active);
+    }
+
+    #[test]
+    fn session_max_cap_enforced() {
+        let mut mgr = make_manager(2);
+        mgr.create_session(uid("u1"), pid("p"), Role::Viewer).unwrap();
+        mgr.create_session(uid("u2"), pid("p"), Role::Viewer).unwrap();
+        let err = mgr.create_session(uid("u3"), pid("p"), Role::Viewer).unwrap_err();
+        assert_eq!(err, SessionError::MaxSessionsReached);
+    }
+
+    #[test]
+    fn session_terminated_slot_is_not_counted() {
+        let mut mgr = make_manager(2);
+        let id1 = mgr.create_session(uid("u1"), pid("p"), Role::Viewer).unwrap();
+        mgr.create_session(uid("u2"), pid("p"), Role::Viewer).unwrap();
+        // Terminate one slot, then the cap should allow a new creation.
+        mgr.terminate_session(&id1).unwrap();
+        assert_eq!(mgr.active_count(), 1);
+        mgr.create_session(uid("u3"), pid("p"), Role::Owner).unwrap();
+        assert_eq!(mgr.active_count(), 2);
+    }
+
+    #[test]
+    fn session_terminate_unknown_errors() {
+        let mut mgr = make_manager(10);
+        let fake = SessionId("does-not-exist".to_string());
+        assert_eq!(mgr.terminate_session(&fake), Err(SessionError::NotFound));
+    }
+
+    #[test]
+    fn session_double_terminate_errors() {
+        let mut mgr = make_manager(10);
+        let id = mgr.create_session(uid("alice"), pid("p"), Role::Owner).unwrap();
+        mgr.terminate_session(&id).unwrap();
+        assert_eq!(mgr.terminate_session(&id), Err(SessionError::AlreadyTerminated));
+    }
+
+    #[test]
+    fn session_touch_updates_last_active() {
+        let mut mgr = make_manager(10);
+        let id = mgr.create_session(uid("alice"), pid("p"), Role::Maintainer).unwrap();
+        // Back-date the session.
+        mgr.sessions.get_mut(&id).unwrap().last_active = 1_000_000;
+        mgr.touch_session(&id).unwrap();
+        let sess = mgr.get_session(&id).unwrap();
+        // last_active should now be close to now, not 1_000_000.
+        assert!(sess.last_active > 1_000_000);
+        assert_eq!(sess.state, ManagedSessionState::Active);
+    }
+
+    #[test]
+    fn session_touch_on_terminated_errors() {
+        let mut mgr = make_manager(10);
+        let id = mgr.create_session(uid("alice"), pid("p"), Role::Owner).unwrap();
+        mgr.terminate_session(&id).unwrap();
+        assert_eq!(mgr.touch_session(&id), Err(SessionError::AlreadyTerminated));
+    }
+
+    #[test]
+    fn reap_idle_sessions_terminates_old_sessions() {
+        let mut mgr = SessionManager::new(10, std::time::Duration::from_secs(600));
+        let id_old = mgr.create_session(uid("alice"), pid("p"), Role::Viewer).unwrap();
+        let id_new = mgr.create_session(uid("bob"), pid("p"), Role::Viewer).unwrap();
+
+        // Back-date alice's session to be older than the 600 s timeout.
+        mgr.sessions.get_mut(&id_old).unwrap().last_active = now_secs() - 700;
+        // bob's session remains fresh (default last_active = now).
+
+        let reaped = mgr.reap_idle_sessions();
+        assert_eq!(reaped.len(), 1);
+        assert_eq!(reaped[0], id_old);
+        assert_eq!(mgr.get_session(&id_old).unwrap().state, ManagedSessionState::Terminated);
+        assert_eq!(mgr.get_session(&id_new).unwrap().state, ManagedSessionState::Active);
+        assert_eq!(mgr.active_count(), 1);
+    }
+
+    #[test]
+    fn reap_does_not_touch_already_terminated() {
+        let mut mgr = SessionManager::new(10, std::time::Duration::from_secs(60));
+        let id = mgr.create_session(uid("u"), pid("p"), Role::Viewer).unwrap();
+        mgr.sessions.get_mut(&id).unwrap().last_active = now_secs() - 200;
+        mgr.terminate_session(&id).unwrap();
+        // Already terminated; reap should report 0 newly reaped.
+        let reaped = mgr.reap_idle_sessions();
+        assert!(reaped.is_empty());
+    }
+
+    // ─── RBAC tests ───────────────────────────────────────────────
+
+    #[test]
+    fn rbac_all_role_action_combinations() {
+        let policy = RbacPolicy::default();
+        // (role, action, expected)
+        let matrix: &[(Role, Action, bool)] = &[
+            // Owner can do everything.
+            (Role::Owner, Action::Read, true),
+            (Role::Owner, Action::Write, true),
+            (Role::Owner, Action::Execute, true),
+            (Role::Owner, Action::Admin, true),
+            // Maintainer: Read/Write/Execute but not Admin.
+            (Role::Maintainer, Action::Read, true),
+            (Role::Maintainer, Action::Write, true),
+            (Role::Maintainer, Action::Execute, true),
+            (Role::Maintainer, Action::Admin, false),
+            // Viewer: Read only.
+            (Role::Viewer, Action::Read, true),
+            (Role::Viewer, Action::Write, false),
+            (Role::Viewer, Action::Execute, false),
+            (Role::Viewer, Action::Admin, false),
+        ];
+        for (role, action, expected) in matrix {
+            assert_eq!(
+                policy.can(role, action),
+                *expected,
+                "{:?} + {:?} should be {}",
+                role,
+                action,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn rbac_check_ok_for_permitted_action() {
+        let policy = RbacPolicy::default();
+        let sess = ManagedSession {
+            id: SessionId("s1".to_string()),
+            user: uid("alice"),
+            project: pid("p"),
+            role: Role::Maintainer,
+            created_at: 0,
+            last_active: 0,
+            state: ManagedSessionState::Active,
+        };
+        assert!(policy.check(&sess, &Action::Write).is_ok());
+    }
+
+    #[test]
+    fn rbac_check_denied_for_forbidden_action() {
+        let policy = RbacPolicy::default();
+        let sess = ManagedSession {
+            id: SessionId("s2".to_string()),
+            user: uid("bob"),
+            project: pid("p"),
+            role: Role::Viewer,
+            created_at: 0,
+            last_active: 0,
+            state: ManagedSessionState::Active,
+        };
+        let err = policy.check(&sess, &Action::Write).unwrap_err();
+        assert_eq!(err.role, Role::Viewer);
+        assert_eq!(err.action, Action::Write);
+    }
+
+    // ─── audit log tests ──────────────────────────────────────────
+
+    fn make_entry(session_id: &str, user: &str, action: &str, ts: u64, ok: bool) -> AuditEntry {
+        AuditEntry {
+            timestamp: ts,
+            session_id: session_id.to_string(),
+            user: user.to_string(),
+            action: action.to_string(),
+            result: if ok {
+                AuditResult::Allowed
+            } else {
+                AuditResult::Denied("forbidden".to_string())
+            },
+        }
+    }
+
+    #[test]
+    fn audit_log_record_and_entries_for_session() {
+        let mut log = AuditLog::new();
+        log.record(make_entry("s1", "alice", "Read", 100, true));
+        log.record(make_entry("s2", "bob", "Write", 200, false));
+        log.record(make_entry("s1", "alice", "Execute", 300, true));
+
+        let s1 = log.entries_for_session("s1");
+        assert_eq!(s1.len(), 2);
+        assert_eq!(s1[0].action, "Read");
+        assert_eq!(s1[1].action, "Execute");
+
+        let s2 = log.entries_for_session("s2");
+        assert_eq!(s2.len(), 1);
+        assert!(matches!(s2[0].result, AuditResult::Denied(_)));
+    }
+
+    #[test]
+    fn audit_log_entries_since() {
+        let mut log = AuditLog::new();
+        log.record(make_entry("s1", "alice", "Read", 100, true));
+        log.record(make_entry("s1", "alice", "Write", 500, true));
+        log.record(make_entry("s1", "alice", "Admin", 1000, false));
+
+        let since_400 = log.entries_since(400);
+        assert_eq!(since_400.len(), 2);
+        assert_eq!(since_400[0].timestamp, 500);
+        assert_eq!(since_400[1].timestamp, 1000);
+
+        let since_1000 = log.entries_since(1000);
+        assert_eq!(since_1000.len(), 1);
+
+        let since_9999 = log.entries_since(9999);
+        assert!(since_9999.is_empty());
+    }
+
+    #[test]
+    fn audit_log_is_append_only() {
+        let mut log = AuditLog::new();
+        for i in 0..5 {
+            log.record(make_entry("s1", "alice", "Read", i * 100, true));
+        }
+        assert_eq!(log.entries_for_session("s1").len(), 5);
+        // Verify entries remain in insertion order.
+        let entries = log.entries_for_session("s1");
+        let timestamps: Vec<u64> = entries.iter().map(|e| e.timestamp).collect();
+        assert_eq!(timestamps, vec![0, 100, 200, 300, 400]);
     }
 }
