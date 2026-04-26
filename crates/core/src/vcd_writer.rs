@@ -85,7 +85,7 @@ pub fn write_vcd_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Result<usize> 
     // Clock transitions across the window.  Bounded to avoid a runaway
     // write if total_cycles is huge; the UI already clips the window.
     let max_tick = trace.total_cycles.max(
-        trace.events.iter().map(|e| e.start_cycle + e.duration).max().unwrap_or(0),
+        trace.events.iter().map(|e| e.start_cycle.get() + e.duration.get()).max().unwrap_or(0),
     );
     let mut t = 0u64;
     let mut level = 0u8;
@@ -105,12 +105,12 @@ pub fn write_vcd_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Result<usize> 
             "BARRIER_SYNC"   => '\'',
             _                => continue,
         };
-        let end = ev.start_cycle + ev.duration;
-        changes.push(Change { tick: ev.start_cycle, id, val: "1".into() });
+        let end = ev.start_cycle.get() + ev.duration.get();
+        changes.push(Change { tick: ev.start_cycle.get(), id, val: "1".into() });
         changes.push(Change { tick: end, id, val: "0".into() });
         // core_id bus: 8-bit binary string, MSB first.
-        let bits = format!("{:08b}", (ev.core_id & 0xFF) as u8);
-        changes.push(Change { tick: ev.start_cycle, id: '(', val: format!("b{} ", bits) });
+        let bits = format!("{:08b}", (ev.core_id.get() & 0xFF) as u8);
+        changes.push(Change { tick: ev.start_cycle.get(), id: '(', val: format!("b{} ", bits) });
     }
 
     changes.sort_by(|a, b| a.tick.cmp(&b.tick));

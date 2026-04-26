@@ -59,8 +59,8 @@ pub fn write_chrome_trace_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Resul
     for ev in &trace.events {
         if !first { writeln!(w, ",")?; }
         first = false;
-        let ts = cycles_to_us(ev.start_cycle);
-        let dur = cycles_to_us(ev.duration).max(1);
+        let ts = cycles_to_us(ev.start_cycle.get());
+        let dur = cycles_to_us(ev.duration.get()).max(1);
         let cat = category_for(&ev.event_type);
         // Escape the event_type just in case — our known values are
         // ASCII without quotes/backslashes, but be defensive.
@@ -72,10 +72,10 @@ pub fn write_chrome_trace_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Resul
             cat = cat,
             ts = ts,
             dur = dur,
-            tid = ev.core_id,
-            core_id = ev.core_id,
-            start = ev.start_cycle,
-            dur_cyc = ev.duration,
+            tid = ev.core_id.get(),
+            core_id = ev.core_id.get(),
+            start = ev.start_cycle.get(),
+            dur_cyc = ev.duration.get(),
         )?;
         written += 1;
     }

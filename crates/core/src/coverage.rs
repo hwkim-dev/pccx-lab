@@ -233,4 +233,92 @@ mod merge {
             other => panic!("unexpected error kind: {other:?}"),
         }
     }
+
+    /// Multiple distinct groups from one file must each appear in the
+    /// merged output, sorted by group name (BTreeMap ordering).
+    #[test]
+    fn merge_multiple_groups() {
+        let p = write_tmp("multi_group.jsonl", concat!(
+            r#"{"group":"gemm_tile_shape","bin":"32x32","hits":3,"goal":10}"#, "\n",
+            r#"{"group":"sfu_op_kind","bin":"exp","hits":7,"goal":8}"#, "\n",
+            r#"{"group":"dma_burst_len","bin":"16","hits":2,"goal":4}"#, "\n",
+        ));
+        let merged = merge_jsonl(&[p.as_path()]).unwrap();
+        assert_eq!(merged.groups.len(), 3);
+        // BTreeMap sorts lexically: dma < gemm < sfu
+        assert_eq!(merged.groups[0].name, "dma_burst_len");
+        assert_eq!(merged.groups[1].name, "gemm_tile_shape");
+        assert_eq!(merged.groups[2].name, "sfu_op_kind");
+    }
+
+    /// Cross tuples from different group pairs must remain distinct
+    /// in the merged output.
+    #[test]
+    fn merge_cross_product_distinct_pairs() {
+        let p = write_tmp("cross_pairs.jsonl", concat!(
+            r#"{"cross":["g1","g2"],"a_bin":"a","b_bin":"b","hits":1,"goal":5}"#, "\n",
+            r#"{"cross":["g3","g4"],"a_bin":"x","b_bin":"y","hits":2,"goal":6}"#, "\n",
+        ));
+        let merged = merge_jsonl(&[p.as_path()]).unwrap();
+        assert_eq!(merged.crosses.len(), 2);
+        assert_eq!(merged.crosses[0].a_group, "g1");
+        assert_eq!(merged.crosses[1].a_group, "g3");
+    }
+
+    /// Overlapping bins from two separate files must sum hits and take
+    /// the maximum goal — the UCIS merge semantics contract.
+    #[test]
+    fn merge_overlapping_bins_from_separate_files() {
+        let f1 = write_tmp("overlap1.jsonl",
+            r#"{"group":"tile","bin":"8x8","hits":5,"goal":10}"#);
+        let f2 = write_tmp("overlap2.jsonl",
+            r#"{"group":"tile","bin":"8x8","hits":3,"goal":15}"#);
+        let merged = merge_jsonl(&[f1.as_path(), f2.as_path()]).unwrap();
+        assert_eq!(merged.groups.len(), 1);
+        let bin = &merged.groups[0].bins[0];
+        assert_eq!(bin.hits, 8, "5 + 3 = 8 across files");
+        assert_eq!(bin.goal, 15, "max(10, 15) = 15");
+    }
+
+    /// A missing file path must return CoverageError::IoError with the
+    /// offending path.
+    #[test]
+    fn merge_missing_file_returns_io_error() {
+        let bad = std::path::Path::new("/tmp/pccx_cov_does_not_exist_42.jsonl");
+        let err = merge_jsonl(&[bad]).unwrap_err();
+        match err {
+            CoverageError::IoError { path, .. } => {
+                assert!(path.contains("does_not_exist"),
+                    "error must reference the missing path");
+            }
+            other => panic!("expected IoError, got: {other:?}"),
+        }
+    }
+
+    /// Records that match neither the bin shape (group + bin) nor the
+    /// cross shape (cross array) are silently dropped per the schema's
+    /// "reserved for future extensions" rule.
+    #[test]
+    fn merge_reserved_shape_records_are_dropped() {
+        let p = write_tmp("reserved.jsonl", concat!(
+            r#"{"hits":99}"#, "\n",
+            r#"{"group":"g","hits":5}"#, "\n",
+            r#"{"group":"real","bin":"b","hits":1}"#, "\n",
+        ));
+        let merged = merge_jsonl(&[p.as_path()]).unwrap();
+        // Only the last line has both group and bin — others are silently dropped.
+        assert_eq!(merged.groups.len(), 1);
+        assert_eq!(merged.groups[0].bins[0].hits, 1);
+        assert!(merged.crosses.is_empty());
+    }
+
+    /// Goal field is optional. When absent from all records for a bin,
+    /// the merged goal must be 0.
+    #[test]
+    fn merge_absent_goal_defaults_to_zero() {
+        let p = write_tmp("no_goal.jsonl",
+            r#"{"group":"g","bin":"b","hits":7}"#);
+        let merged = merge_jsonl(&[p.as_path()]).unwrap();
+        assert_eq!(merged.groups[0].bins[0].goal, 0);
+    }
 }

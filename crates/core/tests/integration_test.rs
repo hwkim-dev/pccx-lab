@@ -92,9 +92,9 @@ mod tests {
     fn test_event_type_id_mapping() {
         let ev = NpuEvent::new(0, 0, 1, "DMA_WRITE");
         // This was the critical bug: DMA_WRITE must be 3, not 0
-        assert_eq!(ev.type_id(), event_type_id::DMA_WRITE,
+        assert_eq!(ev.type_id().get(), event_type_id::DMA_WRITE,
             "DMA_WRITE should map to type_id 3");
-        assert_ne!(ev.type_id(), event_type_id::UNKNOWN,
+        assert_ne!(ev.type_id().get(), event_type_id::UNKNOWN,
             "DMA_WRITE must not map to UNKNOWN (0)");
     }
 
@@ -152,7 +152,7 @@ mod tests {
         let payload = trace.to_payload();
         let decoded = NpuTrace::from_payload(&payload).expect("bincode roundtrip failed");
         assert_eq!(decoded.total_cycles, 999);
-        assert_eq!(decoded.events[0].core_id, 7);
+        assert_eq!(decoded.events[0].core_id.get(), 7);
         assert_eq!(decoded.events[0].event_type, "BARRIER_SYNC");
     }
 

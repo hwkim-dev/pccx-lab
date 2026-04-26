@@ -142,13 +142,13 @@ pub fn list_from_trace(trace: &NpuTrace) -> Vec<ApiCall> {
     let mut ring = ApiRing::new(trace.events.len().max(8));
     let mut seen = 0usize;
     for ev in &trace.events {
-        if ev.type_id() != event_type_id::API_CALL {
+        if ev.type_id().get() != event_type_id::API_CALL {
             continue;
         }
         let name = ev.api_name.as_deref().unwrap_or("uca_unknown");
         let kind = classify_api_kind(name);
         // duration is in cycles; scale to ns at 200 MHz (5 ns/cycle).
-        let latency_ns = ev.duration.saturating_mul(NS_PER_CYCLE);
+        let latency_ns = ev.duration.get().saturating_mul(NS_PER_CYCLE);
         ring.record(name, kind, latency_ns);
         seen += 1;
     }

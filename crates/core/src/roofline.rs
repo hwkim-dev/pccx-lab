@@ -8,6 +8,7 @@
 
 use crate::hw_model::HardwareModel;
 use crate::trace::{event_type_id, NpuTrace};
+use crate::typed::CycleCount;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,18 +60,22 @@ pub struct RooflineBand {
 }
 
 pub fn analyze(trace: &NpuTrace, hw: &HardwareModel) -> RooflinePoint {
-    let mut mac_cycles: u64 = 0;
-    let mut dma_read_cycles:  u64 = 0;
-    let mut dma_write_cycles: u64 = 0;
+    let mut mac_cycles      = CycleCount::ZERO;
+    let mut dma_read_cycles = CycleCount::ZERO;
+    let mut dma_write_cycles = CycleCount::ZERO;
 
     for ev in &trace.events {
-        match ev.type_id() {
+        match ev.type_id().get() {
             id if id == event_type_id::MAC_COMPUTE => mac_cycles      += ev.duration,
             id if id == event_type_id::DMA_READ    => dma_read_cycles  += ev.duration,
             id if id == event_type_id::DMA_WRITE   => dma_write_cycles += ev.duration,
             _ => {}
         }
     }
+
+    let mac_cycles: u64      = mac_cycles.into();
+    let dma_read_cycles: u64 = dma_read_cycles.into();
+    let dma_write_cycles: u64 = dma_write_cycles.into();
 
     // MAC ops: one MAC = 2 FLOPs (mul + add). mac_cycles already multiplied
     // by duration, so total MACs is mac_cycles * (rows * cols per cycle).
@@ -169,33 +174,40 @@ pub fn analyze_hierarchical(trace: &NpuTrace, hw: &HardwareModel) -> Vec<Rooflin
     let l2_bw   = uram_bw * 0.25;
     let ddr_bw  = (hw.axi.bandwidth_bytes_per_cycle as f64) * clock_ghz;
 
-    // Accumulate dwell cycles per tier.
-    let mut reg_cy:  u64 = 0;
-    let mut uram_cy: u64 = 0;
-    let mut l2_cy:   u64 = 0;
-    let mut ddr_cy:  u64 = 0;
+    // Accumulate dwell cycles per tier using CycleCount arithmetic.
+    let mut reg_cy  = CycleCount::ZERO;
+    let mut uram_cy = CycleCount::ZERO;
+    let mut l2_cy   = CycleCount::ZERO;
+    let mut ddr_cy  = CycleCount::ZERO;
 
     for ev in &trace.events {
-        match ev.type_id() {
+        let dur = ev.duration;
+        match ev.type_id().get() {
             id if id == event_type_id::MAC_COMPUTE => {
-                reg_cy  = reg_cy.saturating_add(ev.duration);
+                reg_cy = reg_cy.saturating_add(dur);
             }
             id if id == event_type_id::DMA_READ => {
                 // Proportional split DMA read over URAM / L2 / DDR
                 // (50 / 30 / 20) — mirrors the v002 prefetcher's
                 // observed tier-hit distribution.
-                uram_cy = uram_cy.saturating_add(ev.duration / 2);
-                l2_cy   = l2_cy  .saturating_add(ev.duration * 3 / 10);
-                ddr_cy  = ddr_cy .saturating_add(ev.duration * 2 / 10);
+                uram_cy = uram_cy.saturating_add(dur / 2);
+                l2_cy   = l2_cy  .saturating_add(dur * 3 / 10);
+                ddr_cy  = ddr_cy .saturating_add(dur * 2 / 10);
             }
             id if id == event_type_id::DMA_WRITE => {
                 // Writes bypass URAM on pccx (streaming to L2 / DDR).
-                l2_cy  = l2_cy .saturating_add(ev.duration / 2);
-                ddr_cy = ddr_cy.saturating_add(ev.duration / 2);
+                l2_cy  = l2_cy .saturating_add(dur / 2);
+                ddr_cy = ddr_cy.saturating_add(dur / 2);
             }
             _ => {}
         }
     }
+
+    // Convert back to raw u64 for the band struct fields.
+    let reg_cy:  u64 = reg_cy.into();
+    let uram_cy: u64 = uram_cy.into();
+    let l2_cy:   u64 = l2_cy.into();
+    let ddr_cy:  u64 = ddr_cy.into();
 
     // Ridge helper — clamps absurdly large ridge values so the UI's
     // log-scale chart never overflows.
@@ -355,5 +367,124 @@ mod tests {
                 "no events → no dwell anywhere");
         assert!(bands.iter().all(|b| b.peak_gops > 0.0),
                 "peak_gops must be populated from the HW model regardless");
+    }
+
+    /// A single short MAC event produces finite, positive arithmetic
+    /// intensity and non-zero achieved throughput.
+    #[test]
+    fn test_single_mac_event_finite_ai() {
+        let hw = HardwareModel::pccx_reference();
+        let trace = NpuTrace {
+            total_cycles: 10,
+            events: vec![mk_event("MAC_COMPUTE", 0, 10)],
+        };
+        let r = analyze(&trace, &hw);
+        assert!(r.arithmetic_intensity.is_infinite(),
+            "pure MAC with no DMA must yield infinite AI");
+        assert!(r.achieved_gops > 0.0,
+            "non-zero compute with non-zero wall time must produce throughput");
+        assert_eq!(r.mac_cycles, 10);
+    }
+
+    /// A mixed trace with dominant compute (high MAC vs low DMA)
+    /// must be classified as compute-bound. AI = ops / bytes, so
+    /// cranking up MAC cycles relative to DMA cycles raises AI above
+    /// the ridge point.
+    #[test]
+    fn test_compute_bound_mixed_trace() {
+        let hw = HardwareModel::pccx_reference();
+        // 900 MAC cycles, 10 DMA cycles — very high compute : memory ratio.
+        let trace = NpuTrace {
+            total_cycles: 1000,
+            events: vec![
+                mk_event("MAC_COMPUTE", 0,   900),
+                mk_event("DMA_READ",    900, 10),
+            ],
+        };
+        let r = analyze(&trace, &hw);
+        assert!(r.arithmetic_intensity.is_finite());
+        assert!(r.arithmetic_intensity > 1.0,
+            "heavily compute-dominated trace should have AI >> 1");
+        assert!(r.compute_bound,
+            "high AI workload must be compute-bound");
+    }
+
+    /// A memory-bound trace: almost all cycles are DMA with a tiny
+    /// sprinkle of MAC, producing a low arithmetic intensity that
+    /// sits below the ridge.
+    #[test]
+    fn test_memory_bound_mixed_trace() {
+        let hw = HardwareModel::pccx_reference();
+        // 1 MAC cycle, 10000 DMA cycles — overwhelmingly memory-bound.
+        let trace = NpuTrace {
+            total_cycles: 10001,
+            events: vec![
+                mk_event("MAC_COMPUTE", 0,     1),
+                mk_event("DMA_READ",    1,  5000),
+                mk_event("DMA_WRITE",   5001, 5000),
+            ],
+        };
+        let r = analyze(&trace, &hw);
+        assert!(r.arithmetic_intensity.is_finite());
+        assert!(r.arithmetic_intensity < 1.0,
+            "tiny MAC vs huge DMA must produce very low AI, got {}",
+            r.arithmetic_intensity);
+        assert!(!r.compute_bound,
+            "low-AI workload must be memory-bound");
+    }
+
+    /// DMA_WRITE events split dwell across L2 and DDR bands only
+    /// (they bypass URAM on pccx) — URAM dwell must be zero when
+    /// the trace contains only DMA_WRITE.
+    #[test]
+    fn test_hierarchical_dma_write_bypasses_uram() {
+        let hw = HardwareModel::pccx_reference();
+        let trace = NpuTrace {
+            total_cycles: 200,
+            events: vec![mk_event("DMA_WRITE", 0, 200)],
+        };
+        let bands = analyze_hierarchical(&trace, &hw);
+        assert_eq!(bands[0].dwell_cycles, 0,
+            "register tier must have zero dwell with no MAC events");
+        assert_eq!(bands[1].dwell_cycles, 0,
+            "URAM L1 must have zero dwell — DMA_WRITE bypasses URAM");
+        assert!(bands[2].dwell_cycles > 0,
+            "L2 must absorb some DMA_WRITE dwell");
+        assert!(bands[3].dwell_cycles > 0,
+            "DDR must absorb some DMA_WRITE dwell");
+    }
+
+    /// Ridge AI for each hierarchical band must equal peak_gops /
+    /// peak_bw_gbps. This is the fundamental roofline identity.
+    #[test]
+    fn test_hierarchical_ridge_ai_identity() {
+        let hw = HardwareModel::pccx_reference();
+        let trace = NpuTrace { total_cycles: 100, events: vec![] };
+        let bands = analyze_hierarchical(&trace, &hw);
+        for b in &bands {
+            let expected = b.peak_gops / b.peak_bw_gbps;
+            assert!((b.ridge_ai - expected).abs() < 1e-6,
+                "ridge_ai for {} should be peak_gops/peak_bw_gbps = {}, got {}",
+                b.level, expected, b.ridge_ai);
+        }
+    }
+
+    /// The ai_min / ai_max span must bracket the ridge AI with a
+    /// half-decade spread on each side (the +-0.5 log10 widening).
+    #[test]
+    fn test_hierarchical_ai_span_brackets_ridge() {
+        let hw = HardwareModel::pccx_reference();
+        let trace = NpuTrace { total_cycles: 100, events: vec![] };
+        let bands = analyze_hierarchical(&trace, &hw);
+        for b in &bands {
+            if b.ridge_ai.is_finite() {
+                assert!(b.ai_min < b.ridge_ai,
+                    "ai_min ({}) should be below ridge_ai ({}) for {}",
+                    b.ai_min, b.ridge_ai, b.level);
+                assert!(b.ai_max > b.ridge_ai,
+                    "ai_max ({}) should be above ridge_ai ({}) for {}",
+                    b.ai_max, b.ridge_ai, b.level);
+            }
+        }
     }
 }

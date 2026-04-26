@@ -5,6 +5,7 @@
 //   No dependency on ui/, uvm_bridge/, or ai_copilot/.
 //   All public APIs must be usable by foreign crates via the items re-exported below.
 
+pub mod typed;
 pub mod pccx_format;
 pub mod trace;
 pub mod simulator;
@@ -21,11 +22,13 @@ pub mod chrome_trace;
 pub mod isa_replay;
 pub mod api_ring;
 pub mod live_window;
+pub mod mmap_reader;
 pub mod vivado_timing;
 pub mod step_snapshot;
 pub mod plugin;
 
 // ─── Convenience re-exports (public API surface) ──────────────────────────────
+pub use typed::{CycleCount, CoreId, EventTypeId, MemAddr, TraceId};
 pub use pccx_format::{PccxFile, PccxHeader, PccxError, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64};
 pub use trace::{NpuTrace, NpuEvent, event_type_id};
 pub use simulator::{SimConfig, generate_realistic_trace, save_dummy_pccx};
@@ -40,6 +43,7 @@ pub use vcd::{parse_vcd_file, WaveformDump, SignalMeta, VcdChange, VcdError};
 pub use vcd_writer::{write_vcd, write_vcd_to};
 pub use chrome_trace::{write_chrome_trace, write_chrome_trace_to};
 pub use live_window::{LiveSample, LiveWindow};
+pub use mmap_reader::MmapTrace;
 pub use step_snapshot::{step_to_cycle, CoreState, RegisterSnapshot};
 pub use vivado_timing::{
     parse_timing_report, parse_worst_endpoint,

@@ -1,6 +1,7 @@
 // Module Boundary: core/
 // NPU Trace data structures and serialization utilities.
 use serde::{Deserialize, Serialize};
+use crate::typed::{CycleCount, CoreId, EventTypeId};
 
 /// Canonical event type IDs used in the flat binary buffer.
 /// These MUST be kept in sync with the JS DataView parsing logic.
@@ -33,9 +34,9 @@ pub const EVENT_TYPE_NAMES: &[(&str, u32)] = &[
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NpuEvent {
-    pub core_id: u32,
-    pub start_cycle: u64,
-    pub duration: u64,
+    pub core_id: CoreId,
+    pub start_cycle: CycleCount,
+    pub duration: CycleCount,
     /// String tag — canonical values: "MAC_COMPUTE", "DMA_READ", "DMA_WRITE",
     /// "SYSTOLIC_STALL", "BARRIER_SYNC", "API_CALL"
     pub event_type: String,
@@ -49,8 +50,8 @@ pub struct NpuEvent {
 impl NpuEvent {
     /// Returns the numeric event-type ID for this event.
     /// Centralising this lookup ensures flat_buffer and any future codec stay in sync.
-    pub fn type_id(&self) -> u32 {
-        match self.event_type.as_str() {
+    pub fn type_id(&self) -> EventTypeId {
+        EventTypeId::new(match self.event_type.as_str() {
             "MAC_COMPUTE"    => event_type_id::MAC_COMPUTE,
             "DMA_READ"       => event_type_id::DMA_READ,
             "DMA_WRITE"      => event_type_id::DMA_WRITE,
@@ -58,23 +59,29 @@ impl NpuEvent {
             "BARRIER_SYNC"   => event_type_id::BARRIER_SYNC,
             "API_CALL"       => event_type_id::API_CALL,
             _                => event_type_id::UNKNOWN,
-        }
+        })
     }
 
     /// Constructs a non-API event (the common case). `api_name` stays
     /// `None` so the extra field in `NpuEvent` never leaks into
     /// callers that pre-date the API_CALL variant.
     pub fn new(core_id: u32, start_cycle: u64, duration: u64, event_type: impl Into<String>) -> Self {
-        Self { core_id, start_cycle, duration, event_type: event_type.into(), api_name: None }
+        Self {
+            core_id: CoreId::new(core_id),
+            start_cycle: CycleCount::new(start_cycle),
+            duration: CycleCount::new(duration),
+            event_type: event_type.into(),
+            api_name: None,
+        }
     }
 
     /// Constructs an `API_CALL` event tagged with the qualified `uca_*`
     /// name. Duration is the measured entry→exit span in cycles.
     pub fn api_call(core_id: u32, start_cycle: u64, duration: u64, api_name: impl Into<String>) -> Self {
         Self {
-            core_id,
-            start_cycle,
-            duration,
+            core_id: CoreId::new(core_id),
+            start_cycle: CycleCount::new(start_cycle),
+            duration: CycleCount::new(duration),
             event_type: "API_CALL".into(),
             api_name: Some(api_name.into()),
         }
@@ -132,10 +139,10 @@ impl NpuTrace {
         // Pre-size: fixed-section + (worst-case) trailer header.
         let mut buf = Vec::with_capacity(self.events.len() * 24 + 8);
         for ev in &self.events {
-            buf.extend_from_slice(&ev.core_id.to_le_bytes());
-            buf.extend_from_slice(&ev.start_cycle.to_le_bytes());
-            buf.extend_from_slice(&ev.duration.to_le_bytes());
-            buf.extend_from_slice(&ev.type_id().to_le_bytes());
+            buf.extend_from_slice(&ev.core_id.get().to_le_bytes());
+            buf.extend_from_slice(&ev.start_cycle.get().to_le_bytes());
+            buf.extend_from_slice(&ev.duration.get().to_le_bytes());
+            buf.extend_from_slice(&ev.type_id().get().to_le_bytes());
         }
 
         // Collect only events that actually have an `api_name` — keeps
@@ -162,6 +169,20 @@ impl NpuTrace {
             }
         }
         buf
+    }
+
+    /// Produces a flat buffer with events sorted by `start_cycle`
+    /// (ascending). Required by `MmapTrace::viewport` which uses binary
+    /// search on the start_cycle column. The original event order is not
+    /// preserved — use `to_flat_buffer` when insertion order matters.
+    pub fn to_flat_buffer_sorted(&self) -> Vec<u8> {
+        let mut sorted = self.events.clone();
+        sorted.sort_by_key(|ev| ev.start_cycle.get());
+        let sorted_trace = NpuTrace {
+            total_cycles: self.total_cycles,
+            events: sorted,
+        };
+        sorted_trace.to_flat_buffer()
     }
 
     /// Reverses `to_flat_buffer`: reconstructs an `NpuTrace` from the
@@ -198,11 +219,11 @@ impl NpuTrace {
 
         let mut off = 0;
         while off + STRIDE <= event_end {
-            let core_id     = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
-            let start_cycle = u64::from_le_bytes(bytes[off + 4..off + 12].try_into().unwrap());
-            let duration    = u64::from_le_bytes(bytes[off + 12..off + 20].try_into().unwrap());
+            let raw_core    = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+            let raw_start   = u64::from_le_bytes(bytes[off + 4..off + 12].try_into().unwrap());
+            let raw_dur     = u64::from_le_bytes(bytes[off + 12..off + 20].try_into().unwrap());
             let type_id     = u32::from_le_bytes(bytes[off + 20..off + 24].try_into().unwrap());
-            total = total.max(start_cycle.saturating_add(duration));
+            total = total.max(raw_start.saturating_add(raw_dur));
             let event_type = match type_id {
                 event_type_id::MAC_COMPUTE    => "MAC_COMPUTE",
                 event_type_id::DMA_READ       => "DMA_READ",
@@ -213,9 +234,9 @@ impl NpuTrace {
                 _                             => "UNKNOWN",
             };
             events.push(NpuEvent {
-                core_id,
-                start_cycle,
-                duration,
+                core_id: CoreId::new(raw_core),
+                start_cycle: CycleCount::new(raw_start),
+                duration: CycleCount::new(raw_dur),
                 event_type: event_type.into(),
                 api_name: None,
             });
@@ -259,7 +280,7 @@ impl NpuTrace {
         let mut compute_map: std::collections::HashMap<u32, u64> = std::collections::HashMap::new();
         for ev in &self.events {
             if ev.event_type == "MAC_COMPUTE" {
-                *compute_map.entry(ev.core_id).or_insert(0) += ev.duration;
+                *compute_map.entry(ev.core_id.get()).or_insert(0) += ev.duration.get();
             }
         }
         let mut result: Vec<(u32, f64)> = compute_map
@@ -280,7 +301,7 @@ impl NpuTrace {
             .iter()
             .filter(|ev| {
                 (ev.event_type == "DMA_READ" || ev.event_type == "DMA_WRITE")
-                    && (ev.duration as f64) > threshold_ratio * (self.total_cycles as f64 / 100.0)
+                    && (ev.duration.get() as f64) > threshold_ratio * (self.total_cycles as f64 / 100.0)
             })
             .collect()
     }
@@ -289,6 +310,7 @@ impl NpuTrace {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::typed::{CoreId, CycleCount};
 
     /// Three `API_CALL` events — `api_name` must survive encode/decode
     /// and the fixed 24-byte-per-event stride remains byte-identical
@@ -358,9 +380,9 @@ mod tests {
 
         let round = NpuTrace::from_flat_buffer_v2(&buf);
         assert_eq!(round.events.len(), 1);
-        assert_eq!(round.events[0].core_id, 7);
-        assert_eq!(round.events[0].start_cycle, 99);
-        assert_eq!(round.events[0].duration, 33);
+        assert_eq!(round.events[0].core_id, CoreId::new(7));
+        assert_eq!(round.events[0].start_cycle, CycleCount::new(99));
+        assert_eq!(round.events[0].duration, CycleCount::new(33));
         assert_eq!(round.events[0].event_type, "MAC_COMPUTE");
         assert_eq!(round.events[0].api_name, None);
     }

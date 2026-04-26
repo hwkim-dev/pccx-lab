@@ -104,12 +104,12 @@ impl LiveWindow {
             let mut dma_cy   = 0u64;
             let mut stall_cy = 0u64;
             for ev in &trace.events {
-                let ev_end = ev.start_cycle.saturating_add(ev.duration);
-                let ov_start = ev.start_cycle.max(w_start);
+                let ev_end = ev.start_cycle.get().saturating_add(ev.duration.get());
+                let ov_start = ev.start_cycle.get().max(w_start);
                 let ov_end   = ev_end.min(w_end);
                 if ov_end <= ov_start { continue; }
                 let ov = ov_end - ov_start;
-                match ev.type_id() {
+                match ev.type_id().get() {
                     event_type_id::MAC_COMPUTE    => mac_cy   = mac_cy.saturating_add(ov),
                     event_type_id::DMA_READ |
                     event_type_id::DMA_WRITE      => dma_cy   = dma_cy.saturating_add(ov),
