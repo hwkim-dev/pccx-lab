@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { TerminalSquare, ShieldCheck, Bug, Activity, Cpu } from "lucide-react";
+import { TerminalSquare, ShieldCheck, Bug, Activity, Cpu, GitCompare, Plus, Trash2, PlayCircle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { SynthStatusCard } from "./SynthStatusCard";
-import { VerificationRunner } from "./VerificationRunner";
+import { VerificationRunner, GoldenDiffCard, SanitizeCard } from "./VerificationRunner";
 import { RooflineCard } from "./RooflineCard";
 import { BottleneckCard } from "./BottleneckCard";
 
@@ -22,7 +22,7 @@ interface CovGroup  { name: string; bins: CovBin[]; }
 interface CrossTuple { a_group: string; b_group: string; a_bin: string; b_bin: string; hits: number; goal: number; }
 interface MergedCoverage { groups: CovGroup[]; crosses: CrossTuple[]; }
 
-type VerifyTab = "isa" | "api" | "uvm" | "synth";
+type VerifyTab = "isa" | "api" | "uvm" | "synth" | "golden";
 
 const DEFAULT_UTIL_PATH =
   "../../../../pccx-FPGA-NPU-LLM-kv260/hw/build/reports/utilization_post_synth.rpt";
@@ -30,6 +30,45 @@ const DEFAULT_TIMING_PATH =
   "../../../../pccx-FPGA-NPU-LLM-kv260/hw/build/reports/timing_summary_post_synth.rpt";
 const DEFAULT_REPO_PATH =
   "../../../../pccx-FPGA-NPU-LLM-kv260";
+
+// ─── Golden-diff suite types ─────────────────────────────────────────────────
+
+interface MetricDiff {
+  name: string;
+  observed: number;
+  expected: number;
+  tolerance_pct: number;
+  pass: boolean;
+}
+
+interface StepDiff {
+  step: number;
+  is_pass: boolean;
+  summary: string;
+  metrics: MetricDiff[];
+}
+
+interface GoldenDiffReport {
+  step_count: number;
+  pass_count: number;
+  steps: StepDiff[];
+  summary: string;
+  total_metrics: number;
+  exact_matches: number;
+  tolerance_passes: number;
+  metric_mismatches: number;
+}
+
+type CaseStatus = "pending" | "running" | "pass" | "fail" | "error";
+
+interface DiffCase {
+  id: string;
+  expectedPath: string;
+  actualPath: string;
+  status: CaseStatus;
+  report: GoldenDiffReport | null;
+  errorMsg: string;
+}
 
 // Matches pccx_core::isa_replay::IsaResult.  The Tauri command
 // `validate_isa_trace(path)` populates this from a real Spike-style
@@ -93,10 +132,11 @@ export function VerificationSuite() {
         
         <div className="flex rounded p-1 gap-1" style={{ border: `0.5px solid ${theme.borderSubtle}`, background: theme.bg }}>
           {[
-            { id: "isa",   label: "ISA Dashboard", icon: <TerminalSquare size={14} /> },
-            { id: "api",   label: "API Integrity", icon: <Activity size={14} />       },
-            { id: "uvm",   label: "UVM Coverage",  icon: <Bug size={14} />            },
-            { id: "synth", label: "Synth Status",  icon: <Cpu size={14} />            },
+            { id: "isa",    label: "ISA Dashboard", icon: <TerminalSquare size={14} /> },
+            { id: "api",    label: "API Integrity", icon: <Activity size={14} />       },
+            { id: "uvm",    label: "UVM Coverage",  icon: <Bug size={14} />            },
+            { id: "synth",  label: "Synth Status",  icon: <Cpu size={14} />            },
+            { id: "golden", label: "Golden Diff",   icon: <GitCompare size={14} />     },
           ].map(t => (
             <button
               key={t.id}
@@ -187,6 +227,10 @@ export function VerificationSuite() {
                 Override via props when embedding this widget elsewhere.
               </p>
             </div>
+          )}
+
+          {activeTab === "golden" && (
+            <GoldenDiffSuitePanel addLog={(line) => setLog(prev => [...prev, line])} />
           )}
         </div>
 
@@ -608,6 +652,263 @@ function RunLogVirtual({ log }: { log: string[] }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Golden Diff Suite Panel ─────────────────────────────────────────────── */
+
+let _caseCounter = 0;
+function nextId() { return `case-${++_caseCounter}`; }
+
+function emptyCase(): DiffCase {
+  return { id: nextId(), expectedPath: "", actualPath: "", status: "pending", report: null, errorMsg: "" };
+}
+
+function GoldenDiffSuitePanel({ addLog }: { addLog: (line: string) => void }) {
+  const theme = useTheme();
+  const [cases, setCases] = useState<DiffCase[]>([emptyCase()]);
+
+  const updateCase = (id: string, patch: Partial<DiffCase>) => {
+    setCases(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
+  };
+
+  const addCase = () => setCases(prev => [...prev, emptyCase()]);
+
+  const removeCase = (id: string) => {
+    setCases(prev => prev.length <= 1 ? prev : prev.filter(c => c.id !== id));
+  };
+
+  const runSingle = async (id: string) => {
+    const c = cases.find(x => x.id === id);
+    if (!c || !c.expectedPath || !c.actualPath) return;
+    updateCase(id, { status: "running", report: null, errorMsg: "" });
+    addLog(`[golden-diff] running case ${id}…`);
+    try {
+      const report = await invoke<GoldenDiffReport>("verify_golden_diff", {
+        expectedPath: c.expectedPath,
+        actualPath: c.actualPath,
+      });
+      const passed = report.pass_count === report.step_count;
+      updateCase(id, { status: passed ? "pass" : "fail", report });
+      addLog(`[golden-diff] ${id}: ${report.summary}`);
+    } catch (err) {
+      updateCase(id, { status: "error", errorMsg: String(err) });
+      addLog(`[golden-diff] ${id}: ERROR — ${String(err)}`);
+    }
+  };
+
+  const runAll = async () => {
+    for (const c of cases) {
+      if (c.expectedPath && c.actualPath) {
+        await runSingle(c.id);
+      }
+    }
+  };
+
+  const runSelected = async (id: string) => {
+    await runSingle(id);
+  };
+
+  const passCount = cases.filter(c => c.status === "pass").length;
+  const failCount = cases.filter(c => c.status === "fail" || c.status === "error").length;
+  const anyRunning = cases.some(c => c.status === "running");
+
+  const statusColor = (s: CaseStatus) => {
+    if (s === "pass") return theme.success;
+    if (s === "fail" || s === "error") return theme.error;
+    if (s === "running") return theme.accent;
+    return theme.textMuted;
+  };
+
+  const statusLabel = (s: CaseStatus) => {
+    if (s === "pass") return "PASS";
+    if (s === "fail") return "FAIL";
+    if (s === "error") return "ERR";
+    if (s === "running") return "…";
+    return "—";
+  };
+
+  return (
+    <div className="flex flex-col h-full gap-4">
+      <h3 className="text-sm font-bold flex items-center gap-2">
+        <GitCompare size={16} /> Golden Diff Suite
+      </h3>
+
+      {/* Aggregate summary */}
+      {(passCount + failCount) > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard label="pass" value={String(passCount)} tone="ok" />
+          <StatCard label="fail" value={String(failCount)} tone={failCount > 0 ? "bad" : undefined} />
+          <StatCard label="total" value={String(cases.length)} />
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={runAll}
+          disabled={anyRunning}
+          className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold"
+          style={{
+            background: anyRunning ? theme.bgHover : theme.accent,
+            color: anyRunning ? theme.textMuted : "#ffffff",
+            cursor: anyRunning ? "wait" : "pointer",
+            border: "none",
+          }}
+        >
+          {anyRunning
+            ? <><Loader2 size={11} className="animate-spin" /> Running…</>
+            : <><PlayCircle size={11} /> Run All</>}
+        </button>
+        <button
+          onClick={addCase}
+          className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px]"
+          style={{
+            background: "transparent",
+            color: theme.accent,
+            border: `0.5px solid ${theme.accent}`,
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={11} /> Add case
+        </button>
+      </div>
+
+      {/* Case list */}
+      <div className="flex flex-col gap-2 overflow-auto">
+        {cases.map(c => (
+          <div
+            key={c.id}
+            className="flex flex-col gap-2 p-3 rounded"
+            style={{
+              background: theme.bgPanel,
+              border: `0.5px solid ${
+                c.status === "pass" ? theme.success :
+                c.status === "fail" || c.status === "error" ? theme.error :
+                theme.borderSubtle
+              }`,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              {/* Status badge */}
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded"
+                style={{
+                  color: statusColor(c.status),
+                  border: `0.5px solid ${statusColor(c.status)}`,
+                  minWidth: 36,
+                  textAlign: "center",
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
+                {c.status === "running"
+                  ? <Loader2 size={10} className="animate-spin inline" />
+                  : statusLabel(c.status)}
+              </span>
+              <span style={{ fontSize: 11, color: theme.textMuted, fontFamily: "ui-monospace, monospace" }}>
+                {c.id}
+              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  onClick={() => runSelected(c.id)}
+                  disabled={c.status === "running" || !c.expectedPath || !c.actualPath}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px]"
+                  style={{
+                    background: "transparent",
+                    color: c.status === "running" || !c.expectedPath || !c.actualPath
+                      ? theme.textMuted : theme.accent,
+                    border: `0.5px solid ${c.status === "running" || !c.expectedPath || !c.actualPath
+                      ? theme.borderSubtle : theme.accent}`,
+                    cursor: c.status === "running" || !c.expectedPath || !c.actualPath
+                      ? "default" : "pointer",
+                  }}
+                >
+                  <PlayCircle size={9} /> Run
+                </button>
+                <button
+                  onClick={() => removeCase(c.id)}
+                  className="flex items-center px-1.5 py-0.5 rounded text-[10px]"
+                  style={{
+                    background: "transparent",
+                    color: theme.textMuted,
+                    border: `0.5px solid ${theme.borderSubtle}`,
+                    cursor: "pointer",
+                  }}
+                  title="Remove case"
+                >
+                  <Trash2 size={9} />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-0.5">
+                <label style={{ fontSize: 9, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Reference (.ref.jsonl)
+                </label>
+                <input
+                  type="text"
+                  value={c.expectedPath}
+                  onChange={e => updateCase(c.id, { expectedPath: e.target.value, status: "pending" })}
+                  placeholder="path/to/golden.ref.jsonl"
+                  style={{
+                    background: theme.bg,
+                    color: theme.text,
+                    border: `0.5px solid ${theme.borderSubtle}`,
+                    borderRadius: 3,
+                    padding: "3px 6px",
+                    fontSize: 10,
+                    fontFamily: "ui-monospace, monospace",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label style={{ fontSize: 9, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Actual trace (.pccx)
+                </label>
+                <input
+                  type="text"
+                  value={c.actualPath}
+                  onChange={e => updateCase(c.id, { actualPath: e.target.value, status: "pending" })}
+                  placeholder="path/to/capture.pccx"
+                  style={{
+                    background: theme.bg,
+                    color: theme.text,
+                    border: `0.5px solid ${theme.borderSubtle}`,
+                    borderRadius: 3,
+                    padding: "3px 6px",
+                    fontSize: 10,
+                    fontFamily: "ui-monospace, monospace",
+                  }}
+                />
+              </div>
+            </div>
+
+            {c.status === "error" && (
+              <div className="text-[10px]" style={{ color: theme.error }}>{c.errorMsg}</div>
+            )}
+
+            {c.report && (
+              <div className="flex items-center gap-2 text-[10px]" style={{ color: theme.textDim }}>
+                {c.status === "pass"
+                  ? <CheckCircle2 size={10} style={{ color: theme.success }} />
+                  : <XCircle size={10} style={{ color: theme.error }} />}
+                <span>{c.report.summary}</span>
+                <span style={{ color: theme.textMuted }}>
+                  ({c.report.exact_matches} exact, {c.report.tolerance_passes} tol, {c.report.metric_mismatches} fail)
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Single-file golden diff + sanitizer cards */}
+      <div className="grid grid-cols-1 gap-3 mt-2">
+        <GoldenDiffCard />
+        <SanitizeCard />
+      </div>
     </div>
   );
 }

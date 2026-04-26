@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -6,6 +6,7 @@ import { useLiveWindow } from "./hooks/useLiveWindow";
 import {
   FileText, Download, Check, Loader2, BarChart2,
   Cpu, Zap, Clock, AlertTriangle, Settings2, BookOpen, Beaker, TableProperties, ShieldCheck,
+  Copy, Code2, Globe,
 } from "lucide-react";
 
 // ─── Report Sections ──────────────────────────────────────────────────────────
@@ -19,18 +20,18 @@ interface Section {
 }
 
 const DEFAULT_SECTIONS: Section[] = [
-  { id: "executive",   label: "Executive Summary",       icon: <FileText size={13} />,      enabled: true,  description: "High-level performance overview with key metrics and recommendations" },
-  { id: "methodology", label: "Methodology",             icon: <Beaker size={13} />,        enabled: true,  description: "How the data was captured: toolchain, measurement model, assumptions" },
-  { id: "hw_config",   label: "Hardware Configuration",  icon: <Cpu size={13} />,           enabled: true,  description: "MAC array dimensions, clock frequency, AXI bus parameters, core count" },
-  { id: "timeline",    label: "Timeline Analysis",       icon: <Clock size={13} />,         enabled: true,  description: "Per-core event timeline with DMA/compute phase breakdown" },
-  { id: "utilisation", label: "Core Utilisation",        icon: <BarChart2 size={13} />,     enabled: true,  description: "Per-core MAC utilisation heatmap with min/max/avg statistics" },
-  { id: "bottleneck",  label: "Bottleneck Analysis",     icon: <AlertTriangle size={13} />, enabled: true,  description: "DMA bandwidth contention and stall analysis with recommendations" },
-  { id: "roofline",    label: "Roofline Analysis",       icon: <Zap size={13} />,           enabled: true,  description: "Compute vs memory bound classification with arithmetic intensity" },
-  { id: "kernels",     label: "Per-Kernel Breakdown",    icon: <TableProperties size={13} />, enabled: true, description: "GEMM / GEMV / SFU / DMA kernel table with AI, cycles, and roof utilisation" },
-  { id: "verification",label: "Verification Status",     icon: <ShieldCheck size={13} />,   enabled: true,  description: "Testbench pass/fail matrix plus synth timing summary" },
-  { id: "bus_trace",   label: "AXI Bus Trace",           icon: <Settings2 size={13} />,     enabled: false, description: "Detailed AXI transaction log with arbitration timing" },
-  { id: "uvm_plan",    label: "UVM Test Plan",           icon: <FileText size={13} />,      enabled: false, description: "Auto-generated UVM verification sequences based on trace patterns" },
-  { id: "glossary",    label: "Glossary & References",   icon: <BookOpen size={13} />,      enabled: true,  description: "Term definitions (GEMM, GEMV, SFU, LAuReL, PLE, URAM) + citations" },
+  { id: "executive",   label: "Executive Summary",       icon: <FileText size={13} />,        enabled: true,  description: "High-level performance overview with key metrics and recommendations" },
+  { id: "methodology", label: "Methodology",             icon: <Beaker size={13} />,          enabled: true,  description: "How the data was captured: toolchain, measurement model, assumptions" },
+  { id: "hw_config",   label: "Hardware Configuration",  icon: <Cpu size={13} />,             enabled: true,  description: "MAC array dimensions, clock frequency, AXI bus parameters, core count" },
+  { id: "timeline",    label: "Timeline Analysis",       icon: <Clock size={13} />,           enabled: true,  description: "Per-core event timeline with DMA/compute phase breakdown" },
+  { id: "utilisation", label: "Core Utilisation",        icon: <BarChart2 size={13} />,       enabled: true,  description: "Per-core MAC utilisation heatmap with min/max/avg statistics" },
+  { id: "bottleneck",  label: "Bottleneck Analysis",     icon: <AlertTriangle size={13} />,   enabled: true,  description: "DMA bandwidth contention and stall analysis with recommendations" },
+  { id: "roofline",    label: "Roofline Analysis",       icon: <Zap size={13} />,             enabled: true,  description: "Compute vs memory bound classification with arithmetic intensity" },
+  { id: "kernels",     label: "Per-Kernel Breakdown",    icon: <TableProperties size={13} />, enabled: true,  description: "GEMM / GEMV / SFU / DMA kernel table with AI, cycles, and roof utilisation" },
+  { id: "verification",label: "Verification Status",     icon: <ShieldCheck size={13} />,     enabled: true,  description: "Testbench pass/fail matrix plus synth timing summary" },
+  { id: "bus_trace",   label: "AXI Bus Trace",           icon: <Settings2 size={13} />,       enabled: false, description: "Detailed AXI transaction log with arbitration timing" },
+  { id: "uvm_plan",    label: "UVM Test Plan",           icon: <FileText size={13} />,        enabled: false, description: "Auto-generated UVM verification sequences based on trace patterns" },
+  { id: "glossary",    label: "Glossary & References",   icon: <BookOpen size={13} />,        enabled: true,  description: "Term definitions (GEMM, GEMV, SFU, LAuReL, PLE, URAM) + citations" },
 ];
 
 // ─── Report Preview Renderer ──────────────────────────────────────────────────
@@ -95,9 +96,8 @@ function PreviewSection({ section, data }: { section: Section; data: any }) {
       );
 
     case "utilisation": {
-      // Round-5 T-3: no synthetic placeholder.  The report renders a
-      // single summary card sourced from `get_core_utilisation` (if
-      // loaded) or an honest "no trace" notice — never a random grid.
+      // Utilisation grid sourced from fetch_live_window — no synthetic fallback
+      // (Yuan OSDI 2014 loud-fallback: shows a notice when no trace is loaded).
       const coreUtils: { core_id: number; util_pct: number }[] = data?.coreUtils ?? [];
       return (
         <div>
@@ -110,8 +110,7 @@ function PreviewSection({ section, data }: { section: Section; data: any }) {
               padding: 12, fontSize: 11, color: dimColor,
               border: `1px dashed ${cardBdr}`, borderRadius: 6, background: cardBg,
             }}>
-              No per-core utilisation available — load a .pccx trace to populate
-              this section (Yuan OSDI 2014 loud-fallback: no synthetic numbers).
+              No per-core utilisation available — load a .pccx trace to populate this section.
             </div>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -290,15 +289,15 @@ function PreviewSection({ section, data }: { section: Section; data: any }) {
           <table style={{ width: "100%", fontSize: 10, borderCollapse: "collapse" }}>
             <tbody>
               {[
-                ["GEMM",   "General matrix-matrix multiply. The 32×32 MAT_CORE systolic tile operates in W4A8."],
-                ["GEMV",   "General matrix-vector multiply. 4-lane unit, 5-stage pipeline."],
-                ["SFU",    "Special function unit. Houses softmax, SiLU, rsqrt; single instance on pccx v002."],
-                ["URAM L2","Ultra-RAM based L2 scratchpad (64 URAMs, 1.75 MB) on the ZU5EV floorplan."],
+                ["GEMM",      "General matrix-matrix multiply. The 32×32 MAT_CORE systolic tile operates in W4A8."],
+                ["GEMV",      "General matrix-vector multiply. 4-lane unit, 5-stage pipeline."],
+                ["SFU",       "Special function unit. Houses softmax, SiLU, rsqrt; single instance on pccx v002."],
+                ["URAM L2",   "Ultra-RAM based L2 scratchpad (64 URAMs, 1.75 MB) on the ZU5EV floorplan."],
                 ["HP Buffer", "High-performance AXI buffer FIFO between PS DDR4 and the MAT_CORE front-end."],
-                ["LAuReL", "Low-rank parallel branch added to the transformer block's residual path."],
-                ["PLE",    "Per-Layer Embedding shadow stream (altup) that refreshes the token embedding."],
-                ["AI",     "Arithmetic intensity — operations per byte transferred across the memory hierarchy."],
-                ["WNS",    "Worst negative slack — critical-path timing margin in ns; negative means missed."],
+                ["LAuReL",    "Low-rank parallel branch added to the transformer block's residual path."],
+                ["PLE",       "Per-Layer Embedding shadow stream (altup) that refreshes the token embedding."],
+                ["AI",        "Arithmetic intensity — operations per byte transferred across the memory hierarchy."],
+                ["WNS",       "Worst negative slack — critical-path timing margin in ns; negative means missed."],
               ].map(([k, v]) => (
                 <tr key={k as string} style={{ borderBottom: `0.5px solid ${cardBdr}` }}>
                   <td style={{ padding: "4px 8px", color: headColor, fontWeight: 700, fontFamily: theme.fontMono, width: "20%" }}>{k}</td>
@@ -328,19 +327,24 @@ function PreviewSection({ section, data }: { section: Section; data: any }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+type OutputFormat = "html" | "markdown";
+type RightPane = "design" | "generated";
+
 export function ReportBuilder() {
   const theme = useTheme();
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated]   = useState(false);
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("html");
+  const [rightPane, setRightPane]       = useState<RightPane>("design");
+  const [generatedContent, setGeneratedContent] = useState<string | null>(null);
+  const [generateError, setGenerateError]       = useState<string | null>(null);
+  const [copyDone, setCopyDone]                 = useState(false);
   const [traceData, setTraceData]   = useState<any>(null);
   const [reportTitle, setReportTitle] = useState("pccx NPU Performance Analysis Report");
   const [author, setAuthor]          = useState("pccx-lab v0.4.0");
 
-  // Round-5 T-3: live window feeds the utilisation grid with real
-  // mac_util numbers from `fetch_live_window`.  Empty vec ⇒ the
-  // "no trace" notice in PreviewSection.utilisation (Yuan OSDI 2014
-  // loud-fallback).  Core index is derived from the sample ordinal.
+  // Live utilisation grid — sourced from fetch_live_window.
+  // Empty vec produces the "no trace" notice (Yuan OSDI 2014 loud-fallback).
   const { samples: liveSamples, hasTrace: liveHasTrace } = useLiveWindow();
   const coreUtils = liveHasTrace
     ? liveSamples.map((s, i) => ({ core_id: i, util_pct: s.mac_util * 100 }))
@@ -367,15 +371,58 @@ export function ReportBuilder() {
     setSections(s => s.map(sec => sec.id === id ? { ...sec, enabled: !sec.enabled } : sec));
   };
 
-  const handleGenerate = async () => {
+  // Generate report from the backend-cached trace via the real IPC command.
+  const handleGenerate = useCallback(async () => {
     setGenerating(true);
+    setGenerateError(null);
     try {
-      await invoke("generate_report", {});
-    } catch (_) {}
-    await new Promise(r => setTimeout(r, 1500));
-    setGenerating(false);
-    setGenerated(true);
-  };
+      const result: string = await invoke("generate_report", { format: outputFormat });
+      setGeneratedContent(result);
+      setRightPane("generated");
+    } catch (err: any) {
+      setGenerateError(String(err));
+    } finally {
+      setGenerating(false);
+    }
+  }, [outputFormat]);
+
+  // Copy generated content to clipboard.
+  // navigator.clipboard requires a focused window in WebKitGTK; a
+  // textarea-select fallback handles the rare case where it is denied.
+  const handleCopy = useCallback(async () => {
+    if (!generatedContent) return;
+    try {
+      await navigator.clipboard.writeText(generatedContent);
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 1800);
+    } catch (_) {
+      // Fallback: select a temporary textarea so the user can Ctrl+C
+      const ta = document.createElement("textarea");
+      ta.value = generatedContent;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand("copy"); setCopyDone(true); setTimeout(() => setCopyDone(false), 1800); }
+      catch (_2) { /* clipboard unavailable */ }
+      document.body.removeChild(ta);
+    }
+  }, [generatedContent]);
+
+  // Export: download the generated file via a temporary Blob URL.
+  const handleExport = useCallback(() => {
+    if (!generatedContent) return;
+    const mime = outputFormat === "html" ? "text/html" : "text/markdown";
+    const ext  = outputFormat === "html" ? "html" : "md";
+    const blob = new Blob([generatedContent], { type: mime });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `pccx-report.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [generatedContent, outputFormat]);
 
   const enabledSections = sections.filter(s => s.enabled);
 
@@ -393,26 +440,56 @@ export function ReportBuilder() {
           <div style={{ fontSize: 13, fontWeight: 700, color: textCol, marginBottom: 8 }}>Report Configuration</div>
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 9, color: dimCol, display: "block", marginBottom: 2 }}>Title</label>
-            <input value={reportTitle} onChange={e => setReportTitle(e.target.value)} style={{
-              width: "100%", fontSize: 10, padding: "4px 8px", background: theme.bgInput,
-              border: `0.5px solid ${border}`, borderRadius: 4, color: textCol, outline: "none",
-            }} />
+            <input
+              value={reportTitle}
+              onChange={e => setReportTitle(e.target.value)}
+              style={{
+                width: "100%", fontSize: 10, padding: "4px 8px", background: theme.bgInput,
+                border: `0.5px solid ${border}`, borderRadius: 4, color: textCol, outline: "none",
+              }}
+            />
           </div>
           <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 9, color: dimCol, display: "block", marginBottom: 2 }}>Author</label>
-            <input value={author} onChange={e => setAuthor(e.target.value)} style={{
-              width: "100%", fontSize: 10, padding: "4px 8px", background: theme.bgInput,
-              border: `0.5px solid ${border}`, borderRadius: 4, color: textCol, outline: "none",
-            }} />
+            <input
+              value={author}
+              onChange={e => setAuthor(e.target.value)}
+              style={{
+                width: "100%", fontSize: 10, padding: "4px 8px", background: theme.bgInput,
+                border: `0.5px solid ${border}`, borderRadius: 4, color: textCol, outline: "none",
+              }}
+            />
           </div>
-          <div style={{ fontSize: 9, color: dimCol }}>
-            Format: <strong>PDF</strong> · Quality: <strong>300 DPI</strong>
+
+          {/* Format toggle */}
+          <div>
+            <label style={{ fontSize: 9, color: dimCol, display: "block", marginBottom: 4 }}>Output Format</label>
+            <div style={{ display: "flex", gap: 4 }}>
+              {(["html", "markdown"] as OutputFormat[]).map(fmt => (
+                <button
+                  key={fmt}
+                  onClick={() => setOutputFormat(fmt)}
+                  style={{
+                    flex: 1, padding: "4px 0", borderRadius: 4, fontSize: 10, fontWeight: 500,
+                    border: `0.5px solid ${outputFormat === fmt ? theme.accent : border}`,
+                    background: outputFormat === fmt ? theme.accent + "22" : "transparent",
+                    color: outputFormat === fmt ? theme.accent : dimCol,
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                  }}
+                >
+                  {fmt === "html" ? <Globe size={10} /> : <Code2 size={10} />}
+                  {fmt === "html" ? "HTML" : "Markdown"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <SectionCheckboxList sections={sections} onToggle={toggleSection} />
 
         <div style={{ padding: 16, borderTop: `0.5px solid ${border}` }}>
+          {/* Generate button */}
           <button
             onClick={handleGenerate}
             disabled={generating}
@@ -422,59 +499,171 @@ export function ReportBuilder() {
               color: "#fff", fontSize: 12, fontWeight: 600,
               border: "none", cursor: generating ? "wait" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              marginBottom: generatedContent ? 6 : 0,
             }}
           >
-            {generating ? <Loader2 size={14} className="animate-spin" /> : generated ? <Check size={14} /> : <Download size={14} />}
-            {generating ? "Generating..." : generated ? "Re-generate PDF" : "Generate PDF Report"}
+            {generating
+              ? <Loader2 size={14} className="animate-spin" />
+              : generatedContent
+                ? <Check size={14} />
+                : <FileText size={14} />}
+            {generating ? "Generating..." : generatedContent ? "Re-generate" : "Generate from Trace"}
           </button>
-          {generated && (
-            <div style={{ fontSize: 9, color: "#22c55e", marginTop: 6, textAlign: "center" }}>
-              Report saved to output.pdf
+
+          {/* Copy / Export buttons — shown only after first successful generation */}
+          {generatedContent && !generating && (
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={handleCopy}
+                style={{
+                  flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 500,
+                  border: `0.5px solid ${border}`, background: "transparent",
+                  color: copyDone ? "#22c55e" : dimCol, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                }}
+              >
+                {copyDone ? <Check size={11} /> : <Copy size={11} />}
+                {copyDone ? "Copied" : "Copy"}
+              </button>
+              <button
+                onClick={handleExport}
+                style={{
+                  flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 500,
+                  border: `0.5px solid ${border}`, background: "transparent",
+                  color: dimCol, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                }}
+              >
+                <Download size={11} /> Export
+              </button>
+            </div>
+          )}
+
+          {/* Error notice */}
+          {generateError && (
+            <div style={{
+              marginTop: 8, padding: "6px 8px", borderRadius: 4,
+              background: theme.warningBg, border: `0.5px solid ${theme.warning}`,
+              fontSize: 9, color: theme.warningText, lineHeight: 1.4,
+            }}>
+              {generateError}
             </div>
           )}
         </div>
       </div>
 
-      {/* Right: Live preview */}
+      {/* Right: preview / generated output */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div style={{ padding: "8px 16px", borderBottom: `0.5px solid ${border}`, background: theme.bgPanel }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: dimCol, letterSpacing: "0.05em" }}>REPORT PREVIEW</span>
-          <span style={{ fontSize: 9, color: dimCol, marginLeft: 12 }}>{enabledSections.length} sections enabled</span>
+        {/* Pane selector */}
+        <div style={{
+          padding: "0 16px", borderBottom: `0.5px solid ${border}`,
+          background: theme.bgPanel, display: "flex", alignItems: "center", gap: 0,
+        }}>
+          {(["design", "generated"] as RightPane[]).map(pane => (
+            <button
+              key={pane}
+              onClick={() => setRightPane(pane)}
+              style={{
+                padding: "7px 14px", fontSize: 10, fontWeight: 500,
+                background: "transparent", border: "none", cursor: "pointer",
+                color: rightPane === pane ? textCol : dimCol,
+                borderBottom: rightPane === pane ? `2px solid ${theme.accent}` : "2px solid transparent",
+                marginBottom: -1,
+              }}
+            >
+              {pane === "design" ? "Design Preview" : "Generated Output"}
+              {pane === "generated" && generatedContent && (
+                <span style={{
+                  marginLeft: 5, fontSize: 9,
+                  background: theme.accent + "33", color: theme.accent,
+                  padding: "1px 5px", borderRadius: 8,
+                }}>
+                  {outputFormat.toUpperCase()}
+                </span>
+              )}
+            </button>
+          ))}
+          {rightPane === "design" && (
+            <span style={{ fontSize: 9, color: dimCol, marginLeft: "auto" }}>
+              {enabledSections.length} sections enabled
+            </span>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto" style={{ padding: 24 }}>
-          {/* Report cover */}
-          <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: `2px solid ${theme.border}` }}>
-            <div style={{ fontSize: 9, color: dimCol, marginBottom: 4 }}>CONFIDENTIAL — {new Date().toLocaleDateString()}</div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: textCol, marginBottom: 4 }}>{reportTitle}</h1>
-            <div style={{ fontSize: 11, color: dimCol }}>{author}</div>
-            <div style={{ fontSize: 10, color: dimCol, marginTop: 8 }}>
-              Generated from .pccx trace — {traceData?.cycles?.toLocaleString() ?? "—"} cycles · {traceData?.cores ?? "—"} cores · {traceData?.clock ?? 1000} MHz
+        {rightPane === "design" ? (
+          // ── Design preview (existing hand-crafted sections) ─────────────────
+          <div className="flex-1 overflow-y-auto" style={{ padding: 24 }}>
+            {/* Report cover */}
+            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: `2px solid ${theme.border}` }}>
+              <div style={{ fontSize: 9, color: dimCol, marginBottom: 4 }}>CONFIDENTIAL — {new Date().toLocaleDateString()}</div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: textCol, marginBottom: 4 }}>{reportTitle}</h1>
+              <div style={{ fontSize: 11, color: dimCol }}>{author}</div>
+              <div style={{ fontSize: 10, color: dimCol, marginTop: 8 }}>
+                Generated from .pccx trace — {traceData?.cycles?.toLocaleString() ?? "—"} cycles · {traceData?.cores ?? "—"} cores · {traceData?.clock ?? 1000} MHz
+              </div>
             </div>
-          </div>
 
-          {/* Table of contents */}
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, color: textCol, marginBottom: 8 }}>Table of Contents</h3>
-            {enabledSections.map((sec, i) => (
-              <div key={sec.id} style={{ fontSize: 11, color: dimCol, padding: "2px 0" }}>
-                {i + 1}. {sec.label}
+            {/* Table of contents */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: textCol, marginBottom: 8 }}>Table of Contents</h3>
+              {enabledSections.map((sec, i) => (
+                <div key={sec.id} style={{ fontSize: 11, color: dimCol, padding: "2px 0" }}>
+                  {i + 1}. {sec.label}
+                </div>
+              ))}
+            </div>
+
+            {/* Sections */}
+            {enabledSections.map(sec => (
+              <div key={sec.id} style={{ marginBottom: 24, padding: 16, background: cardBg, border: `0.5px solid ${border}`, borderRadius: 8 }}>
+                <PreviewSection section={sec} data={{ ...traceData, coreUtils }} />
               </div>
             ))}
-          </div>
 
-          {/* Sections */}
-          {enabledSections.map(sec => (
-            <div key={sec.id} style={{ marginBottom: 24, padding: 16, background: cardBg, border: `0.5px solid ${border}`, borderRadius: 8 }}>
-              <PreviewSection section={sec} data={{ ...traceData, coreUtils }} />
+            {/* Footer */}
+            <div style={{ marginTop: 32, paddingTop: 16, borderTop: `0.5px solid ${border}`, fontSize: 9, color: dimCol, textAlign: "center" }}>
+              Generated by pccx-lab v0.4.0 · .pccx format v0.2 · {new Date().toISOString()}
             </div>
-          ))}
-
-          {/* Footer */}
-          <div style={{ marginTop: 32, paddingTop: 16, borderTop: `0.5px solid ${border}`, fontSize: 9, color: dimCol, textAlign: "center" }}>
-            Generated by pccx-lab v0.4.0 · .pccx format v0.2 · {new Date().toISOString()}
           </div>
-        </div>
+        ) : (
+          // ── Generated output pane ────────────────────────────────────────────
+          <div className="flex-1 overflow-y-auto" style={{ padding: 0, position: "relative" }}>
+            {generatedContent === null ? (
+              // Empty state
+              <div style={{
+                display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", height: "100%",
+                color: dimCol, fontSize: 12, gap: 8,
+              }}>
+                <FileText size={32} style={{ opacity: 0.25 }} />
+                <div>Click &ldquo;Generate from Trace&rdquo; to produce output</div>
+              </div>
+            ) : outputFormat === "html" ? (
+              // HTML output — rendered in an isolated iframe
+              <iframe
+                srcDoc={generatedContent}
+                style={{
+                  width: "100%", height: "100%", border: "none",
+                  background: "#1c1c1e",
+                }}
+                sandbox=""
+                title="Report preview"
+              />
+            ) : (
+              // Markdown output — monospace plain-text view
+              <pre style={{
+                margin: 0, padding: 24,
+                fontSize: 11, lineHeight: 1.7,
+                fontFamily: theme.fontMono,
+                color: textCol,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}>
+                {generatedContent}
+              </pre>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -496,7 +685,8 @@ function SectionCheckboxList({ sections, onToggle }: { sections: Section[]; onTo
 
   return (
     <div style={{ padding: "8px 16px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>Sections</div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 2 }}>Design Preview Sections</div>
+      <div style={{ fontSize: 9, color: theme.textMuted, opacity: 0.7, marginBottom: 8 }}>Controls the Design Preview tab only. Generated output includes all data available in the loaded trace.</div>
       <div ref={parentRef} style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {virtualizer.getVirtualItems().map((vi) => {

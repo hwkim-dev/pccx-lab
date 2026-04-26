@@ -3,7 +3,7 @@ import Editor from "@monaco-editor/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { monarchCx, cxLanguageConfig } from "./monarch_cx";
-import { ensureMonacoReady } from "./monacoSetup";
+import { ensureMonacoReady, registerCxProviders, updateCxDiagnostics } from "./monacoSetup";
 import { Play, Table2, FileText, AlertCircle, Terminal } from "lucide-react";
 
 
@@ -40,6 +40,11 @@ export function CxPlayground() {
   const [error, setError] = useState<string | null>(null);
   const [activePreview, setActivePreview] = useState<"output" | "vars" | "ast">("output");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const diagDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editorRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const monacoRef = useRef<any>(null);
 
   useEffect(() => { ensureMonacoReady().then(() => setMonacoReady(true)); }, []);
 
@@ -59,18 +64,31 @@ export function CxPlayground() {
     setCode(src);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => evaluate(src), 300);
+    // Update diagnostics on a slightly longer debounce to avoid IPC churn.
+    if (diagDebounceRef.current) clearTimeout(diagDebounceRef.current);
+    diagDebounceRef.current = setTimeout(() => {
+      if (monacoRef.current && editorRef.current) {
+        const model = editorRef.current.getModel();
+        if (model) updateCxDiagnostics(monacoRef.current, model);
+      }
+    }, 500);
   }, [evaluate]);
 
   useEffect(() => { evaluate(code); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (diagDebounceRef.current) clearTimeout(diagDebounceRef.current);
+  }, []);
 
   const handleBeforeMount = useCallback((monaco: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    monacoRef.current = monaco;
     const langs: Array<{ id: string }> = monaco.languages.getLanguages();
     if (!langs.some((l: { id: string }) => l.id === "cx")) {
       monaco.languages.register({ id: "cx", extensions: [".cx"], aliases: ["CX", "cx"] });
     }
     monaco.languages.setMonarchTokensProvider("cx", monarchCx);
     monaco.languages.setLanguageConfiguration("cx", cxLanguageConfig);
+    registerCxProviders(monaco);
   }, []);
 
   const editorOptions = useMemo(() => ({
@@ -209,6 +227,13 @@ export function CxPlayground() {
             value={code}
             onChange={handleChange}
             beforeMount={handleBeforeMount}
+            onMount={(editor, monaco) => {
+              editorRef.current = editor;
+              monacoRef.current = monaco;
+              // Run initial diagnostics after mount.
+              const model = editor.getModel();
+              if (model) updateCxDiagnostics(monaco, model);
+            }}
             options={editorOptions}
           />
         </div>

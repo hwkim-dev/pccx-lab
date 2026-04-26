@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useTheme } from "./ThemeContext";
 import { useI18n } from "./i18n";
 import {
   ChevronRight, Cpu, Activity, Zap, Clock, Database, ArrowRight, Code2,
+  GitBranch, LayoutTemplate, FolderOpen,
 } from "lucide-react";
 
 type ReactLike = ReturnType<typeof Code2>;
@@ -545,9 +547,9 @@ function DataFlowView({ moves, total }: { moves: DataMove[]; total: number }) {
   );
 }
 
-// ─── Top-level component ────────────────────────────────────────────────────
+// ─── Scenario mode sub-component ───────────────────────────────────────────
 
-export function ScenarioFlow() {
+function ScenarioMode() {
   const theme = useTheme();
   const { t } = useI18n();
   const [path, setPath] = useState<Stage[]>([SCENARIO]);
@@ -558,15 +560,17 @@ export function ScenarioFlow() {
   const jumpToPath = useCallback((idx: number) => setPath(p => p.slice(0, idx + 1)), []);
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: theme.bg }}>
-      {/* Header bar */}
-      <div className="flex items-center px-4 shrink-0" style={{ height: 44, borderBottom: `0.5px solid ${theme.borderSubtle}` }}>
-        <Cpu size={16} style={{ color: theme.accent, marginRight: 8 }} />
-        <span style={{ fontWeight: 700, fontSize: 13 }}>Scenario Flow</span>
-        <span style={{ marginLeft: 10, fontSize: 11, color: theme.textMuted }}>
+    <>
+      {/* Breadcrumb + legend */}
+      <div className="flex items-center px-4 shrink-0" style={{
+        height: 36, borderBottom: `0.5px solid ${theme.borderSubtle}`,
+        gap: 10,
+      }}>
+        <Breadcrumb path={path} onSelect={jumpToPath} />
+        <div className="flex-1" />
+        <span style={{ fontSize: 11, color: theme.textMuted }}>
           {t("status.cycles")}: <span style={{ fontFamily: theme.fontMono, color: theme.text }}>{total.toLocaleString()}</span>
         </span>
-        <div className="flex-1" />
         <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 10, color: theme.textMuted }}>
           {(["fast","medium","slow","critical"] as LatencyClass[]).map(l => {
             const c = latencyColours(l);
@@ -580,17 +584,11 @@ export function ScenarioFlow() {
         </div>
       </div>
 
-      {/* Breadcrumb */}
-      <div className="px-4 py-2 shrink-0" style={{ borderBottom: `0.5px solid ${theme.borderSubtle}` }}>
-        <Breadcrumb path={path} onSelect={jumpToPath} />
-      </div>
-
-      {/* Children grid (only when the current has children) + Detail panel */}
+      {/* Detail + siblings */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <div className="flex-1 overflow-auto" style={{ padding: 16 }}>
           <Detail stage={current} onOpen={openStage} totalCycles={total} />
         </div>
-        {/* Mini-map sidebar showing sibling stages */}
         {path.length > 1 && (
           <div className="shrink-0 overflow-auto" style={{
             width: 230, background: theme.bgPanel, borderLeft: `0.5px solid ${theme.borderSubtle}`,
@@ -619,6 +617,398 @@ export function ScenarioFlow() {
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+// ─── Diagram input panel (shared by Block and FSM tabs) ─────────────────────
+
+interface DiagramInputProps {
+  svSource: string;
+  onSvSourceChange: (v: string) => void;
+  onGenerate: () => void;
+  loading: boolean;
+  filePath: string;
+  onFilePathChange: (v: string) => void;
+}
+
+function DiagramInput({
+  svSource, onSvSourceChange, onGenerate, loading, filePath, onFilePathChange,
+}: DiagramInputProps) {
+  const theme = useTheme();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* File path row */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="text"
+          placeholder="File path (optional, for display)"
+          value={filePath}
+          onChange={e => onFilePathChange(e.target.value)}
+          style={{
+            flex: 1, fontSize: 11, padding: "4px 8px",
+            background: theme.bgInput, border: `0.5px solid ${theme.border}`,
+            borderRadius: theme.radiusSm, color: theme.text,
+            fontFamily: theme.fontMono, outline: "none",
+          }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          title="Open file"
+          style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "4px 8px", fontSize: 11,
+            background: theme.bgSurface, border: `0.5px solid ${theme.border}`,
+            borderRadius: theme.radiusSm, color: theme.textDim, cursor: "pointer",
+          }}
+        >
+          <FolderOpen size={12} /> Open
+        </button>
+        {/* Native file input — reads source into textarea */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".sv,.svh,.v"
+          style={{ display: "none" }}
+          onChange={async e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            onFilePathChange(file.name);
+            const text = await file.text();
+            onSvSourceChange(text);
+          }}
+        />
+      </div>
+
+      {/* Source textarea */}
+      <textarea
+        placeholder="Paste SystemVerilog source here or use Open above…"
+        value={svSource}
+        onChange={e => onSvSourceChange(e.target.value)}
+        rows={8}
+        style={{
+          width: "100%", resize: "vertical", fontSize: 11,
+          padding: "8px 10px",
+          background: theme.bgEditor, border: `0.5px solid ${theme.border}`,
+          borderRadius: theme.radiusSm, color: theme.text,
+          fontFamily: theme.fontMono, outline: "none", boxSizing: "border-box",
+        }}
+      />
+
+      <button
+        onClick={onGenerate}
+        disabled={loading || svSource.trim().length === 0}
+        style={{
+          alignSelf: "flex-start", padding: "5px 14px", fontSize: 12,
+          background: theme.accent, color: "#fff",
+          border: "none", borderRadius: theme.radiusSm,
+          cursor: loading || svSource.trim().length === 0 ? "not-allowed" : "pointer",
+          opacity: loading || svSource.trim().length === 0 ? 0.5 : 1,
+          fontWeight: 600,
+        }}
+      >
+        {loading ? "Generating…" : "Generate"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Mermaid code block renderer ─────────────────────────────────────────────
+
+function MermaidBlock({ code, label }: { code: string; label?: string }) {
+  const theme = useTheme();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <div style={{
+      border: `0.5px solid ${theme.borderSubtle}`, borderRadius: theme.radiusSm,
+      overflow: "hidden",
+    }}>
+      {/* Header row */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "4px 10px",
+        background: theme.bgSurface, borderBottom: `0.5px solid ${theme.borderSubtle}`,
+        fontSize: 10, color: theme.textMuted,
+      }}>
+        <span style={{ fontFamily: theme.fontMono }}>{label ?? "mermaid"}</span>
+        <button
+          onClick={handleCopy}
+          style={{
+            background: "transparent", border: "none", cursor: "pointer",
+            color: copied ? theme.success : theme.textMuted, fontSize: 10,
+          }}
+        >
+          {copied ? "copied" : "copy"}
+        </button>
+      </div>
+      <pre style={{
+        margin: 0, padding: "10px 14px",
+        background: theme.bgEditor, color: theme.text,
+        fontSize: 11, fontFamily: theme.fontMono,
+        overflowX: "auto", whiteSpace: "pre",
+      }}>
+        {code}
+      </pre>
+    </div>
+  );
+}
+
+// ─── Block Diagram tab ───────────────────────────────────────────────────────
+
+function BlockDiagramTab() {
+  const theme = useTheme();
+  const [svSource, setSvSource] = useState("");
+  const [filePath, setFilePath] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mermaid, setMermaid] = useState<string | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setMermaid(null);
+    try {
+      const result = await invoke<string>("generate_block_diagram", {
+        svSource,
+        filePath: filePath || "(untitled)",
+      });
+      setMermaid(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [svSource, filePath]);
+
+  return (
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <DiagramInput
+        svSource={svSource}
+        onSvSourceChange={setSvSource}
+        onGenerate={handleGenerate}
+        loading={loading}
+        filePath={filePath}
+        onFilePathChange={setFilePath}
+      />
+
+      {error && (
+        <div style={{
+          padding: "8px 12px", borderRadius: theme.radiusSm,
+          background: theme.errorBg, border: `0.5px solid ${theme.error}`,
+          fontSize: 11, color: theme.errorText, fontFamily: theme.fontMono,
+        }}>
+          {error}
+        </div>
+      )}
+
+      {mermaid && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11, color: theme.textMuted }}>
+            Block diagram — paste the Mermaid source into{" "}
+            <a
+              href="https://mermaid.live"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: theme.accent }}
+            >
+              mermaid.live
+            </a>{" "}
+            to render.
+          </div>
+          <MermaidBlock code={mermaid} label="block-diagram.mermaid" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FSM Diagram tab ─────────────────────────────────────────────────────────
+
+interface FsmResult {
+  name: string;
+  mermaid: string;
+  states_count: number;
+  transitions_count: number;
+  dead_states: string[];
+}
+
+function FsmDiagramTab() {
+  const theme = useTheme();
+  const [svSource, setSvSource] = useState("");
+  const [filePath, setFilePath] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<FsmResult[] | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setResults(null);
+    try {
+      const r = await invoke<FsmResult[]>("generate_fsm_diagram", {
+        svSource,
+        filePath: filePath || "(untitled)",
+      });
+      setResults(r);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [svSource, filePath]);
+
+  return (
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <DiagramInput
+        svSource={svSource}
+        onSvSourceChange={setSvSource}
+        onGenerate={handleGenerate}
+        loading={loading}
+        filePath={filePath}
+        onFilePathChange={setFilePath}
+      />
+
+      {error && (
+        <div style={{
+          padding: "8px 12px", borderRadius: theme.radiusSm,
+          background: theme.errorBg, border: `0.5px solid ${theme.error}`,
+          fontSize: 11, color: theme.errorText, fontFamily: theme.fontMono,
+        }}>
+          {error}
+        </div>
+      )}
+
+      {results !== null && results.length === 0 && (
+        <div style={{ fontSize: 11, color: theme.textMuted }}>
+          No FSMs found. The parser looks for <code style={{ fontFamily: theme.fontMono }}>always_ff</code> blocks with a <code style={{ fontFamily: theme.fontMono }}>case (state_var)</code> pattern.
+        </div>
+      )}
+
+      {results && results.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {results.map(fsm => (
+            <div
+              key={fsm.name}
+              style={{
+                border: `0.5px solid ${fsm.dead_states.length > 0 ? theme.warning : theme.borderSubtle}`,
+                borderRadius: theme.radiusSm, overflow: "hidden",
+              }}
+            >
+              {/* FSM card header */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 12px",
+                background: theme.bgSurface,
+                borderBottom: `0.5px solid ${theme.borderSubtle}`,
+              }}>
+                <GitBranch size={13} style={{ color: theme.accent, flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, fontSize: 12, color: theme.text, fontFamily: theme.fontMono }}>
+                  {fsm.name}
+                </span>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>
+                  {fsm.states_count} states · {fsm.transitions_count} transitions
+                </span>
+                {fsm.dead_states.length > 0 && (
+                  <span style={{
+                    marginLeft: "auto", fontSize: 10, padding: "2px 6px",
+                    background: theme.warningBg, color: theme.warningText,
+                    borderRadius: theme.radiusSm, fontWeight: 600,
+                  }}>
+                    {fsm.dead_states.length} dead state{fsm.dead_states.length > 1 ? "s" : ""}:
+                    {" "}{fsm.dead_states.join(", ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Mermaid output */}
+              <div style={{ padding: 10, background: theme.bg }}>
+                <MermaidBlock
+                  code={fsm.mermaid}
+                  label={`${fsm.name}.mermaid`}
+                />
+              </div>
+            </div>
+          ))}
+          <div style={{ fontSize: 10, color: theme.textMuted }}>
+            Paste Mermaid source into{" "}
+            <a href="https://mermaid.live" target="_blank" rel="noreferrer" style={{ color: theme.accent }}>
+              mermaid.live
+            </a>{" "}
+            to render.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Top-level component ────────────────────────────────────────────────────
+
+type PanelMode = "scenario" | "block" | "fsm";
+
+export function ScenarioFlow() {
+  const theme = useTheme();
+  const [mode, setMode] = useState<PanelMode>("scenario");
+
+  const tabBtn = (id: PanelMode, icon: React.ReactNode, label: string) => (
+    <button
+      key={id}
+      onClick={() => setMode(id)}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        fontSize: 11, padding: "0 14px", height: "100%",
+        color: mode === id ? theme.accent : theme.textMuted,
+        background: "transparent",
+        border: "none",
+        borderBottom: `2px solid ${mode === id ? theme.accent : "transparent"}`,
+        cursor: "pointer",
+        transition: `color 150ms ${theme.ease}, border-color 150ms ${theme.ease}`,
+      }}
+    >
+      {icon} {label}
+    </button>
+  );
+
+  return (
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: theme.bg }}>
+      {/* Header bar with tab strip */}
+      <div
+        className="flex items-center px-4 shrink-0"
+        style={{ height: 44, borderBottom: `0.5px solid ${theme.borderSubtle}`, gap: 0 }}
+      >
+        <Cpu size={16} style={{ color: theme.accent, marginRight: 10 }} />
+        <span style={{ fontWeight: 700, fontSize: 13, marginRight: 16 }}>Scenario Flow</span>
+
+        {/* Tab buttons */}
+        <div style={{ display: "flex", height: "100%" }}>
+          {tabBtn("scenario", <Activity size={11} />,       "Scenario")}
+          {tabBtn("block",    <LayoutTemplate size={11} />, "Block Diagram")}
+          {tabBtn("fsm",      <GitBranch size={11} />,      "FSM")}
+        </div>
+      </div>
+
+      {/* Mode content */}
+      {mode === "scenario" && <ScenarioMode />}
+      {mode === "block" && (
+        <div className="flex-1 overflow-auto">
+          <BlockDiagramTab />
+        </div>
+      )}
+      {mode === "fsm" && (
+        <div className="flex-1 overflow-auto">
+          <FsmDiagramTab />
+        </div>
+      )}
     </div>
   );
 }
