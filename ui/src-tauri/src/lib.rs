@@ -256,6 +256,43 @@ fn load_synth_report(
     pccx_core::synth_report::load_from_files(&utilization_path, &timing_path)
 }
 
+/// Returns a JSON-encoded `ResourceHeatmap` for the given grid dimensions.
+/// Uses a mock `SynthReport` with realistic KV260 ZU5EV utilization figures
+/// since no report is persistently cached in AppState.
+#[tauri::command]
+fn synth_heatmap(rows: u32, cols: u32) -> Result<String, String> {
+    use pccx_core::synth_report::{
+        generate_heatmap, SynthReport, UtilSummary, TimingSummary,
+    };
+
+    // Mock report: ~60 % LUT, ~80 % DSP, ~55 % FF, ~40 % BRAM.
+    // These are representative post-route numbers for the pccx v002 design.
+    let report = SynthReport {
+        utilisation: UtilSummary {
+            top_module: "NPU_Top".into(),
+            total_luts: 70_300,
+            logic_luts: 62_000,
+            ffs:        129_000,
+            rams_36:    58,
+            rams_18:    0,
+            urams:      0,
+            dsps:       998,
+        },
+        timing: TimingSummary {
+            wns_ns:            0.12,
+            tns_ns:            0.0,
+            failing_endpoints: 0,
+            total_endpoints:   28_602,
+            is_timing_met:     true,
+            worst_clock:       "clk_pl_0".into(),
+        },
+        device: "xczu5ev-sfvc784-2-e".into(),
+    };
+
+    let heatmap = generate_heatmap(&report, rows as usize, cols as usize);
+    serde_json::to_string(&heatmap).map_err(|e| e.to_string())
+}
+
 /// Parses a Vivado `report_timing_summary -quiet -no_header` text file
 /// into a full `TimingReport` — the Round-4 T-2 replacement for the
 /// synth_report shim. Powers SynthStatusCard and the Dim-6 signoff
@@ -1268,6 +1305,7 @@ pub fn run() {
             generate_report,
             generate_report_custom,
             load_synth_report,
+            synth_heatmap,
             load_timing_report,
             run_verification,
             list_pccx_traces,

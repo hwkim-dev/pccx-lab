@@ -3,6 +3,7 @@ import { useTheme } from "./ThemeContext";
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Cpu, ChevronRight, ChevronDown, Search } from "lucide-react";
 import ELK, { type ElkNode, type ElkExtendedEdge } from "elkjs/lib/elk.bundled.js";
 import { invoke } from "@tauri-apps/api/core";
+import * as echarts from "echarts";
 import { useCycleCursor, attachCycleKeybindings, useGoToCycleInput } from "./hooks/useCycleCursor";
 import { useRafScheduler } from "./hooks/useRafScheduler";
 import { useVisibilityGate } from "./hooks/useVisibilityGate";
@@ -220,6 +221,165 @@ const DIAGRAM_EDGES: DiagramEdge[] = [
   { from: "AXI",        to: "AXIL",       eventTypes: [EV_BARRIER_SYNC],              fallback: c => c >= 0 && c < 30 },
 ];
 
+// ─── Resource heatmap types ───────────────────────────────────────────────────
+
+type HeatmapMetric = "lut" | "ff" | "bram" | "dsp" | "power";
+
+interface HeatmapCell {
+  row: number;
+  col: number;
+  lut_util: number;
+  ff_util: number;
+  bram_util: number;
+  dsp_util: number;
+  power_mw: number;
+}
+
+interface ResourceHeatmap {
+  rows: number;
+  cols: number;
+  cells: HeatmapCell[];
+}
+
+const METRIC_LABELS: Record<HeatmapMetric, string> = {
+  lut:   "LUT util",
+  ff:    "FF util",
+  bram:  "BRAM util",
+  dsp:   "DSP util",
+  power: "Power (mW)",
+};
+
+function cellValue(cell: HeatmapCell, metric: HeatmapMetric): number {
+  switch (metric) {
+    case "lut":   return cell.lut_util;
+    case "ff":    return cell.ff_util;
+    case "bram":  return cell.bram_util;
+    case "dsp":   return cell.dsp_util;
+    case "power": return cell.power_mw;
+  }
+}
+
+/** ECharts heatmap panel for the center column of HardwareVisualizer. */
+function HeatmapPanel({ heatmap, metric }: { heatmap: ResourceHeatmap | null; metric: HeatmapMetric }) {
+  const theme = useTheme();
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInst = useRef<echarts.ECharts | null>(null);
+  const sched = useRafScheduler();
+
+  // init-once: create the ECharts instance and ResizeObserver.
+  useEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    const chart = echarts.init(el);
+    chartInst.current = chart;
+    const ro = new ResizeObserver(() => {
+      sched.schedule("hwvis-heatmap-resize", () => chart.resize());
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      sched.cancel("hwvis-heatmap-resize");
+      chart.dispose();
+      chartInst.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Build ECharts option from heatmap data and selected metric.
+  const option = useMemo<echarts.EChartsCoreOption>(() => {
+    if (!heatmap || heatmap.cells.length === 0) {
+      return {
+        backgroundColor: "transparent",
+        title: { text: "Loading heatmap…", textStyle: { color: theme.textMuted, fontSize: 12 } },
+      };
+    }
+
+    const { rows, cols, cells } = heatmap;
+    const xLabels = Array.from({ length: cols }, (_, i) => `C${i}`);
+    const yLabels = Array.from({ length: rows }, (_, i) => `R${i}`);
+
+    // Build value array: ECharts heatmap data is [colIdx, rowIdx, value].
+    const data = cells.map(cell => [cell.col, cell.row, cellValue(cell, metric)]);
+    const maxVal = cells.reduce((m, c) => Math.max(m, cellValue(c, metric)), 0);
+
+    const isPct = metric !== "power";
+    const fmtPct = (v: number) => isPct ? `${(v * 100).toFixed(1)} %` : `${v.toFixed(1)} mW`;
+
+    return {
+      backgroundColor: "transparent",
+      grid: { left: 48, right: 16, top: 32, bottom: 56 },
+      tooltip: {
+        trigger: "item",
+        formatter: (p: any) => {
+          const [ci, ri] = p.value as [number, number, number];
+          const cell = cells.find(c => c.col === ci && c.row === ri);
+          if (!cell) return "";
+          return [
+            `<b>Row ${ri}, Col ${ci}</b>`,
+            `LUT  : ${(cell.lut_util  * 100).toFixed(1)} %`,
+            `FF   : ${(cell.ff_util   * 100).toFixed(1)} %`,
+            `BRAM : ${(cell.bram_util * 100).toFixed(1)} %`,
+            `DSP  : ${(cell.dsp_util  * 100).toFixed(1)} %`,
+            `Power: ${cell.power_mw.toFixed(2)} mW`,
+          ].join("<br/>");
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: xLabels,
+        axisLabel: { color: theme.textMuted, fontSize: 9, interval: Math.max(0, Math.floor(cols / 12) - 1) },
+        axisLine: { lineStyle: { color: theme.border } },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "category",
+        data: yLabels,
+        axisLabel: { color: theme.textMuted, fontSize: 9 },
+        axisLine: { lineStyle: { color: theme.border } },
+        splitLine: { show: false },
+      },
+      visualMap: {
+        show: true,
+        min: 0,
+        max: Math.max(maxVal, 1e-9),
+        orient: "horizontal",
+        left: "center",
+        bottom: 4,
+        textStyle: { color: theme.textMuted, fontSize: 9 },
+        formatter: (v: number) => fmtPct(v),
+        inRange: {
+          // cool (deep blue) → cyan → yellow → orange → hot (red)
+          color: ["#1e3a8a", "#0098ff", "#dcdcaa", "#e5a400", "#f14c4c"],
+        },
+      },
+      series: [
+        {
+          type: "heatmap",
+          data,
+          itemStyle: { borderColor: theme.bgEditor, borderWidth: 0.5 },
+          emphasis: { itemStyle: { borderColor: theme.accent, borderWidth: 1.5 } },
+          progressive: 0,
+        },
+      ],
+    };
+  }, [heatmap, metric, theme]);
+
+  // option-sync effect: replaces the option on every memo change.
+  useEffect(() => {
+    const chart = chartInst.current;
+    if (!chart) return;
+    chart.setOption(option, true);
+  }, [option]);
+
+  return (
+    <div
+      ref={chartRef}
+      className="w-full h-full"
+      style={{ border: `0.5px solid ${theme.borderSubtle}`, borderRadius: 6, background: theme.bg }}
+    />
+  );
+}
+
 /** ELK-layered graph factory. Uses algorithm=layered + FIXED_SIDE ports
  * (Schulze 2014) so AXI-HP / ACP pins stay on the right side mirroring
  * AMD UG904 device-view convention. */
@@ -324,6 +484,10 @@ export function HardwareVisualizer() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ NPU_Top: true, MAT_CORE: true, MEM: true });
   const [selected, setSelected] = useState<string>("MAT_CORE");
   const [filter,   setFilter]   = useState("");
+  // ─── Heatmap view ────────────────────────────────────────────────────
+  const [viewMode, setViewMode]           = useState<"diagram" | "heatmap">("diagram");
+  const [heatmap,  setHeatmap]            = useState<ResourceHeatmap | null>(null);
+  const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>("dsp");
   // ─── Round-6 T-1: unified cycle cursor ─────────────────────────────
   // Single source of truth shared with Timeline / Waveform / FlameGraph
   // so "go to cycle N" and Arrow-key stepping stay in lock-step across
@@ -440,6 +604,16 @@ export function HardwareVisualizer() {
       } catch { /* keep empty; edges fall back to literal cycle windows */ }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  /* ─── Heatmap data (once on mount, 16 × 16 grid) ─────────────── */
+  useEffect(() => {
+    (async () => {
+      try {
+        const json = await invoke<string>("synth_heatmap", { rows: 16, cols: 16 });
+        setHeatmap(JSON.parse(json) as ResourceHeatmap);
+      } catch { /* keep null; panel shows loading placeholder */ }
+    })();
   }, []);
 
   /* ─── ELK auto-layout (mount + resize) ─────────────────────────
@@ -678,6 +852,36 @@ export function HardwareVisualizer() {
           6 top modules · {flat.length} total · 1 GHz core · cycle-accurate script
         </span>
         <div className="flex-1" />
+        {/* View mode segmented control */}
+        <div className="flex items-center gap-0 mr-3" style={{ border: `0.5px solid ${theme.borderSubtle}`, borderRadius: 4, overflow: "hidden" }}>
+          {(["diagram", "heatmap"] as const).map(mode => (
+            <button key={mode} onClick={() => setViewMode(mode)}
+              style={{
+                padding: "3px 10px", fontSize: 10, cursor: "pointer",
+                background: viewMode === mode ? theme.accentBg : "transparent",
+                color: viewMode === mode ? theme.accent : theme.textMuted,
+                borderRight: mode === "diagram" ? `0.5px solid ${theme.borderSubtle}` : "none",
+                fontWeight: viewMode === mode ? 700 : 400,
+              }}>
+              {mode === "diagram" ? "Diagram" : "Heatmap"}
+            </button>
+          ))}
+        </div>
+        {/* Metric selector — only visible in heatmap mode */}
+        {viewMode === "heatmap" && (
+          <select
+            value={heatmapMetric}
+            onChange={e => setHeatmapMetric(e.target.value as HeatmapMetric)}
+            style={{
+              fontSize: 10, padding: "2px 4px", marginRight: 8,
+              background: theme.bgInput, border: `0.5px solid ${theme.borderSubtle}`,
+              color: theme.text, borderRadius: 3,
+            }}>
+            {(Object.keys(METRIC_LABELS) as HeatmapMetric[]).map(k => (
+              <option key={k} value={k}>{METRIC_LABELS[k]}</option>
+            ))}
+          </select>
+        )}
         <div className="flex items-center gap-1 mr-3">
           <button
             aria-label="Skip back one cycle (Shift-click: 32 cycles)"
@@ -775,13 +979,19 @@ export function HardwareVisualizer() {
           </div>
         </div>
 
-        {/* Center: live block diagram — Round-6 T-3 two-layer compositing.
-            Static layer (module geometry + labels) paints once per layout
-            change; dynamic layer (cycle-driven highlight, packet dot,
-            pulse, cycle label) paints per RAF via useRafScheduler.  */}
+        {/* Center: diagram or heatmap, toggled by viewMode. */}
         <div ref={containerRef} className="relative overflow-hidden" style={{ background: theme.bg }}>
-          <canvas ref={staticCanvasRef} className="absolute inset-0" />
-          <canvas ref={canvasRef} className="absolute inset-0" />
+          {/* Block diagram — Round-6 T-3 two-layer compositing. */}
+          <canvas ref={staticCanvasRef} className="absolute inset-0"
+            style={{ display: viewMode === "diagram" ? "block" : "none" }} />
+          <canvas ref={canvasRef} className="absolute inset-0"
+            style={{ display: viewMode === "diagram" ? "block" : "none" }} />
+          {/* Resource heatmap — ECharts, shown when viewMode === "heatmap". */}
+          {viewMode === "heatmap" && (
+            <div className="absolute inset-0 p-3">
+              <HeatmapPanel heatmap={heatmap} metric={heatmapMetric} />
+            </div>
+          )}
         </div>
 
         {/* Right: inspector */}
