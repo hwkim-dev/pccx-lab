@@ -72,3 +72,40 @@ once external contributors land PRs regularly.
   the inherited value.
 - Edit another crate's CHANGELOG in the same PR that changes your
   crate.  Each CHANGELOG belongs to its crate only.
+
+## Pre-release tags (alpha / beta / rc)
+
+The first public tag is planned as `v0.1.0-alpha` — a tooling
+snapshot covering the trace / report infrastructure, the early
+profiler crates, and the Tauri GUI scaffold.  It is not a stable
+release.
+
+- `-alpha`: early surface; breaking changes expected at any minor.
+- `-beta`:  surface frozen but documentation / packaging gaps remain.
+- `-rc`:    release candidate; only blocking bugs delay the matching
+            stable tag.
+
+Always pass `--prerelease` to `gh release create` for these tags.
+
+## Citation metadata
+
+Each tag must keep `CITATION.cff` consistent with the released
+authors and metadata.  The canonical project citation lives in
+[`pccx/CITATION.cff`](https://github.com/hkimw/pccx/blob/main/CITATION.cff);
+this repo's `CITATION.cff` references that canonical entry under
+`references:` so external citations land on the architecture, not
+the tooling.
+
+When a `[X.Y.Z]` cut goes in:
+
+- Bump the `version:` field in `CITATION.cff` if you track it
+  explicitly.
+- Update `date-released:` to the tag date.
+
+## See also
+
+- [`pccx-FPGA-NPU-LLM-kv260` `RELEASING.md`](https://github.com/hkimw/pccx-FPGA-NPU-LLM-kv260/blob/main/RELEASING.md)
+  — sibling RTL repo.  Implementation snapshots are versioned
+  independently from this tooling repo.
+- [`pccx` `RELEASING.md`](https://github.com/hkimw/pccx/blob/main/RELEASING.md)
+  — canonical architecture / spec release flow.

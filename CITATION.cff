@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use pccx-lab, please cite it using the metadata in this file."
+title: "pccx-lab — profiler, simulator, and trace report tooling for pccx"
+abstract: >-
+  Visual pre-RTL bottleneck profiler with a Rust/Tauri GUI, UVM
+  co-simulation hooks, and trace/report generation for the pccx
+  FPGA-oriented LLM inference accelerator stack.
+type: software
+license: Apache-2.0
+repository-code: "https://github.com/hkimw/pccx-lab"
+url: "https://hkimw.github.io/pccx/en/lab/"
+authors:
+  - family-names: Kim
+    given-names: Hyunwoo
+    # TODO(hkimw): set orcid once registered
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    # TODO(hkimw): fill in affiliation
+    # affiliation: ""
+references:
+  - type: software
+    title: "pccx — open FPGA-oriented LLM inference accelerator"
+    repository-code: "https://github.com/hkimw/pccx"
+    notes: "Canonical architecture and ISA that this tooling targets."
+keywords:
+  - FPGA
+  - profiler
+  - bottleneck analysis
+  - Rust
+  - Tauri
+  - UVM
+  - co-simulation
+  - LLM inference
