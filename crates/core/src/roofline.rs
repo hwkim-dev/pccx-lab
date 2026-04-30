@@ -14,15 +14,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RooflinePoint {
     pub arithmetic_intensity: f64,
-    pub achieved_gops:        f64,
-    pub peak_gops:            f64,
-    pub peak_bw_gbps:         f64,
+    pub achieved_gops: f64,
+    pub peak_gops: f64,
+    pub peak_bw_gbps: f64,
     /// `true` if the workload is bottlenecked on compute; `false` if
     /// memory bandwidth is the binding constraint.
-    pub compute_bound:        bool,
-    pub mac_cycles:            u64,
-    pub dma_bytes_estimate:    u64,
-    pub total_cycles:          u64,
+    pub compute_bound: bool,
+    pub mac_cycles: u64,
+    pub dma_bytes_estimate: u64,
+    pub total_cycles: u64,
 }
 
 /// One roofline band per memory tier — the Cache-Aware / Hierarchical
@@ -38,42 +38,42 @@ pub struct RooflinePoint {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RooflineBand {
     /// Tier label, e.g. "Register", "URAM L1", "L2 SRAM", "DDR".
-    pub level:         String,
+    pub level: String,
     /// Compute ceiling (GOPS) — identical across tiers on pccx but the
     /// field is kept per-band so the UI can render one series per tier
     /// without cross-referencing the top-level `RooflinePoint`.
-    pub peak_gops:     f64,
+    pub peak_gops: f64,
     /// Bandwidth ceiling (GB/s) for this tier — the slope of the
     /// memory-bound portion of this band's roofline.
-    pub peak_bw_gbps:  f64,
+    pub peak_bw_gbps: f64,
     /// Ridge arithmetic intensity (ops / byte) = peak_gops / peak_bw_gbps.
-    pub ridge_ai:      f64,
+    pub ridge_ai: f64,
     /// Total event cycles observed at this tier in the trace. Used by
     /// the UI to weight each band — e.g. dim the DDR band when the
     /// kernel mostly dwells in URAM (Yang 2020 §IV "time-in-tier").
-    pub dwell_cycles:  u64,
+    pub dwell_cycles: u64,
     /// Arithmetic-intensity span observed at this tier (min, max)
     /// across the hot kernels. Defaults to `(ridge_ai, ridge_ai)` when
     /// no events were attributed to the tier.
-    pub ai_min:        f64,
-    pub ai_max:        f64,
+    pub ai_min: f64,
+    pub ai_max: f64,
 }
 
 pub fn analyze(trace: &NpuTrace, hw: &HardwareModel) -> RooflinePoint {
-    let mut mac_cycles      = CycleCount::ZERO;
+    let mut mac_cycles = CycleCount::ZERO;
     let mut dma_read_cycles = CycleCount::ZERO;
     let mut dma_write_cycles = CycleCount::ZERO;
 
     for ev in &trace.events {
         match ev.type_id().get() {
-            id if id == event_type_id::MAC_COMPUTE => mac_cycles      += ev.duration,
-            id if id == event_type_id::DMA_READ    => dma_read_cycles  += ev.duration,
-            id if id == event_type_id::DMA_WRITE   => dma_write_cycles += ev.duration,
+            id if id == event_type_id::MAC_COMPUTE => mac_cycles += ev.duration,
+            id if id == event_type_id::DMA_READ => dma_read_cycles += ev.duration,
+            id if id == event_type_id::DMA_WRITE => dma_write_cycles += ev.duration,
             _ => {}
         }
     }
 
-    let mac_cycles: u64      = mac_cycles.into();
+    let mac_cycles: u64 = mac_cycles.into();
     let dma_read_cycles: u64 = dma_read_cycles.into();
     let dma_write_cycles: u64 = dma_write_cycles.into();
 
@@ -111,12 +111,16 @@ pub fn analyze(trace: &NpuTrace, hw: &HardwareModel) -> RooflinePoint {
         0.0
     };
 
-    let peak_gops    = hw.peak_tops() * 1000.0;                // TOPS -> GOPS
+    let peak_gops = hw.peak_tops() * 1000.0; // TOPS -> GOPS
     let peak_bw_gbps = axi_bytes_per_cycle as f64 * clock_ghz; // bytes/cycle × GHz = GB/s
 
     // Knee of the roofline: AI at which compute and memory ceilings meet.
     // Below the knee → memory-bound; above → compute-bound.
-    let knee_ai = if peak_bw_gbps > 0.0 { peak_gops / peak_bw_gbps } else { f64::INFINITY };
+    let knee_ai = if peak_bw_gbps > 0.0 {
+        peak_gops / peak_bw_gbps
+    } else {
+        f64::INFINITY
+    };
     let compute_bound = arithmetic_intensity >= knee_ai;
 
     RooflinePoint {
@@ -169,16 +173,17 @@ pub fn analyze_hierarchical(trace: &NpuTrace, hw: &HardwareModel) -> Vec<Rooflin
     //   L2:      a quarter of URAM BW (empirical — pccx L2 is banked 4×
     //            wider but shared by all cores)
     //   DDR:     axi bytes/cycle × f
-    let reg_bw  = (hw.mac.rows as f64 * hw.mac.cols as f64 * 4.0) * clock_ghz; // GB/s
-    let uram_bw = (hw.bram.read_ports as f64 * hw.bram.read_bandwidth_bytes_per_cycle as f64) * clock_ghz;
-    let l2_bw   = uram_bw * 0.25;
-    let ddr_bw  = (hw.axi.bandwidth_bytes_per_cycle as f64) * clock_ghz;
+    let reg_bw = (hw.mac.rows as f64 * hw.mac.cols as f64 * 4.0) * clock_ghz; // GB/s
+    let uram_bw =
+        (hw.bram.read_ports as f64 * hw.bram.read_bandwidth_bytes_per_cycle as f64) * clock_ghz;
+    let l2_bw = uram_bw * 0.25;
+    let ddr_bw = (hw.axi.bandwidth_bytes_per_cycle as f64) * clock_ghz;
 
     // Accumulate dwell cycles per tier using CycleCount arithmetic.
-    let mut reg_cy  = CycleCount::ZERO;
+    let mut reg_cy = CycleCount::ZERO;
     let mut uram_cy = CycleCount::ZERO;
-    let mut l2_cy   = CycleCount::ZERO;
-    let mut ddr_cy  = CycleCount::ZERO;
+    let mut l2_cy = CycleCount::ZERO;
+    let mut ddr_cy = CycleCount::ZERO;
 
     for ev in &trace.events {
         let dur = ev.duration;
@@ -191,12 +196,12 @@ pub fn analyze_hierarchical(trace: &NpuTrace, hw: &HardwareModel) -> Vec<Rooflin
                 // (50 / 30 / 20) — mirrors the v002 prefetcher's
                 // observed tier-hit distribution.
                 uram_cy = uram_cy.saturating_add(dur / 2);
-                l2_cy   = l2_cy  .saturating_add(dur * 3 / 10);
-                ddr_cy  = ddr_cy .saturating_add(dur * 2 / 10);
+                l2_cy = l2_cy.saturating_add(dur * 3 / 10);
+                ddr_cy = ddr_cy.saturating_add(dur * 2 / 10);
             }
             id if id == event_type_id::DMA_WRITE => {
                 // Writes bypass URAM on pccx (streaming to L2 / DDR).
-                l2_cy  = l2_cy .saturating_add(dur / 2);
+                l2_cy = l2_cy.saturating_add(dur / 2);
                 ddr_cy = ddr_cy.saturating_add(dur / 2);
             }
             _ => {}
@@ -204,42 +209,48 @@ pub fn analyze_hierarchical(trace: &NpuTrace, hw: &HardwareModel) -> Vec<Rooflin
     }
 
     // Convert back to raw u64 for the band struct fields.
-    let reg_cy:  u64 = reg_cy.into();
+    let reg_cy: u64 = reg_cy.into();
     let uram_cy: u64 = uram_cy.into();
-    let l2_cy:   u64 = l2_cy.into();
-    let ddr_cy:  u64 = ddr_cy.into();
+    let l2_cy: u64 = l2_cy.into();
+    let ddr_cy: u64 = ddr_cy.into();
 
     // Ridge helper — clamps absurdly large ridge values so the UI's
     // log-scale chart never overflows.
     let ridge = |gops: f64, bw: f64| -> f64 {
-        if bw <= 0.0 { f64::INFINITY } else { (gops / bw).clamp(0.01, 1_000_000.0) }
+        if bw <= 0.0 {
+            f64::INFINITY
+        } else {
+            (gops / bw).clamp(0.01, 1_000_000.0)
+        }
     };
 
     // Per-tier AI span: we do not yet have per-event byte counters,
     // so we use the tier's ridge as the "centre of mass" and widen by
     // ±½ decade to mimic Intel Advisor's integrated-roofline segments.
     let ai_span = |ridge_ai: f64| -> (f64, f64) {
-        if !ridge_ai.is_finite() { return (0.05, 1000.0); }
+        if !ridge_ai.is_finite() {
+            return (0.05, 1000.0);
+        }
         (ridge_ai * 0.3162, ridge_ai * 3.1623) // ±½ decade in log10
     };
 
     let mut out = Vec::with_capacity(4);
     for (level, bw, cy) in [
-        ("Register",  reg_bw,  reg_cy),
-        ("URAM L1",   uram_bw, uram_cy),
-        ("L2 SRAM",   l2_bw,   l2_cy),
-        ("DDR4",      ddr_bw,  ddr_cy),
+        ("Register", reg_bw, reg_cy),
+        ("URAM L1", uram_bw, uram_cy),
+        ("L2 SRAM", l2_bw, l2_cy),
+        ("DDR4", ddr_bw, ddr_cy),
     ] {
         let r = ridge(peak_gops, bw);
         let (lo, hi) = ai_span(r);
         out.push(RooflineBand {
-            level:        level.to_string(),
+            level: level.to_string(),
             peak_gops,
             peak_bw_gbps: bw,
-            ridge_ai:     r,
+            ridge_ai: r,
             dwell_cycles: cy,
-            ai_min:       lo,
-            ai_max:       hi,
+            ai_min: lo,
+            ai_max: hi,
         });
     }
     out
@@ -257,10 +268,13 @@ mod tests {
     #[test]
     fn test_empty_trace_returns_zero_intensity() {
         let hw = HardwareModel::pccx_reference();
-        let trace = NpuTrace { total_cycles: 0, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 0,
+            events: vec![],
+        };
         let r = analyze(&trace, &hw);
         assert_eq!(r.arithmetic_intensity, 0.0);
-        assert_eq!(r.achieved_gops,        0.0);
+        assert_eq!(r.achieved_gops, 0.0);
         assert!(!r.compute_bound, "empty trace cannot be compute-bound");
     }
 
@@ -294,7 +308,10 @@ mod tests {
     #[test]
     fn test_peak_gops_matches_hw_model() {
         let hw = HardwareModel::pccx_reference();
-        let trace = NpuTrace { total_cycles: 1000, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 1000,
+            events: vec![],
+        };
         let r = analyze(&trace, &hw);
         // peak_gops reported in GOPS, hw.peak_tops() in TOPS.
         assert!((r.peak_gops - hw.peak_tops() * 1000.0).abs() < 1e-6);
@@ -311,9 +328,9 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 400,
             events: vec![
-                mk_event("MAC_COMPUTE", 0,   200),
-                mk_event("DMA_READ",    200, 100),
-                mk_event("DMA_WRITE",   300, 100),
+                mk_event("MAC_COMPUTE", 0, 200),
+                mk_event("DMA_READ", 200, 100),
+                mk_event("DMA_WRITE", 300, 100),
             ],
         };
         let bands = analyze_hierarchical(&trace, &hw);
@@ -330,27 +347,37 @@ mod tests {
         // strictly below the previous one").
         let bws: Vec<f64> = bands.iter().map(|b| b.peak_bw_gbps).collect();
         for w in bws.windows(2) {
-            assert!(w[0] >= w[1],
-                "bandwidth non-monotonic: {:?} before {:?}", w[0], w[1]);
+            assert!(
+                w[0] >= w[1],
+                "bandwidth non-monotonic: {:?} before {:?}",
+                w[0],
+                w[1]
+            );
         }
 
         // Register band captures the MAC_COMPUTE dwell.
-        assert_eq!(bands[0].dwell_cycles, 200,
-            "MAC_COMPUTE cycles must be attributed to the register tier");
+        assert_eq!(
+            bands[0].dwell_cycles, 200,
+            "MAC_COMPUTE cycles must be attributed to the register tier"
+        );
 
         // DMA cycles distributed across URAM / L2 / DDR — at least one
         // of the three must be non-zero.
-        let dma_sum: u64 = bands[1].dwell_cycles
-            + bands[2].dwell_cycles
-            + bands[3].dwell_cycles;
+        let dma_sum: u64 = bands[1].dwell_cycles + bands[2].dwell_cycles + bands[3].dwell_cycles;
         assert!(dma_sum > 0, "DMA events must contribute to some tier");
 
         // Ridge AI is peak_gops / peak_bw_gbps. All finite here.
         for b in &bands {
-            assert!(b.ridge_ai.is_finite(),
-                    "ridge_ai must be finite for {}", b.level);
-            assert!(b.ai_min <= b.ai_max,
-                    "ai_min ≤ ai_max contract broken for {}", b.level);
+            assert!(
+                b.ridge_ai.is_finite(),
+                "ridge_ai must be finite for {}",
+                b.level
+            );
+            assert!(
+                b.ai_min <= b.ai_max,
+                "ai_min ≤ ai_max contract broken for {}",
+                b.level
+            );
         }
     }
 
@@ -360,13 +387,20 @@ mod tests {
     #[test]
     fn test_analyze_hierarchical_empty_trace_emits_structural_bands() {
         let hw = HardwareModel::pccx_reference();
-        let trace = NpuTrace { total_cycles: 0, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 0,
+            events: vec![],
+        };
         let bands = analyze_hierarchical(&trace, &hw);
         assert_eq!(bands.len(), 4);
-        assert!(bands.iter().all(|b| b.dwell_cycles == 0),
-                "no events → no dwell anywhere");
-        assert!(bands.iter().all(|b| b.peak_gops > 0.0),
-                "peak_gops must be populated from the HW model regardless");
+        assert!(
+            bands.iter().all(|b| b.dwell_cycles == 0),
+            "no events → no dwell anywhere"
+        );
+        assert!(
+            bands.iter().all(|b| b.peak_gops > 0.0),
+            "peak_gops must be populated from the HW model regardless"
+        );
     }
 
     /// A single short MAC event produces finite, positive arithmetic
@@ -379,10 +413,14 @@ mod tests {
             events: vec![mk_event("MAC_COMPUTE", 0, 10)],
         };
         let r = analyze(&trace, &hw);
-        assert!(r.arithmetic_intensity.is_infinite(),
-            "pure MAC with no DMA must yield infinite AI");
-        assert!(r.achieved_gops > 0.0,
-            "non-zero compute with non-zero wall time must produce throughput");
+        assert!(
+            r.arithmetic_intensity.is_infinite(),
+            "pure MAC with no DMA must yield infinite AI"
+        );
+        assert!(
+            r.achieved_gops > 0.0,
+            "non-zero compute with non-zero wall time must produce throughput"
+        );
         assert_eq!(r.mac_cycles, 10);
     }
 
@@ -397,16 +435,17 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 1000,
             events: vec![
-                mk_event("MAC_COMPUTE", 0,   900),
-                mk_event("DMA_READ",    900, 10),
+                mk_event("MAC_COMPUTE", 0, 900),
+                mk_event("DMA_READ", 900, 10),
             ],
         };
         let r = analyze(&trace, &hw);
         assert!(r.arithmetic_intensity.is_finite());
-        assert!(r.arithmetic_intensity > 1.0,
-            "heavily compute-dominated trace should have AI >> 1");
-        assert!(r.compute_bound,
-            "high AI workload must be compute-bound");
+        assert!(
+            r.arithmetic_intensity > 1.0,
+            "heavily compute-dominated trace should have AI >> 1"
+        );
+        assert!(r.compute_bound, "high AI workload must be compute-bound");
     }
 
     /// A memory-bound trace: almost all cycles are DMA with a tiny
@@ -419,18 +458,19 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 10001,
             events: vec![
-                mk_event("MAC_COMPUTE", 0,     1),
-                mk_event("DMA_READ",    1,  5000),
-                mk_event("DMA_WRITE",   5001, 5000),
+                mk_event("MAC_COMPUTE", 0, 1),
+                mk_event("DMA_READ", 1, 5000),
+                mk_event("DMA_WRITE", 5001, 5000),
             ],
         };
         let r = analyze(&trace, &hw);
         assert!(r.arithmetic_intensity.is_finite());
-        assert!(r.arithmetic_intensity < 1.0,
+        assert!(
+            r.arithmetic_intensity < 1.0,
             "tiny MAC vs huge DMA must produce very low AI, got {}",
-            r.arithmetic_intensity);
-        assert!(!r.compute_bound,
-            "low-AI workload must be memory-bound");
+            r.arithmetic_intensity
+        );
+        assert!(!r.compute_bound, "low-AI workload must be memory-bound");
     }
 
     /// DMA_WRITE events split dwell across L2 and DDR bands only
@@ -444,14 +484,22 @@ mod tests {
             events: vec![mk_event("DMA_WRITE", 0, 200)],
         };
         let bands = analyze_hierarchical(&trace, &hw);
-        assert_eq!(bands[0].dwell_cycles, 0,
-            "register tier must have zero dwell with no MAC events");
-        assert_eq!(bands[1].dwell_cycles, 0,
-            "URAM L1 must have zero dwell — DMA_WRITE bypasses URAM");
-        assert!(bands[2].dwell_cycles > 0,
-            "L2 must absorb some DMA_WRITE dwell");
-        assert!(bands[3].dwell_cycles > 0,
-            "DDR must absorb some DMA_WRITE dwell");
+        assert_eq!(
+            bands[0].dwell_cycles, 0,
+            "register tier must have zero dwell with no MAC events"
+        );
+        assert_eq!(
+            bands[1].dwell_cycles, 0,
+            "URAM L1 must have zero dwell — DMA_WRITE bypasses URAM"
+        );
+        assert!(
+            bands[2].dwell_cycles > 0,
+            "L2 must absorb some DMA_WRITE dwell"
+        );
+        assert!(
+            bands[3].dwell_cycles > 0,
+            "DDR must absorb some DMA_WRITE dwell"
+        );
     }
 
     /// Ridge AI for each hierarchical band must equal peak_gops /
@@ -459,13 +507,20 @@ mod tests {
     #[test]
     fn test_hierarchical_ridge_ai_identity() {
         let hw = HardwareModel::pccx_reference();
-        let trace = NpuTrace { total_cycles: 100, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 100,
+            events: vec![],
+        };
         let bands = analyze_hierarchical(&trace, &hw);
         for b in &bands {
             let expected = b.peak_gops / b.peak_bw_gbps;
-            assert!((b.ridge_ai - expected).abs() < 1e-6,
+            assert!(
+                (b.ridge_ai - expected).abs() < 1e-6,
                 "ridge_ai for {} should be peak_gops/peak_bw_gbps = {}, got {}",
-                b.level, expected, b.ridge_ai);
+                b.level,
+                expected,
+                b.ridge_ai
+            );
         }
     }
 
@@ -474,16 +529,27 @@ mod tests {
     #[test]
     fn test_hierarchical_ai_span_brackets_ridge() {
         let hw = HardwareModel::pccx_reference();
-        let trace = NpuTrace { total_cycles: 100, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 100,
+            events: vec![],
+        };
         let bands = analyze_hierarchical(&trace, &hw);
         for b in &bands {
             if b.ridge_ai.is_finite() {
-                assert!(b.ai_min < b.ridge_ai,
+                assert!(
+                    b.ai_min < b.ridge_ai,
                     "ai_min ({}) should be below ridge_ai ({}) for {}",
-                    b.ai_min, b.ridge_ai, b.level);
-                assert!(b.ai_max > b.ridge_ai,
+                    b.ai_min,
+                    b.ridge_ai,
+                    b.level
+                );
+                assert!(
+                    b.ai_max > b.ridge_ai,
                     "ai_max ({}) should be above ridge_ai ({}) for {}",
-                    b.ai_max, b.ridge_ai, b.level);
+                    b.ai_max,
+                    b.ridge_ai,
+                    b.level
+                );
             }
         }
     }

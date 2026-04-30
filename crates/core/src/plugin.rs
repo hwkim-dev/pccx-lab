@@ -45,7 +45,9 @@ pub struct PluginRegistry<P: Plugin> {
 
 impl<P: Plugin> PluginRegistry<P> {
     pub fn new() -> Self {
-        Self { plugins: Vec::new() }
+        Self {
+            plugins: Vec::new(),
+        }
     }
 
     /// Register a plugin.  Returns an error only if the plugin declares
@@ -123,7 +125,10 @@ mod tests {
     fn register_accepts_matching_api_version() {
         let mut reg = PluginRegistry::<DummyPlugin>::new();
         assert!(reg
-            .register(DummyPlugin { id: "a", api_version: PLUGIN_API_VERSION })
+            .register(DummyPlugin {
+                id: "a",
+                api_version: PLUGIN_API_VERSION
+            })
             .is_ok());
         assert_eq!(reg.len(), 1);
     }
@@ -132,7 +137,10 @@ mod tests {
     fn register_rejects_mismatched_api_version() {
         let mut reg = PluginRegistry::<DummyPlugin>::new();
         let err = reg
-            .register(DummyPlugin { id: "a", api_version: 999 })
+            .register(DummyPlugin {
+                id: "a",
+                api_version: 999,
+            })
             .unwrap_err();
         match err {
             PluginError::ApiMismatch { expected, got, id } => {
@@ -146,8 +154,16 @@ mod tests {
     #[test]
     fn find_returns_first_registered() {
         let mut reg = PluginRegistry::<DummyPlugin>::new();
-        reg.register(DummyPlugin { id: "a", api_version: PLUGIN_API_VERSION }).unwrap();
-        reg.register(DummyPlugin { id: "b", api_version: PLUGIN_API_VERSION }).unwrap();
+        reg.register(DummyPlugin {
+            id: "a",
+            api_version: PLUGIN_API_VERSION,
+        })
+        .unwrap();
+        reg.register(DummyPlugin {
+            id: "b",
+            api_version: PLUGIN_API_VERSION,
+        })
+        .unwrap();
         assert!(reg.find("a").is_some());
         assert!(reg.find("b").is_some());
         assert!(reg.find("missing").is_none());
@@ -157,7 +173,11 @@ mod tests {
     fn all_returns_every_registered_plugin_in_order() {
         let mut reg = PluginRegistry::<DummyPlugin>::new();
         for id in ["one", "two", "three"] {
-            reg.register(DummyPlugin { id, api_version: PLUGIN_API_VERSION }).unwrap();
+            reg.register(DummyPlugin {
+                id,
+                api_version: PLUGIN_API_VERSION,
+            })
+            .unwrap();
         }
         let ids: Vec<&str> = reg.all().iter().map(|p| p.metadata().id).collect();
         assert_eq!(ids, vec!["one", "two", "three"]);

@@ -65,7 +65,10 @@ pub struct BottleneckEntry {
 /// A single logical section inside a `Report`.
 #[derive(Debug, Clone)]
 pub enum Section {
-    Summary { title: String, body: String },
+    Summary {
+        title: String,
+        body: String,
+    },
     TraceStats {
         total_cycles: u64,
         event_count: usize,
@@ -140,7 +143,10 @@ impl ReportBuilder {
     }
 
     pub fn build(self) -> Report {
-        Report { meta: self.meta, sections: self.sections }
+        Report {
+            meta: self.meta,
+            sections: self.sections,
+        }
     }
 }
 
@@ -200,8 +206,7 @@ impl Report {
 
         // Synth utilisation section.
         if let Some(sr) = synth {
-            let eff_bram = sr.utilisation.rams_36 as f64
-                + sr.utilisation.rams_18 as f64 / 2.0;
+            let eff_bram = sr.utilisation.rams_36 as f64 + sr.utilisation.rams_18 as f64 / 2.0;
             sections.push(Section::SynthUtil {
                 lut_pct: sr.utilisation.total_luts as f64 / KV260_TOTAL_LUT * 100.0,
                 ff_pct: sr.utilisation.ffs as f64 / KV260_TOTAL_FF * 100.0,
@@ -246,7 +251,11 @@ fn render_report_markdown(report: &Report) -> String {
             Section::Summary { title, body } => {
                 out.push_str(&format!("## {title}\n\n{body}\n\n"));
             }
-            Section::TraceStats { total_cycles, event_count, per_type } => {
+            Section::TraceStats {
+                total_cycles,
+                event_count,
+                per_type,
+            } => {
                 out.push_str("## Trace summary\n\n");
                 out.push_str(&format!("- **Total cycles:** {total_cycles}\n"));
                 out.push_str(&format!("- **Events:** {event_count}\n"));
@@ -272,7 +281,13 @@ fn render_report_markdown(report: &Report) -> String {
                 }
                 out.push('\n');
             }
-            Section::SynthUtil { lut_pct, ff_pct, bram_pct, dsp_pct, wns } => {
+            Section::SynthUtil {
+                lut_pct,
+                ff_pct,
+                bram_pct,
+                dsp_pct,
+                wns,
+            } => {
                 out.push_str("## Synthesis utilisation\n\n");
                 out.push_str("| Resource | Utilisation (%) |\n|---|---:|\n");
                 out.push_str(&format!("| LUT  | {lut_pct:.1} |\n"));
@@ -280,7 +295,9 @@ fn render_report_markdown(report: &Report) -> String {
                 out.push_str(&format!("| BRAM | {bram_pct:.1} |\n"));
                 out.push_str(&format!("| DSP  | {dsp_pct:.1} |\n"));
                 let timing_verdict = if *wns >= 0.0 { "met" } else { "NOT met" };
-                out.push_str(&format!("\n- **Timing {timing_verdict}** (WNS {wns:.3} ns)\n\n"));
+                out.push_str(&format!(
+                    "\n- **Timing {timing_verdict}** (WNS {wns:.3} ns)\n\n"
+                ));
             }
             Section::Bottleneck { intervals } => {
                 out.push_str("## Bottleneck intervals\n\n");
@@ -358,7 +375,11 @@ fn render_html(report: &Report) -> String {
                     html_escape(text)
                 ));
             }
-            Section::TraceStats { total_cycles, event_count, per_type } => {
+            Section::TraceStats {
+                total_cycles,
+                event_count,
+                per_type,
+            } => {
                 body.push_str("<section>\n<h2>Trace summary</h2>\n");
                 body.push_str(&format!(
                     "<dl><dt>Total cycles</dt><dd>{total_cycles}</dd>\
@@ -403,16 +424,35 @@ fn render_html(report: &Report) -> String {
                 }
                 body.push_str("</section>\n");
             }
-            Section::SynthUtil { lut_pct, ff_pct, bram_pct, dsp_pct, wns } => {
-                let timing_class = if *wns >= 0.0 { "badge-ok" } else { "badge-fail" };
-                let timing_label = if *wns >= 0.0 { "Timing met" } else { "Timing NOT met" };
+            Section::SynthUtil {
+                lut_pct,
+                ff_pct,
+                bram_pct,
+                dsp_pct,
+                wns,
+            } => {
+                let timing_class = if *wns >= 0.0 {
+                    "badge-ok"
+                } else {
+                    "badge-fail"
+                };
+                let timing_label = if *wns >= 0.0 {
+                    "Timing met"
+                } else {
+                    "Timing NOT met"
+                };
                 body.push_str("<section>\n<h2>Synthesis utilisation</h2>\n");
                 body.push_str(
                     "<table>\
                      <thead><tr><th>Resource</th><th>Utilisation (%)</th></tr></thead>\
                      <tbody>\n",
                 );
-                for (res, pct) in [("LUT", lut_pct), ("FF", ff_pct), ("BRAM", bram_pct), ("DSP", dsp_pct)] {
+                for (res, pct) in [
+                    ("LUT", lut_pct),
+                    ("FF", ff_pct),
+                    ("BRAM", bram_pct),
+                    ("DSP", dsp_pct),
+                ] {
                     body.push_str(&format!("<tr><td>{res}</td><td>{pct:.1}</td></tr>\n"));
                 }
                 body.push_str("</tbody></table>\n");
@@ -605,10 +645,7 @@ footer {{
 ///
 /// This is the original Phase-1 API; it is now implemented by building a
 /// `Report` document tree and calling `Report::render(ReportFormat::Markdown)`.
-pub fn render_markdown(
-    trace: Option<&NpuTrace>,
-    synth: Option<&SynthReport>,
-) -> String {
+pub fn render_markdown(trace: Option<&NpuTrace>, synth: Option<&SynthReport>) -> String {
     if trace.is_none() && synth.is_none() {
         return "# pccx verification report\n\n\
                 _No trace and no synth report available to summarise._\n"
@@ -623,8 +660,7 @@ pub fn render_markdown(
                 sections: Vec::new(),
             };
             if let Some(sr) = synth {
-                let eff_bram = sr.utilisation.rams_36 as f64
-                    + sr.utilisation.rams_18 as f64 / 2.0;
+                let eff_bram = sr.utilisation.rams_36 as f64 + sr.utilisation.rams_18 as f64 / 2.0;
                 r.sections.push(Section::SynthUtil {
                     lut_pct: sr.utilisation.total_luts as f64 / KV260_TOTAL_LUT * 100.0,
                     ff_pct: sr.utilisation.ffs as f64 / KV260_TOTAL_FF * 100.0,
@@ -659,10 +695,18 @@ pub fn render_markdown(
                         sr.utilisation.urams,
                         sr.utilisation.dsps,
                         sr.timing.wns_ns,
-                        if sr.timing.worst_clock.is_empty() { "—" } else { &sr.timing.worst_clock },
+                        if sr.timing.worst_clock.is_empty() {
+                            "—"
+                        } else {
+                            &sr.timing.worst_clock
+                        },
                         sr.timing.failing_endpoints,
                         sr.timing.total_endpoints,
-                        if sr.timing.is_timing_met { "Timing met" } else { "Timing NOT met" },
+                        if sr.timing.is_timing_met {
+                            "Timing met"
+                        } else {
+                            "Timing NOT met"
+                        },
                     ),
                 });
             }
@@ -688,11 +732,7 @@ pub fn render_markdown(
 pub trait ReportRenderer {
     /// Produce the report as a byte stream. Callers write this to a
     /// file, a `<pre>` block, or the PR body as-is.
-    fn render(
-        &self,
-        trace: Option<&NpuTrace>,
-        synth: Option<&SynthReport>,
-    ) -> Vec<u8>;
+    fn render(&self, trace: Option<&NpuTrace>, synth: Option<&SynthReport>) -> Vec<u8>;
 
     /// Human-readable format name (e.g. `"Markdown"`, `"HTML"`).
     fn name(&self) -> &'static str;
@@ -710,17 +750,19 @@ pub trait ReportRenderer {
 pub struct MarkdownFormat;
 
 impl ReportRenderer for MarkdownFormat {
-    fn render(
-        &self,
-        trace: Option<&NpuTrace>,
-        synth: Option<&SynthReport>,
-    ) -> Vec<u8> {
+    fn render(&self, trace: Option<&NpuTrace>, synth: Option<&SynthReport>) -> Vec<u8> {
         render_markdown(trace, synth).into_bytes()
     }
 
-    fn name(&self) -> &'static str { "Markdown" }
-    fn extension(&self) -> &'static str { "md" }
-    fn mime_type(&self) -> &'static str { "text/markdown" }
+    fn name(&self) -> &'static str {
+        "Markdown"
+    }
+    fn extension(&self) -> &'static str {
+        "md"
+    }
+    fn mime_type(&self) -> &'static str {
+        "text/markdown"
+    }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -745,7 +787,7 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 100,
             events: vec![
-                NpuEvent::new(0, 0,  50, "MAC_COMPUTE"),
+                NpuEvent::new(0, 0, 50, "MAC_COMPUTE"),
                 NpuEvent::new(1, 50, 50, "DMA_READ"),
             ],
         };
@@ -755,8 +797,10 @@ mod tests {
         assert!(md.contains("100"));
         assert!(md.contains("`MAC_COMPUTE`"));
         assert!(md.contains("## Roofline"));
-        assert!(!md.contains("## Synthesis"),
-            "should not emit synth when input was None");
+        assert!(
+            !md.contains("## Synthesis"),
+            "should not emit synth when input was None"
+        );
     }
 
     #[test]
@@ -769,16 +813,16 @@ mod tests {
                 ffs: 8458,
                 rams_36: 80,
                 rams_18: 8,
-                urams:   56,
-                dsps:     4,
+                urams: 56,
+                dsps: 4,
             },
             timing: TimingSummary {
                 wns_ns: -9.792,
                 tns_ns: -3615.208,
                 failing_endpoints: 4194,
-                total_endpoints:   28602,
-                is_timing_met:     false,
-                worst_clock:       "core_clk".into(),
+                total_endpoints: 28602,
+                is_timing_met: false,
+                worst_clock: "core_clk".into(),
             },
             device: "xck26-sfvc784-2LV-c".into(),
         };
@@ -830,25 +874,30 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 500,
             events: vec![
-                NpuEvent::new(0, 0,   300, "MAC_COMPUTE"),
+                NpuEvent::new(0, 0, 300, "MAC_COMPUTE"),
                 NpuEvent::new(1, 300, 200, "DMA_READ"),
             ],
         };
         let report = Report::from_trace(&trace, None);
         // Must have at least TraceStats and Roofline.
-        let has_trace_stats = report.sections.iter().any(|s| {
-            matches!(s, Section::TraceStats { .. })
-        });
-        let has_roofline = report.sections.iter().any(|s| {
-            matches!(s, Section::Roofline { .. })
-        });
+        let has_trace_stats = report
+            .sections
+            .iter()
+            .any(|s| matches!(s, Section::TraceStats { .. }));
+        let has_roofline = report
+            .sections
+            .iter()
+            .any(|s| matches!(s, Section::Roofline { .. }));
         assert!(has_trace_stats, "from_trace must emit a TraceStats section");
         assert!(has_roofline, "from_trace must emit a Roofline section");
     }
 
     #[test]
     fn test_from_trace_with_synth_includes_util() {
-        let trace = NpuTrace { total_cycles: 100, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 100,
+            events: vec![],
+        };
         let synth = SynthReport {
             utilisation: UtilSummary {
                 top_module: "NPU_top".into(),
@@ -871,10 +920,14 @@ mod tests {
             device: "xck26-sfvc784-2LV-c".into(),
         };
         let report = Report::from_trace(&trace, Some(&synth));
-        let has_synth = report.sections.iter().any(|s| {
-            matches!(s, Section::SynthUtil { .. })
-        });
-        assert!(has_synth, "from_trace with synth must emit SynthUtil section");
+        let has_synth = report
+            .sections
+            .iter()
+            .any(|s| matches!(s, Section::SynthUtil { .. }));
+        assert!(
+            has_synth,
+            "from_trace with synth must emit SynthUtil section"
+        );
     }
 
     // ── HTML renderer ──────────────────────────────────────────────────────

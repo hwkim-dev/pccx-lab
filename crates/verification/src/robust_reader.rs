@@ -51,10 +51,10 @@ pub enum Policy {
 impl Policy {
     pub fn from_cli(s: &str) -> Option<Policy> {
         match s.to_ascii_lowercase().as_str() {
-            "strict"  => Some(Policy::Strict),
-            "warn"    => Some(Policy::Warn),
+            "strict" => Some(Policy::Strict),
+            "warn" => Some(Policy::Warn),
             "lenient" => Some(Policy::Lenient),
-            "fix"     => Some(Policy::Fix),
+            "fix" => Some(Policy::Fix),
             _ => None,
         }
     }
@@ -66,8 +66,8 @@ impl Policy {
 /// the policy chose to surface.
 #[derive(Debug, Clone)]
 pub struct RobustReport<T> {
-    pub value:       T,
-    pub warnings:    Vec<String>,
+    pub value: T,
+    pub warnings: Vec<String>,
     pub dropped_keys: Vec<String>,
     /// Non-empty only for ``Policy::Fix`` reads.  Callers can write
     /// this back to disk via a 3-button modal (Keep / Fix / Cancel).
@@ -79,18 +79,32 @@ pub enum RobustError {
     #[error("parse error in '{path}': {detail}")]
     Parse { path: String, detail: String },
     #[error("io error reading '{path}': {source}")]
-    Io { path: String, source: std::io::Error },
+    Io {
+        path: String,
+        source: std::io::Error,
+    },
     #[error("strict policy rejected {count} unknown field(s) in '{path}': [{keys}]")]
-    StrictReject { path: String, count: usize, keys: String },
+    StrictReject {
+        path: String,
+        count: usize,
+        keys: String,
+    },
     #[error("truncated input in '{path}': expected >= {expected} bytes, got {actual}")]
-    Truncated { path: String, expected: usize, actual: usize },
+    Truncated {
+        path: String,
+        expected: usize,
+        actual: usize,
+    },
     #[error("corrupted input in '{path}': {detail}")]
     Corrupted { path: String, detail: String },
 }
 
 impl From<std::io::Error> for RobustError {
     fn from(e: std::io::Error) -> Self {
-        RobustError::Io { path: "<unknown>".into(), source: e }
+        RobustError::Io {
+            path: "<unknown>".into(),
+            source: e,
+        }
     }
 }
 
@@ -107,7 +121,9 @@ pub fn sanitize_whitespace(src: &str) -> String {
         out.push('\n');
     }
     // Remove redundant trailing newlines — keep exactly one.
-    while out.ends_with("\n\n") { out.pop(); }
+    while out.ends_with("\n\n") {
+        out.pop();
+    }
     out
 }
 
@@ -137,21 +153,26 @@ pub fn strip_trailing_commas(src: &str) -> String {
                     i += 1;
                     continue;
                 }
-                if ch == '"' { break; }
+                if ch == '"' {
+                    break;
+                }
             }
             continue;
         }
         // Line comment.
         if c == '/' && i + 1 < bytes.len() && bytes[i + 1] as char == '/' {
             while i < bytes.len() && bytes[i] as char != '\n' {
-                out.push(bytes[i] as char); i += 1;
+                out.push(bytes[i] as char);
+                i += 1;
             }
             continue;
         }
         // Comma — look ahead.
         if c == ',' {
             let mut j = i + 1;
-            while j < bytes.len() && (bytes[j] as char).is_whitespace() { j += 1; }
+            while j < bytes.len() && (bytes[j] as char).is_whitespace() {
+                j += 1;
+            }
             if j < bytes.len() && matches!(bytes[j] as char, '}' | ']') {
                 // Swallow the comma.
                 i += 1;
@@ -185,7 +206,9 @@ pub fn strip_nul_bytes(src: &str) -> (String, usize) {
 /// strings, so legitimate values like `description = "AAAA..."` do
 /// not trigger false positives.
 pub fn has_repeated_byte_run(src: &[u8], threshold: usize) -> bool {
-    if src.len() < threshold { return false; }
+    if src.len() < threshold {
+        return false;
+    }
     let mut in_string = false;
     let mut prev_escape = false;
     let mut run_len = 1usize;
@@ -216,7 +239,9 @@ pub fn has_repeated_byte_run(src: &[u8], threshold: usize) -> bool {
         if let Some(prev) = prev_byte {
             if b == prev && !b.is_ascii_whitespace() {
                 run_len += 1;
-                if run_len >= threshold { return true; }
+                if run_len >= threshold {
+                    return true;
+                }
             } else {
                 run_len = 1;
             }
@@ -246,14 +271,21 @@ pub fn attempt_brace_recovery(src: &str) -> Option<String> {
             continue;
         }
         match ch {
-            '"' => { in_string = true; prev_escape = false; }
+            '"' => {
+                in_string = true;
+                prev_escape = false;
+            }
             '{' => stack.push('}'),
             '[' => stack.push(']'),
-            '}' | ']' => { stack.pop(); }
+            '}' | ']' => {
+                stack.pop();
+            }
             _ => {}
         }
     }
-    if stack.is_empty() { return None; } // nothing to recover
+    if stack.is_empty() {
+        return None;
+    } // nothing to recover
     let mut out = src.to_string();
     for closer in stack.into_iter().rev() {
         out.push(closer);
@@ -306,31 +338,41 @@ pub fn read_toml_with_policy_at<T: DeserializeOwned>(
     if has_repeated_byte_run(cleaned.as_bytes(), 64) {
         return Err(RobustError::Corrupted {
             path: path.to_string(),
-            detail: "input contains a 64+ byte repeated-byte run suggesting block-level corruption".into(),
+            detail: "input contains a 64+ byte repeated-byte run suggesting block-level corruption"
+                .into(),
         });
     }
 
     // Parse twice: once as a loose TOML Value so we can inspect the
     // key set, then strict-deserialise the (possibly-filtered) source
     // into T.
-    let value: toml::Value = toml::from_str(&cleaned)
-        .map_err(|e| RobustError::Parse { path: path.to_string(), detail: e.to_string() })?;
+    let value: toml::Value = toml::from_str(&cleaned).map_err(|e| RobustError::Parse {
+        path: path.to_string(),
+        detail: e.to_string(),
+    })?;
 
     let (dropped, warnings, fixed_source) = match &value {
         toml::Value::Table(tbl) => {
             let expected: BTreeSet<&str> = expected_keys.iter().copied().collect();
             let mut dropped = Vec::new();
             for k in tbl.keys() {
-                if !expected.contains(k.as_str()) { dropped.push(k.clone()); }
+                if !expected.contains(k.as_str()) {
+                    dropped.push(k.clone());
+                }
             }
-            let warnings: Vec<String> = dropped.iter()
-                .map(|k| format!("unknown field '{}'", k)).collect();
+            let warnings: Vec<String> = dropped
+                .iter()
+                .map(|k| format!("unknown field '{}'", k))
+                .collect();
             let fixed = if matches!(policy, Policy::Fix) && !dropped.is_empty() {
                 let mut keep = tbl.clone();
-                for k in &dropped { keep.remove(k); }
-                Some(toml::to_string(&toml::Value::Table(keep))
-                    .unwrap_or_else(|_| cleaned.clone()))
-            } else { None };
+                for k in &dropped {
+                    keep.remove(k);
+                }
+                Some(toml::to_string(&toml::Value::Table(keep)).unwrap_or_else(|_| cleaned.clone()))
+            } else {
+                None
+            };
             (dropped, warnings, fixed)
         }
         _ => (Vec::new(), Vec::new(), None),
@@ -340,7 +382,7 @@ pub fn read_toml_with_policy_at<T: DeserializeOwned>(
         return Err(RobustError::StrictReject {
             path: path.to_string(),
             count: dropped.len(),
-            keys:  dropped.join(", "),
+            keys: dropped.join(", "),
         });
     }
 
@@ -356,20 +398,31 @@ pub fn read_toml_with_policy_at<T: DeserializeOwned>(
     // `deny_unknown_fields` or a bespoke visitor.  This is safe
     // because the Warn / Lenient paths *want* the deserialisation
     // to succeed regardless.
-    let filtered: String = if matches!(policy, Policy::Warn | Policy::Lenient) && !dropped.is_empty() {
-        if let toml::Value::Table(tbl) = &value {
-            let mut keep = tbl.clone();
-            for k in &dropped { keep.remove(k); }
-            toml::to_string(&toml::Value::Table(keep)).unwrap_or_else(|_| cleaned.clone())
-        } else { cleaned.clone() }
-    } else {
-        source_to_parse.to_string()
-    };
+    let filtered: String =
+        if matches!(policy, Policy::Warn | Policy::Lenient) && !dropped.is_empty() {
+            if let toml::Value::Table(tbl) = &value {
+                let mut keep = tbl.clone();
+                for k in &dropped {
+                    keep.remove(k);
+                }
+                toml::to_string(&toml::Value::Table(keep)).unwrap_or_else(|_| cleaned.clone())
+            } else {
+                cleaned.clone()
+            }
+        } else {
+            source_to_parse.to_string()
+        };
 
     let value: T = toml::from_str(&filtered).map_err(|e| RobustError::Parse {
-        path: path.to_string(), detail: e.to_string(),
+        path: path.to_string(),
+        detail: e.to_string(),
     })?;
-    Ok(RobustReport { value, warnings, dropped_keys: dropped, fixed_source })
+    Ok(RobustReport {
+        value,
+        warnings,
+        dropped_keys: dropped,
+        fixed_source,
+    })
 }
 
 // ─── Policy-driven JSON read (for .ref.jsonl config lines) ──────────────────
@@ -382,7 +435,8 @@ pub fn read_toml_with_policy_at<T: DeserializeOwned>(
 pub fn read_json_tolerant<T: DeserializeOwned>(src: &str) -> Result<T, RobustError> {
     let (s, _fixups) = sanitize_full(src);
     serde_json::from_str(&s).map_err(|e| RobustError::Parse {
-        path: "<inline>".into(), detail: e.to_string(),
+        path: "<inline>".into(),
+        detail: e.to_string(),
     })
 }
 
@@ -393,15 +447,24 @@ pub fn read_json_tolerant<T: DeserializeOwned>(src: &str) -> Result<T, RobustErr
 /// same order the user wrote them.
 pub fn diff_keys(expected: &[&str], observed: &[&str]) -> Vec<String> {
     let set: BTreeSet<&str> = expected.iter().copied().collect();
-    observed.iter().filter(|k| !set.contains(*k)).map(|k| k.to_string()).collect()
+    observed
+        .iter()
+        .filter(|k| !set.contains(*k))
+        .map(|k| k.to_string())
+        .collect()
 }
 
 /// Convenience: format dropped keys for a user-facing modal.
 pub fn format_dropped_keys(keys: &[String]) -> String {
-    if keys.is_empty() { return String::new(); }
+    if keys.is_empty() {
+        return String::new();
+    }
     let mut by_count: BTreeMap<String, usize> = BTreeMap::new();
-    for k in keys { *by_count.entry(k.clone()).or_insert(0) += 1; }
-    let mut parts: Vec<String> = by_count.into_iter()
+    for k in keys {
+        *by_count.entry(k.clone()).or_insert(0) += 1;
+    }
+    let mut parts: Vec<String> = by_count
+        .into_iter()
         .map(|(k, n)| if n > 1 { format!("{} (×{})", k, n) } else { k })
         .collect();
     parts.sort();
@@ -416,7 +479,11 @@ mod tests {
     use serde::Deserialize;
 
     #[derive(Debug, Deserialize, PartialEq)]
-    struct Cfg { name: String, #[serde(default)] count: u32 }
+    struct Cfg {
+        name: String,
+        #[serde(default)]
+        count: u32,
+    }
 
     #[test]
     fn sanitize_strips_bom_and_crlf() {
@@ -466,7 +533,13 @@ mod tests {
         "#;
         let r: RobustReport<Cfg> =
             read_toml_with_policy(src, Policy::Warn, &["name", "count"]).unwrap();
-        assert_eq!(r.value, Cfg { name: "x".into(), count: 3 });
+        assert_eq!(
+            r.value,
+            Cfg {
+                name: "x".into(),
+                count: 3
+            }
+        );
         assert!(r.warnings.iter().any(|w| w.contains("extra")));
         assert_eq!(r.dropped_keys, vec!["extra"]);
     }
@@ -497,17 +570,23 @@ mod tests {
 
     #[test]
     fn policy_parses_cli_strings() {
-        assert_eq!(Policy::from_cli("strict"),  Some(Policy::Strict));
-        assert_eq!(Policy::from_cli("WARN"),    Some(Policy::Warn));
-        assert_eq!(Policy::from_cli("fix"),     Some(Policy::Fix));
-        assert_eq!(Policy::from_cli("nope"),    None);
+        assert_eq!(Policy::from_cli("strict"), Some(Policy::Strict));
+        assert_eq!(Policy::from_cli("WARN"), Some(Policy::Warn));
+        assert_eq!(Policy::from_cli("fix"), Some(Policy::Fix));
+        assert_eq!(Policy::from_cli("nope"), None);
     }
 
     #[test]
     fn json_tolerant_accepts_trailing_commas_and_bom() {
         let src = "\u{feff}{\"name\": \"x\", \"count\": 5,}\n";
         let c: Cfg = read_json_tolerant(src).unwrap();
-        assert_eq!(c, Cfg { name: "x".into(), count: 5 });
+        assert_eq!(
+            c,
+            Cfg {
+                name: "x".into(),
+                count: 5
+            }
+        );
     }
 
     #[test]
@@ -621,7 +700,13 @@ mod tests {
         let src = "name = \"x\"\0\ncount = 3\n";
         let r: RobustReport<Cfg> =
             read_toml_with_policy(src, Policy::Lenient, &["name", "count"]).unwrap();
-        assert_eq!(r.value, Cfg { name: "x".into(), count: 3 });
+        assert_eq!(
+            r.value,
+            Cfg {
+                name: "x".into(),
+                count: 3
+            }
+        );
     }
 
     // ─── Truncated / empty input ───────────────────────────────────
@@ -643,7 +728,13 @@ mod tests {
     fn json_tolerant_strips_nul_bytes() {
         let src = "{\"name\": \"x\"\0, \"count\": 5}";
         let c: Cfg = read_json_tolerant(src).unwrap();
-        assert_eq!(c, Cfg { name: "x".into(), count: 5 });
+        assert_eq!(
+            c,
+            Cfg {
+                name: "x".into(),
+                count: 5
+            }
+        );
     }
 
     // ─── Corrupted input detection ─────────────────────────────────
@@ -678,8 +769,12 @@ mod tests {
 
     #[test]
     fn parse_error_contains_path() {
-        let r: Result<RobustReport<Cfg>, _> =
-            read_toml_with_policy_at("not valid toml {{{{", Policy::Lenient, &["name"], "/tmp/bad.toml");
+        let r: Result<RobustReport<Cfg>, _> = read_toml_with_policy_at(
+            "not valid toml {{{{",
+            Policy::Lenient,
+            &["name"],
+            "/tmp/bad.toml",
+        );
         match r.err().unwrap() {
             RobustError::Parse { path, .. } => assert_eq!(path, "/tmp/bad.toml"),
             other => panic!("expected Parse, got {:?}", other),

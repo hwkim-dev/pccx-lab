@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 
 // KV260 ZU5EV device capacity (Vivado 2023.2 device summary).
-const DEVICE_LUTS:  u64 = 117_120;
-const DEVICE_FFS:   u64 = 234_240;
-const DEVICE_BRAM:  u64 = 144;      // RAMB36 equivalent
-const DEVICE_DSP:   u64 = 1_248;
+const DEVICE_LUTS: u64 = 117_120;
+const DEVICE_FFS: u64 = 234_240;
+const DEVICE_BRAM: u64 = 144; // RAMB36 equivalent
+const DEVICE_DSP: u64 = 1_248;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UtilSummary {
@@ -80,14 +80,19 @@ pub fn parse_utilization(text: &str) -> UtilSummary {
             // Expected columns after instance/module:
             // Total LUTs, Logic LUTs, LUTRAMs, SRLs, FFs, RAMB36, RAMB18, URAM, DSP Blocks
             if cells.len() >= 11 {
-                let g = |i: usize| cells.get(i).and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                let g = |i: usize| {
+                    cells
+                        .get(i)
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .unwrap_or(0)
+                };
                 summary.total_luts = g(2);
                 summary.logic_luts = g(3);
-                summary.ffs        = g(6);
-                summary.rams_36    = g(7);
-                summary.rams_18    = g(8);
-                summary.urams      = g(9);
-                summary.dsps       = g(10);
+                summary.ffs = g(6);
+                summary.rams_36 = g(7);
+                summary.rams_18 = g(8);
+                summary.urams = g(9);
+                summary.dsps = g(10);
                 break;
             }
         }
@@ -118,7 +123,8 @@ pub fn parse_timing(text: &str) -> TimingSummary {
             while j < lines.len() {
                 let row = lines[j].trim();
                 // Skip divider (pure dashes/spaces), header, empty, pipe-prefixed lines.
-                let is_divider = !row.is_empty() && row.chars().all(|c| c == '-' || c.is_whitespace());
+                let is_divider =
+                    !row.is_empty() && row.chars().all(|c| c == '-' || c.is_whitespace());
                 if is_divider || row.is_empty() || row.starts_with("WNS") || row.starts_with('|') {
                     j += 1;
                     continue;
@@ -127,10 +133,10 @@ pub fn parse_timing(text: &str) -> TimingSummary {
                 //   -9.792    -3615.208                   4194                28602  ...
                 let cols: Vec<&str> = row.split_whitespace().collect();
                 if cols.len() >= 4 {
-                    t.wns_ns              = cols[0].parse().unwrap_or(0.0);
-                    t.tns_ns              = cols[1].parse().unwrap_or(0.0);
-                    t.failing_endpoints   = cols[2].parse().unwrap_or(0);
-                    t.total_endpoints     = cols[3].parse().unwrap_or(0);
+                    t.wns_ns = cols[0].parse().unwrap_or(0.0);
+                    t.tns_ns = cols[1].parse().unwrap_or(0.0);
+                    t.failing_endpoints = cols[2].parse().unwrap_or(0);
+                    t.total_endpoints = cols[3].parse().unwrap_or(0);
                 }
                 break;
             }
@@ -155,8 +161,7 @@ pub fn parse_timing(text: &str) -> TimingSummary {
         let mut worst = ("".to_string(), f64::INFINITY);
         for line in lines.iter().skip(start + 2).take(20) {
             let row = line.trim();
-            let is_divider = !row.is_empty()
-                && row.chars().all(|c| c == '-' || c.is_whitespace());
+            let is_divider = !row.is_empty() && row.chars().all(|c| c == '-' || c.is_whitespace());
             if row.is_empty() || is_divider {
                 break;
             }
@@ -190,19 +195,20 @@ fn parse_device(text: &str) -> String {
     String::new()
 }
 
-pub fn load_from_files(
-    utilisation_path: &str,
-    timing_path: &str,
-) -> Result<SynthReport, String> {
-    let util_text = fs::read_to_string(utilisation_path)
-        .map_err(|e| format!("Cannot read utilisation report '{}': {}", utilisation_path, e))?;
+pub fn load_from_files(utilisation_path: &str, timing_path: &str) -> Result<SynthReport, String> {
+    let util_text = fs::read_to_string(utilisation_path).map_err(|e| {
+        format!(
+            "Cannot read utilisation report '{}': {}",
+            utilisation_path, e
+        )
+    })?;
     let timing_text = fs::read_to_string(timing_path)
         .map_err(|e| format!("Cannot read timing report '{}': {}", timing_path, e))?;
 
     Ok(SynthReport {
         utilisation: parse_utilization(&util_text),
-        timing:      parse_timing(&timing_text),
-        device:      parse_device(&util_text),
+        timing: parse_timing(&timing_text),
+        device: parse_device(&util_text),
     })
 }
 
@@ -246,17 +252,21 @@ pub struct ResourceHeatmap {
 /// All values are deterministic (no RNG) so the panel is stable across renders.
 pub fn generate_heatmap(report: &SynthReport, rows: usize, cols: usize) -> ResourceHeatmap {
     if rows == 0 || cols == 0 {
-        return ResourceHeatmap { rows, cols, cells: Vec::new() };
+        return ResourceHeatmap {
+            rows,
+            cols,
+            cells: Vec::new(),
+        };
     }
 
     let u = &report.utilisation;
 
     // Overall device-level utilization fractions (clamped to [0, 1]).
-    let lut_frac  = (u.total_luts as f64 / DEVICE_LUTS  as f64).min(1.0);
-    let ff_frac   = (u.ffs        as f64 / DEVICE_FFS   as f64).min(1.0);
-    let bram_frac = ((u.rams_36 + u.rams_18 / 2 + u.urams * 4) as f64
-                        / DEVICE_BRAM as f64).min(1.0);
-    let dsp_frac  = (u.dsps       as f64 / DEVICE_DSP   as f64).min(1.0);
+    let lut_frac = (u.total_luts as f64 / DEVICE_LUTS as f64).min(1.0);
+    let ff_frac = (u.ffs as f64 / DEVICE_FFS as f64).min(1.0);
+    let bram_frac =
+        ((u.rams_36 + u.rams_18 / 2 + u.urams * 4) as f64 / DEVICE_BRAM as f64).min(1.0);
+    let dsp_frac = (u.dsps as f64 / DEVICE_DSP as f64).min(1.0);
 
     let cr = (rows as f64 - 1.0) / 2.0;
     let cc = (cols as f64 - 1.0) / 2.0;
@@ -281,8 +291,8 @@ pub fn generate_heatmap(report: &SynthReport, rows: usize, cols: usize) -> Resou
             let row_phase = (r as f64 / rows as f64) * std::f64::consts::PI * 2.0;
             let lut_weight = 0.65 + 0.25 * col_phase.sin() + 0.10 * row_phase.cos();
             let lut_weight = lut_weight.max(0.0);
-            let ff_weight  = 0.60 + 0.30 * (col_phase + 0.5).sin() + 0.10 * row_phase.sin();
-            let ff_weight  = ff_weight.max(0.0);
+            let ff_weight = 0.60 + 0.30 * (col_phase + 0.5).sin() + 0.10 * row_phase.sin();
+            let ff_weight = ff_weight.max(0.0);
 
             // BRAM: sparse diagonal band.
             let bram_weight = if (r + c) % 3 == 0 { 1.0 } else { 0.0 };
@@ -298,37 +308,61 @@ pub fn generate_heatmap(report: &SynthReport, rows: usize, cols: usize) -> Resou
 
     // Post-pass: normalize each metric to ensure sum = global fraction * n.
     let n = (rows * cols) as f64;
-    let sum_lut:  f64 = cells.iter().map(|x| x.2).sum();
-    let sum_ff:   f64 = cells.iter().map(|x| x.3).sum();
+    let sum_lut: f64 = cells.iter().map(|x| x.2).sum();
+    let sum_ff: f64 = cells.iter().map(|x| x.3).sum();
     let sum_bram: f64 = cells.iter().map(|x| x.4).sum();
-    let sum_dsp:  f64 = cells.iter().map(|x| x.5).sum();
+    let sum_dsp: f64 = cells.iter().map(|x| x.5).sum();
 
-    let scale_lut  = if sum_lut  > 0.0 { lut_frac  * n / sum_lut  } else { 0.0 };
-    let scale_ff   = if sum_ff   > 0.0 { ff_frac   * n / sum_ff   } else { 0.0 };
-    let scale_bram = if sum_bram > 0.0 { bram_frac * n / sum_bram } else { 0.0 };
-    let scale_dsp  = if sum_dsp  > 0.0 { dsp_frac  * n / sum_dsp  } else { 0.0 };
+    let scale_lut = if sum_lut > 0.0 {
+        lut_frac * n / sum_lut
+    } else {
+        0.0
+    };
+    let scale_ff = if sum_ff > 0.0 {
+        ff_frac * n / sum_ff
+    } else {
+        0.0
+    };
+    let scale_bram = if sum_bram > 0.0 {
+        bram_frac * n / sum_bram
+    } else {
+        0.0
+    };
+    let scale_dsp = if sum_dsp > 0.0 {
+        dsp_frac * n / sum_dsp
+    } else {
+        0.0
+    };
 
     // KV260 ZU5EV total design power budget (~8 W typical under load).
     // Power density per cell is a weighted mix of resource utilization.
     let total_power_mw = 8_000.0 * (0.3 * lut_frac + 0.5 * dsp_frac + 0.2 * bram_frac);
 
-    let result_cells: Vec<HeatmapCell> = cells.into_iter().map(|(r, c, lw, fw, bw, dw)| {
-        let lut_cell  = (lw * scale_lut ).min(1.0);
-        let ff_cell   = (fw * scale_ff  ).min(1.0);
-        let bram_cell = (bw * scale_bram).min(1.0);
-        let dsp_cell  = (dw * scale_dsp ).min(1.0);
-        let power_cell = total_power_mw / n
-            * (0.4 * lut_cell + 0.5 * dsp_cell + 0.1 * bram_cell);
-        HeatmapCell {
-            row: r, col: c,
-            lut_util:  lut_cell,
-            ff_util:   ff_cell,
-            bram_util: bram_cell,
-            dsp_util:  dsp_cell,
-            power_mw:  power_cell,
-        }
-    }).collect();
-    ResourceHeatmap { rows, cols, cells: result_cells }
+    let result_cells: Vec<HeatmapCell> = cells
+        .into_iter()
+        .map(|(r, c, lw, fw, bw, dw)| {
+            let lut_cell = (lw * scale_lut).min(1.0);
+            let ff_cell = (fw * scale_ff).min(1.0);
+            let bram_cell = (bw * scale_bram).min(1.0);
+            let dsp_cell = (dw * scale_dsp).min(1.0);
+            let power_cell =
+                total_power_mw / n * (0.4 * lut_cell + 0.5 * dsp_cell + 0.1 * bram_cell);
+            HeatmapCell {
+                row: r,
+                col: c,
+                lut_util: lut_cell,
+                ff_util: ff_cell,
+                bram_util: bram_cell,
+                dsp_util: dsp_cell,
+                power_mw: power_cell,
+            }
+        })
+        .collect();
+    ResourceHeatmap {
+        rows,
+        cols,
+        cells: result_cells,
+    }
 }
 
 #[cfg(test)]
@@ -375,11 +409,36 @@ mod heatmap_tests {
         let r = mock_report(70_000, 140_000, 90, 1000);
         let hm = generate_heatmap(&r, 6, 8);
         for cell in &hm.cells {
-            assert!(cell.lut_util  >= 0.0, "lut_util negative at ({},{})", cell.row, cell.col);
-            assert!(cell.ff_util   >= 0.0, "ff_util negative at ({},{})", cell.row, cell.col);
-            assert!(cell.bram_util >= 0.0, "bram_util negative at ({},{})", cell.row, cell.col);
-            assert!(cell.dsp_util  >= 0.0, "dsp_util negative at ({},{})", cell.row, cell.col);
-            assert!(cell.power_mw  >= 0.0, "power_mw negative at ({},{})", cell.row, cell.col);
+            assert!(
+                cell.lut_util >= 0.0,
+                "lut_util negative at ({},{})",
+                cell.row,
+                cell.col
+            );
+            assert!(
+                cell.ff_util >= 0.0,
+                "ff_util negative at ({},{})",
+                cell.row,
+                cell.col
+            );
+            assert!(
+                cell.bram_util >= 0.0,
+                "bram_util negative at ({},{})",
+                cell.row,
+                cell.col
+            );
+            assert!(
+                cell.dsp_util >= 0.0,
+                "dsp_util negative at ({},{})",
+                cell.row,
+                cell.col
+            );
+            assert!(
+                cell.power_mw >= 0.0,
+                "power_mw negative at ({},{})",
+                cell.row,
+                cell.col
+            );
         }
     }
 
@@ -389,16 +448,17 @@ mod heatmap_tests {
         let rows = 10_usize;
         let cols = 10_usize;
         let hm = generate_heatmap(&r, rows, cols);
-        let center = hm.cells.iter()
+        let center = hm
+            .cells
+            .iter()
             .find(|c| c.row == rows / 2 && c.col == cols / 2)
             .unwrap();
-        let corner = hm.cells.iter()
-            .find(|c| c.row == 0 && c.col == 0)
-            .unwrap();
+        let corner = hm.cells.iter().find(|c| c.row == 0 && c.col == 0).unwrap();
         assert!(
             center.dsp_util > corner.dsp_util,
             "center DSP {} should exceed corner DSP {}",
-            center.dsp_util, corner.dsp_util,
+            center.dsp_util,
+            corner.dsp_util,
         );
     }
 
@@ -414,6 +474,12 @@ mod heatmap_tests {
         let expected = luts as f64 / DEVICE_LUTS as f64 * n;
         // Allow 1 % relative error from f64 floating-point accumulation.
         let err = (sum - expected).abs() / expected.max(1e-9);
-        assert!(err < 0.01, "LUT sum={:.4} expected={:.4} rel_err={:.4}", sum, expected, err);
+        assert!(
+            err < 0.01,
+            "LUT sum={:.4} expected={:.4} rel_err={:.4}",
+            sum,
+            expected,
+            err
+        );
     }
 }

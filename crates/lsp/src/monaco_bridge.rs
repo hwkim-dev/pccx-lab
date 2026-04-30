@@ -19,9 +19,7 @@ use serde_json::Value;
 use crate::sv_diagnostics::SvDiagnosticsProvider;
 use crate::sv_hover::SvHoverProvider;
 use crate::sv_provider::SvKeywordProvider;
-use crate::{
-    CompletionProvider, DiagnosticsProvider, HoverProvider, Language, SourcePos,
-};
+use crate::{CompletionProvider, DiagnosticsProvider, HoverProvider, Language, SourcePos};
 
 // ─── JSON-RPC wire-format DTOs ─────────────────────────────────────
 
@@ -197,20 +195,20 @@ impl MonacoBridge {
         let file_path = uri_to_path(uri);
         let lang = match language_from_uri(uri) {
             Some(l) => l,
-            None => return error_response(
-                req.id,
-                INVALID_PARAMS,
-                &format!("unsupported file extension in URI: {uri}"),
-            ),
+            None => {
+                return error_response(
+                    req.id,
+                    INVALID_PARAMS,
+                    &format!("unsupported file extension in URI: {uri}"),
+                )
+            }
         };
 
         let source = match self.files.get(uri) {
             Some(s) => s.as_str(),
-            None => return error_response(
-                req.id,
-                INVALID_PARAMS,
-                &format!("file not open: {uri}"),
-            ),
+            None => {
+                return error_response(req.id, INVALID_PARAMS, &format!("file not open: {uri}"))
+            }
         };
 
         let pos = SourcePos {
@@ -260,20 +258,20 @@ impl MonacoBridge {
         let file_path = uri_to_path(uri);
         let lang = match language_from_uri(uri) {
             Some(l) => l,
-            None => return error_response(
-                req.id,
-                INVALID_PARAMS,
-                &format!("unsupported file extension in URI: {uri}"),
-            ),
+            None => {
+                return error_response(
+                    req.id,
+                    INVALID_PARAMS,
+                    &format!("unsupported file extension in URI: {uri}"),
+                )
+            }
         };
 
         let source = match self.files.get(uri) {
             Some(s) => s.as_str(),
-            None => return error_response(
-                req.id,
-                INVALID_PARAMS,
-                &format!("file not open: {uri}"),
-            ),
+            None => {
+                return error_response(req.id, INVALID_PARAMS, &format!("file not open: {uri}"))
+            }
         };
 
         let pos = SourcePos {
@@ -348,7 +346,6 @@ impl MonacoBridge {
 
         serde_json::to_string(&notification).unwrap_or_default()
     }
-
 }
 
 impl Default for MonacoBridge {
@@ -490,7 +487,10 @@ endmodule
         let result = &resp["result"];
         assert_eq!(result["contents"]["kind"], "markdown");
         let value = result["contents"]["value"].as_str().unwrap();
-        assert!(value.contains("ctrl_npu_frontend"), "must mention module name");
+        assert!(
+            value.contains("ctrl_npu_frontend"),
+            "must mention module name"
+        );
         assert!(value.contains("ROWS"), "must list parameters");
 
         // Range must be present
@@ -600,10 +600,7 @@ endmodule
                 d["severity"]
             );
             let sev = d["severity"].as_u64().unwrap();
-            assert!(
-                (1..=4).contains(&sev),
-                "severity must be 1..=4, got {sev}"
-            );
+            assert!((1..=4).contains(&sev), "severity must be 1..=4, got {sev}");
         }
     }
 
@@ -635,7 +632,10 @@ endmodule
 
         assert_eq!(resp["jsonrpc"], "2.0");
         assert_eq!(resp["id"], 7);
-        assert!(resp.get("result").is_none(), "error response must not have result");
+        assert!(
+            resp.get("result").is_none(),
+            "error response must not have result"
+        );
 
         let err = &resp["error"];
         assert_eq!(err["code"], INVALID_PARAMS);
@@ -660,14 +660,16 @@ endmodule
         let resp: Value = serde_json::from_str(&bridge.handle_hover(&req)).unwrap();
 
         assert_eq!(resp["error"]["code"], INVALID_PARAMS);
-        assert!(resp["error"]["message"].as_str().unwrap().contains("not open"));
+        assert!(resp["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("not open"));
     }
 
     #[test]
     fn malformed_json_returns_parse_error() {
         let bridge = MonacoBridge::new();
-        let resp: Value =
-            serde_json::from_str(&bridge.handle_hover("not valid json {{{")).unwrap();
+        let resp: Value = serde_json::from_str(&bridge.handle_hover("not valid json {{{")).unwrap();
         assert_eq!(resp["error"]["code"], PARSE_ERROR);
         assert_eq!(resp["id"], Value::Null);
     }
@@ -687,14 +689,23 @@ endmodule
 
     #[test]
     fn uri_to_path_strips_file_prefix() {
-        assert_eq!(uri_to_path("file:///home/user/test.sv"), "/home/user/test.sv");
+        assert_eq!(
+            uri_to_path("file:///home/user/test.sv"),
+            "/home/user/test.sv"
+        );
         assert_eq!(uri_to_path("/already/a/path.sv"), "/already/a/path.sv");
     }
 
     #[test]
     fn language_from_uri_maps_sv_extensions() {
-        assert_eq!(language_from_uri("file:///x.sv"), Some(Language::SystemVerilog));
-        assert_eq!(language_from_uri("file:///x.svh"), Some(Language::SystemVerilog));
+        assert_eq!(
+            language_from_uri("file:///x.sv"),
+            Some(Language::SystemVerilog)
+        );
+        assert_eq!(
+            language_from_uri("file:///x.svh"),
+            Some(Language::SystemVerilog)
+        );
         assert_eq!(language_from_uri("file:///x.rs"), Some(Language::Rust));
         assert_eq!(language_from_uri("file:///x.unknown"), None);
     }

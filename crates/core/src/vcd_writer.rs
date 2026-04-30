@@ -59,9 +59,9 @@ pub fn write_vcd_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Result<usize> 
 
     // ─── Initial values (§18.2.4 $dumpvars) ──────────────────────────
     writeln!(w, "$dumpvars")?;
-    writeln!(w, "0!")?;       // clk low
-    writeln!(w, "0\"")?;      // rst_n low (held during reset)
-    writeln!(w, "0#")?;       // mac_busy idle
+    writeln!(w, "0!")?; // clk low
+    writeln!(w, "0\"")?; // rst_n low (held during reset)
+    writeln!(w, "0#")?; // mac_busy idle
     writeln!(w, "0$")?;
     writeln!(w, "0%")?;
     writeln!(w, "0&")?;
@@ -75,42 +75,73 @@ pub fn write_vcd_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Result<usize> 
     // `start_cycle + duration`.  The core_id bus mirrors the most
     // recently started event.
     #[derive(Clone)]
-    struct Change { tick: u64, id: char, val: String }
+    struct Change {
+        tick: u64,
+        id: char,
+        val: String,
+    }
     let mut changes: Vec<Change> = Vec::with_capacity(trace.events.len() * 2 + 4);
 
     // rst_n goes high at tick 1 so designs can exit reset.
-    changes.push(Change { tick: 1, id: '"', val: "1".into() });
+    changes.push(Change {
+        tick: 1,
+        id: '"',
+        val: "1".into(),
+    });
 
     let clk_half = 1u64.max(1);
     // Clock transitions across the window.  Bounded to avoid a runaway
     // write if total_cycles is huge; the UI already clips the window.
     let max_tick = trace.total_cycles.max(
-        trace.events.iter().map(|e| e.start_cycle.get() + e.duration.get()).max().unwrap_or(0),
+        trace
+            .events
+            .iter()
+            .map(|e| e.start_cycle.get() + e.duration.get())
+            .max()
+            .unwrap_or(0),
     );
     let mut t = 0u64;
     let mut level = 0u8;
     while t <= max_tick && changes.len() < 20_000 {
         level ^= 1;
-        changes.push(Change { tick: t, id: '!', val: (level as u32).to_string() });
+        changes.push(Change {
+            tick: t,
+            id: '!',
+            val: (level as u32).to_string(),
+        });
         t = t.saturating_add(clk_half);
-        if t == 0 { break; }
+        if t == 0 {
+            break;
+        }
     }
 
     for ev in &trace.events {
         let id = match ev.event_type.as_str() {
-            "MAC_COMPUTE"    => '#',
-            "DMA_READ"       => '$',
-            "DMA_WRITE"      => '%',
+            "MAC_COMPUTE" => '#',
+            "DMA_READ" => '$',
+            "DMA_WRITE" => '%',
             "SYSTOLIC_STALL" => '&',
-            "BARRIER_SYNC"   => '\'',
-            _                => continue,
+            "BARRIER_SYNC" => '\'',
+            _ => continue,
         };
         let end = ev.start_cycle.get() + ev.duration.get();
-        changes.push(Change { tick: ev.start_cycle.get(), id, val: "1".into() });
-        changes.push(Change { tick: end, id, val: "0".into() });
+        changes.push(Change {
+            tick: ev.start_cycle.get(),
+            id,
+            val: "1".into(),
+        });
+        changes.push(Change {
+            tick: end,
+            id,
+            val: "0".into(),
+        });
         // core_id bus: 8-bit binary string, MSB first.
         let bits = format!("{:08b}", (ev.core_id.get() & 0xFF) as u8);
-        changes.push(Change { tick: ev.start_cycle.get(), id: '(', val: format!("b{} ", bits) });
+        changes.push(Change {
+            tick: ev.start_cycle.get(),
+            id: '(',
+            val: format!("b{} ", bits),
+        });
     }
 
     changes.sort_by(|a, b| a.tick.cmp(&b.tick));
@@ -145,8 +176,8 @@ mod tests {
         NpuTrace {
             total_cycles: 20,
             events: vec![
-                NpuEvent::new(1, 2,  5, "MAC_COMPUTE"),
-                NpuEvent::new(0, 8,  4, "DMA_READ"),
+                NpuEvent::new(1, 2, 5, "MAC_COMPUTE"),
+                NpuEvent::new(0, 8, 4, "DMA_READ"),
                 NpuEvent::new(3, 13, 2, "SYSTOLIC_STALL"),
             ],
         }
@@ -158,10 +189,22 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         write_vcd_to(&t, &mut buf).expect("write ok");
         let s = String::from_utf8(buf).unwrap();
-        assert!(s.starts_with("$version "), "§18.2.1 header must begin with a declaration command");
-        assert!(s.contains("$timescale 1 ns $end"), "§18.2.2 timescale required");
-        assert!(s.contains("$scope module top $end"), "§18.2.2 scope required");
-        assert!(s.contains("$enddefinitions $end"), "§18.2.3 enddefinitions terminates header");
+        assert!(
+            s.starts_with("$version "),
+            "§18.2.1 header must begin with a declaration command"
+        );
+        assert!(
+            s.contains("$timescale 1 ns $end"),
+            "§18.2.2 timescale required"
+        );
+        assert!(
+            s.contains("$scope module top $end"),
+            "§18.2.2 scope required"
+        );
+        assert!(
+            s.contains("$enddefinitions $end"),
+            "§18.2.3 enddefinitions terminates header"
+        );
     }
 
     #[test]
@@ -170,9 +213,15 @@ mod tests {
         let mut buf: Vec<u8> = Vec::new();
         write_vcd_to(&t, &mut buf).unwrap();
         let s = String::from_utf8(buf).unwrap();
-        for sig in ["clk", "rst_n", "mac_busy", "dma_rd", "dma_wr", "stall", "barrier", "core_id"] {
-            assert!(s.contains(&format!(" {} $end", sig)),
-                "expected $var declaration for '{}': got:\n{}", sig, s);
+        for sig in [
+            "clk", "rst_n", "mac_busy", "dma_rd", "dma_wr", "stall", "barrier", "core_id",
+        ] {
+            assert!(
+                s.contains(&format!(" {} $end", sig)),
+                "expected $var declaration for '{}': got:\n{}",
+                sig,
+                s
+            );
         }
     }
 

@@ -34,22 +34,26 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IsaResult {
     /// Mnemonic + operands joined: "ld.tile.l2 [r3], brm_0".
-    pub inst:            String,
+    pub inst: String,
     /// `0x<hex>` opcode string (machine-code word).
-    pub opcode:          String,
+    pub opcode: String,
     /// Golden-model cycle count (from the NPU latency table).
     pub expected_cycles: u64,
     /// DUT-reported cycle count (from the log, else == expected).
-    pub actual_cycles:   u64,
+    pub actual_cycles: u64,
     /// PASS | WARN | FAIL.
-    pub status:          IsaStatus,
+    pub status: IsaStatus,
     /// Human-readable decode hint.
-    pub decode:          String,
+    pub decode: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
-pub enum IsaStatus { Pass, Warn, Fail }
+pub enum IsaStatus {
+    Pass,
+    Warn,
+    Fail,
+}
 
 /// Returns the NPU pipeline latency for a given mnemonic.  The table
 /// is intentionally small and prefix-keyed so it survives operand
@@ -61,21 +65,21 @@ fn expected_cycles_for(mnemonic: &str) -> (u64, &'static str) {
     if m.starts_with("mac.arr") || m.starts_with("gemm") {
         (1024, "32x32 MAC Array Multiply-Accumulate")
     } else if m.starts_with("ld.tile") {
-        (128,  "Load Tile from L2 mapping")
+        (128, "Load Tile from L2 mapping")
     } else if m.starts_with("st.wb") || m.starts_with("st.tile") {
-        (48,   "Store Write-Back to DDR")
+        (48, "Store Write-Back to DDR")
     } else if m.starts_with("dma") {
-        (64,   "AXI Burst Memory Access")
+        (64, "AXI Burst Memory Access")
     } else if m.starts_with("sync") || m.starts_with("barrier") {
-        (16,   "Tile Synchronization Barrier")
+        (16, "Tile Synchronization Barrier")
     } else if m.starts_with("ld") {
-        (8,    "Scalar Load")
+        (8, "Scalar Load")
     } else if m.starts_with("st") {
-        (8,    "Scalar Store")
+        (8, "Scalar Store")
     } else if m.starts_with("br") || m.starts_with("j") {
-        (4,    "Branch / Jump")
+        (4, "Branch / Jump")
     } else {
-        (1,    "Scalar ALU")
+        (1, "Scalar ALU")
     }
 }
 
@@ -92,21 +96,29 @@ fn parse_commit_line(line: &str) -> Option<IsaResult> {
     // Drop the "N:" core-id segment.
     let rest = match rest.find(':') {
         Some(i) => rest[i + 1..].trim_start(),
-        None    => return None,
+        None => return None,
     };
     // Now expect: "0x<pc> (0x<insn>) <mnemonic> [operands...]".
     let mut parts = rest.splitn(2, char::is_whitespace);
     let pc = parts.next()?;
-    if !pc.starts_with("0x") { return None; }
+    if !pc.starts_with("0x") {
+        return None;
+    }
     let tail = parts.next()?.trim_start();
     // Opcode is the `(0x....)` segment.
-    let open  = tail.find('(')?;
+    let open = tail.find('(')?;
     let close = tail.find(')')?;
-    if close <= open + 1 { return None; }
-    let opcode = tail[open + 1 .. close].to_string();
-    if !opcode.starts_with("0x") { return None; }
+    if close <= open + 1 {
+        return None;
+    }
+    let opcode = tail[open + 1..close].to_string();
+    if !opcode.starts_with("0x") {
+        return None;
+    }
     let after = tail[close + 1..].trim_start();
-    if after.is_empty() { return None; }
+    if after.is_empty() {
+        return None;
+    }
     let mut it = after.splitn(2, char::is_whitespace);
     let mnemonic = it.next()?.to_string();
     let operands = it.next().unwrap_or("").trim();
@@ -120,29 +132,35 @@ fn parse_commit_line(line: &str) -> Option<IsaResult> {
     // Spike baseline does not emit it; the pccx testbench does.
     let (inst_clean, actual_opt) = match inst.rfind(";cycles=") {
         Some(i) => {
-            let n = inst[i + ";cycles=".len() ..].trim()
+            let n = inst[i + ";cycles=".len()..]
+                .trim()
                 .trim_end_matches(|c: char| !c.is_ascii_digit())
-                .parse::<u64>().ok();
+                .parse::<u64>()
+                .ok();
             (inst[..i].trim_end().to_string(), n)
         }
         None => (inst, None),
     };
 
     let (expected, decode) = expected_cycles_for(&mnemonic);
-    let actual  = actual_opt.unwrap_or(expected);
-    let status  = if actual == expected {
+    let actual = actual_opt.unwrap_or(expected);
+    let status = if actual == expected {
         IsaStatus::Pass
     } else {
         let delta = (actual as i64 - expected as i64).unsigned_abs();
-        if delta * 10 <= expected { IsaStatus::Warn } else { IsaStatus::Fail }
+        if delta * 10 <= expected {
+            IsaStatus::Warn
+        } else {
+            IsaStatus::Fail
+        }
     };
     Some(IsaResult {
-        inst:            inst_clean,
+        inst: inst_clean,
         opcode,
         expected_cycles: expected,
-        actual_cycles:   actual,
+        actual_cycles: actual,
         status,
-        decode:          decode.to_string(),
+        decode: decode.to_string(),
     })
 }
 
@@ -153,9 +171,7 @@ pub fn parse_commit_log(log: &str) -> Vec<IsaResult> {
 }
 
 /// Convenience wrapper that reads the log from a file.
-pub fn parse_commit_log_file(
-    path: &std::path::Path,
-) -> std::io::Result<Vec<IsaResult>> {
+pub fn parse_commit_log_file(path: &std::path::Path) -> std::io::Result<Vec<IsaResult>> {
     let txt = std::fs::read_to_string(path)?;
     Ok(parse_commit_log(&txt))
 }
@@ -171,11 +187,11 @@ mod tests {
         // Spike default format — no ;cycles suffix, so actual == expected, PASS.
         let line = "core   0: 0x0000000080001000 (0x00400513) ld.tile.l2 [r3], brm_0";
         let r = parse_commit_line(line).expect("should parse");
-        assert_eq!(r.opcode,          "0x00400513");
-        assert_eq!(r.inst,            "ld.tile.l2 [r3], brm_0");
+        assert_eq!(r.opcode, "0x00400513");
+        assert_eq!(r.inst, "ld.tile.l2 [r3], brm_0");
         assert_eq!(r.expected_cycles, 128);
-        assert_eq!(r.actual_cycles,   128);
-        assert_eq!(r.status,          IsaStatus::Pass);
+        assert_eq!(r.actual_cycles, 128);
+        assert_eq!(r.status, IsaStatus::Pass);
     }
 
     #[test]
@@ -184,8 +200,8 @@ mod tests {
         let line = "core   0: 0x80001004 (0x11112222) dma.axi.burst 64, req_1 ;cycles=256";
         let r = parse_commit_line(line).expect("should parse");
         assert_eq!(r.expected_cycles, 64);
-        assert_eq!(r.actual_cycles,   256);
-        assert_eq!(r.status,          IsaStatus::Fail);
+        assert_eq!(r.actual_cycles, 256);
+        assert_eq!(r.status, IsaStatus::Fail);
     }
 
     #[test]
@@ -195,8 +211,8 @@ mod tests {
         let line = "core   0: 0x80001008 (0x33334444) sync.barrier tile_mask ;cycles=17";
         let r = parse_commit_line(line).expect("should parse");
         assert_eq!(r.expected_cycles, 16);
-        assert_eq!(r.actual_cycles,   17);
-        assert_eq!(r.status,          IsaStatus::Warn);
+        assert_eq!(r.actual_cycles, 17);
+        assert_eq!(r.status, IsaStatus::Warn);
     }
 
     #[test]
@@ -212,7 +228,7 @@ core   1: 0x80002000 (0x22223333) st.wb.ddr [r9], acc_z ;cycles=48
         assert_eq!(rows.len(), 3);
         assert_eq!(rows[0].expected_cycles, 128);
         assert_eq!(rows[1].expected_cycles, 1024);
-        assert_eq!(rows[2].status,          IsaStatus::Pass);
+        assert_eq!(rows[2].status, IsaStatus::Pass);
     }
 
     #[test]
@@ -228,11 +244,12 @@ core   1: 0x80002000 (0x22223333) st.wb.ddr [r9], acc_z ;cycles=48
         std::fs::write(
             &path,
             "core   0: 0x80001000 (0xaabbccdd) gemm.tile ;cycles=1024\n",
-        ).unwrap();
+        )
+        .unwrap();
         let rows = parse_commit_log_file(&path).unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].expected_cycles, 1024);
-        assert_eq!(rows[0].actual_cycles,   1024);
-        assert_eq!(rows[0].status,          IsaStatus::Pass);
+        assert_eq!(rows[0].actual_cycles, 1024);
+        assert_eq!(rows[0].status, IsaStatus::Pass);
     }
 }

@@ -6,12 +6,7 @@
 // binary to start a standalone daemon, or call `serve()` / `create_router()`
 // from the Tauri host to embed the server in-process.
 
-use axum::{
-    extract::State as AxumState,
-    http::StatusCode,
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::State as AxumState, http::StatusCode, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -234,7 +229,11 @@ impl std::fmt::Display for ProtocolError {
             Self::BufferTooShort => write!(f, "buffer shorter than 5-byte frame header"),
             Self::UnknownMessageType(t) => write!(f, "unknown message type: 0x{:02x}", t),
             Self::PayloadLengthMismatch { expected, actual } => {
-                write!(f, "payload length mismatch: header says {} bytes, buffer has {}", expected, actual)
+                write!(
+                    f,
+                    "payload length mismatch: header says {} bytes, buffer has {}",
+                    expected, actual
+                )
             }
         }
     }
@@ -440,7 +439,11 @@ pub struct AccessDenied {
 
 impl std::fmt::Display for AccessDenied {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} may not perform {:?}: {}", self.role, self.action, self.reason)
+        write!(
+            f,
+            "{:?} may not perform {:?}: {}",
+            self.role, self.action, self.reason
+        )
     }
 }
 
@@ -667,7 +670,9 @@ pub struct AuditLog {
 
 impl AuditLog {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
 
     /// Append an entry.  Entries are never removed.
@@ -682,7 +687,10 @@ impl AuditLog {
 
     /// All entries whose `timestamp >= since`, in insertion order.
     pub fn entries_since(&self, since: u64) -> Vec<&AuditEntry> {
-        self.entries.iter().filter(|e| e.timestamp >= since).collect()
+        self.entries
+            .iter()
+            .filter(|e| e.timestamp >= since)
+            .collect()
     }
 }
 
@@ -824,7 +832,10 @@ mod tests {
         buf.extend_from_slice(&10u32.to_be_bytes());
         buf.extend_from_slice(&[0xAA, 0xBB]);
         match Frame::decode(&buf) {
-            Err(ProtocolError::PayloadLengthMismatch { expected: 10, actual: 2 }) => {}
+            Err(ProtocolError::PayloadLengthMismatch {
+                expected: 10,
+                actual: 2,
+            }) => {}
             other => panic!("expected PayloadLengthMismatch, got {:?}", other),
         }
     }
@@ -905,13 +916,19 @@ mod tests {
         SessionManager::new(max, std::time::Duration::from_secs(1800))
     }
 
-    fn uid(s: &str) -> UserId { UserId(s.to_string()) }
-    fn pid(s: &str) -> ProjectId { ProjectId(s.to_string()) }
+    fn uid(s: &str) -> UserId {
+        UserId(s.to_string())
+    }
+    fn pid(s: &str) -> ProjectId {
+        ProjectId(s.to_string())
+    }
 
     #[test]
     fn session_create_and_get() {
         let mut mgr = make_manager(10);
-        let id = mgr.create_session(uid("alice"), pid("proj-a"), Role::Viewer).unwrap();
+        let id = mgr
+            .create_session(uid("alice"), pid("proj-a"), Role::Viewer)
+            .unwrap();
         let sess = mgr.get_session(&id).unwrap();
         assert_eq!(sess.id, id);
         assert_eq!(sess.user, uid("alice"));
@@ -922,21 +939,29 @@ mod tests {
     #[test]
     fn session_max_cap_enforced() {
         let mut mgr = make_manager(2);
-        mgr.create_session(uid("u1"), pid("p"), Role::Viewer).unwrap();
-        mgr.create_session(uid("u2"), pid("p"), Role::Viewer).unwrap();
-        let err = mgr.create_session(uid("u3"), pid("p"), Role::Viewer).unwrap_err();
+        mgr.create_session(uid("u1"), pid("p"), Role::Viewer)
+            .unwrap();
+        mgr.create_session(uid("u2"), pid("p"), Role::Viewer)
+            .unwrap();
+        let err = mgr
+            .create_session(uid("u3"), pid("p"), Role::Viewer)
+            .unwrap_err();
         assert_eq!(err, SessionError::MaxSessionsReached);
     }
 
     #[test]
     fn session_terminated_slot_is_not_counted() {
         let mut mgr = make_manager(2);
-        let id1 = mgr.create_session(uid("u1"), pid("p"), Role::Viewer).unwrap();
-        mgr.create_session(uid("u2"), pid("p"), Role::Viewer).unwrap();
+        let id1 = mgr
+            .create_session(uid("u1"), pid("p"), Role::Viewer)
+            .unwrap();
+        mgr.create_session(uid("u2"), pid("p"), Role::Viewer)
+            .unwrap();
         // Terminate one slot, then the cap should allow a new creation.
         mgr.terminate_session(&id1).unwrap();
         assert_eq!(mgr.active_count(), 1);
-        mgr.create_session(uid("u3"), pid("p"), Role::Owner).unwrap();
+        mgr.create_session(uid("u3"), pid("p"), Role::Owner)
+            .unwrap();
         assert_eq!(mgr.active_count(), 2);
     }
 
@@ -950,15 +975,22 @@ mod tests {
     #[test]
     fn session_double_terminate_errors() {
         let mut mgr = make_manager(10);
-        let id = mgr.create_session(uid("alice"), pid("p"), Role::Owner).unwrap();
+        let id = mgr
+            .create_session(uid("alice"), pid("p"), Role::Owner)
+            .unwrap();
         mgr.terminate_session(&id).unwrap();
-        assert_eq!(mgr.terminate_session(&id), Err(SessionError::AlreadyTerminated));
+        assert_eq!(
+            mgr.terminate_session(&id),
+            Err(SessionError::AlreadyTerminated)
+        );
     }
 
     #[test]
     fn session_touch_updates_last_active() {
         let mut mgr = make_manager(10);
-        let id = mgr.create_session(uid("alice"), pid("p"), Role::Maintainer).unwrap();
+        let id = mgr
+            .create_session(uid("alice"), pid("p"), Role::Maintainer)
+            .unwrap();
         // Back-date the session.
         mgr.sessions.get_mut(&id).unwrap().last_active = 1_000_000;
         mgr.touch_session(&id).unwrap();
@@ -971,7 +1003,9 @@ mod tests {
     #[test]
     fn session_touch_on_terminated_errors() {
         let mut mgr = make_manager(10);
-        let id = mgr.create_session(uid("alice"), pid("p"), Role::Owner).unwrap();
+        let id = mgr
+            .create_session(uid("alice"), pid("p"), Role::Owner)
+            .unwrap();
         mgr.terminate_session(&id).unwrap();
         assert_eq!(mgr.touch_session(&id), Err(SessionError::AlreadyTerminated));
     }
@@ -979,8 +1013,12 @@ mod tests {
     #[test]
     fn reap_idle_sessions_terminates_old_sessions() {
         let mut mgr = SessionManager::new(10, std::time::Duration::from_secs(600));
-        let id_old = mgr.create_session(uid("alice"), pid("p"), Role::Viewer).unwrap();
-        let id_new = mgr.create_session(uid("bob"), pid("p"), Role::Viewer).unwrap();
+        let id_old = mgr
+            .create_session(uid("alice"), pid("p"), Role::Viewer)
+            .unwrap();
+        let id_new = mgr
+            .create_session(uid("bob"), pid("p"), Role::Viewer)
+            .unwrap();
 
         // Back-date alice's session to be older than the 600 s timeout.
         mgr.sessions.get_mut(&id_old).unwrap().last_active = now_secs() - 700;
@@ -989,15 +1027,23 @@ mod tests {
         let reaped = mgr.reap_idle_sessions();
         assert_eq!(reaped.len(), 1);
         assert_eq!(reaped[0], id_old);
-        assert_eq!(mgr.get_session(&id_old).unwrap().state, ManagedSessionState::Terminated);
-        assert_eq!(mgr.get_session(&id_new).unwrap().state, ManagedSessionState::Active);
+        assert_eq!(
+            mgr.get_session(&id_old).unwrap().state,
+            ManagedSessionState::Terminated
+        );
+        assert_eq!(
+            mgr.get_session(&id_new).unwrap().state,
+            ManagedSessionState::Active
+        );
         assert_eq!(mgr.active_count(), 1);
     }
 
     #[test]
     fn reap_does_not_touch_already_terminated() {
         let mut mgr = SessionManager::new(10, std::time::Duration::from_secs(60));
-        let id = mgr.create_session(uid("u"), pid("p"), Role::Viewer).unwrap();
+        let id = mgr
+            .create_session(uid("u"), pid("p"), Role::Viewer)
+            .unwrap();
         mgr.sessions.get_mut(&id).unwrap().last_active = now_secs() - 200;
         mgr.terminate_session(&id).unwrap();
         // Already terminated; reap should report 0 newly reaped.

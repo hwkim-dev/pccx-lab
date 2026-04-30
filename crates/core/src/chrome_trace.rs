@@ -33,12 +33,12 @@ fn cycles_to_us(cycles: u64) -> u64 {
 
 fn category_for(event_type: &str) -> &'static str {
     match event_type {
-        "MAC_COMPUTE"    => "mac",
-        "DMA_READ"       => "dma",
-        "DMA_WRITE"      => "dma",
+        "MAC_COMPUTE" => "mac",
+        "DMA_READ" => "dma",
+        "DMA_WRITE" => "dma",
         "SYSTOLIC_STALL" => "stall",
-        "BARRIER_SYNC"   => "sync",
-        _                => "other",
+        "BARRIER_SYNC" => "sync",
+        _ => "other",
     }
 }
 
@@ -57,7 +57,9 @@ pub fn write_chrome_trace_to<W: Write>(trace: &NpuTrace, w: &mut W) -> io::Resul
     let mut written = 0usize;
     let mut first = true;
     for ev in &trace.events {
-        if !first { writeln!(w, ",")?; }
+        if !first {
+            writeln!(w, ",")?;
+        }
         first = false;
         let ts = cycles_to_us(ev.start_cycle.get());
         let dur = cycles_to_us(ev.duration.get()).max(1);
@@ -95,7 +97,7 @@ mod tests {
         NpuTrace {
             total_cycles: 1000,
             events: vec![
-                NpuEvent::new(0, 0,   400, "MAC_COMPUTE"),
+                NpuEvent::new(0, 0, 400, "MAC_COMPUTE"),
                 NpuEvent::new(1, 400, 200, "DMA_READ"),
                 NpuEvent::new(2, 600, 200, "BARRIER_SYNC"),
             ],
@@ -114,7 +116,10 @@ mod tests {
         let arr = v.as_array().expect("top-level must be array");
         assert_eq!(arr.len(), 3);
         for ev in arr {
-            assert_eq!(ev["ph"], "X", "every event must be a complete (duration) event");
+            assert_eq!(
+                ev["ph"], "X",
+                "every event must be a complete (duration) event"
+            );
             assert!(ev["ts"].is_number(), "ts required");
             assert!(ev["dur"].is_number(), "dur required");
             assert!(ev["name"].is_string(), "name required");

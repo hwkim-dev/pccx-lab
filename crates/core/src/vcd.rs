@@ -28,9 +28,9 @@ use vcd::{Command, Parser, ScopeItem, Value as VcdValue};
 pub struct SignalMeta {
     /// VCD identifier code (e.g. "!", "#n3"). Doubles as the key the
     /// UI groups transitions by.
-    pub id:    String,
+    pub id: String,
     /// Human-readable reference name from `$var <type> <width> <id> <name>`.
-    pub name:  String,
+    pub name: String,
     /// Dot-joined scope path ("top.ctrl.mat" etc) — empty at file root.
     pub scope: String,
     /// Bit-width declared in the `$var` command (1 for wires).
@@ -46,18 +46,18 @@ pub struct VcdChange {
     /// Matches `SignalMeta::id`.
     pub sig_id: String,
     /// VCD timestamp at which the change is observed.
-    pub tick:   u64,
+    pub tick: u64,
     /// Stringified value.  Scalars emit `"0"`, `"1"`, `"x"`, `"z"`;
     /// buses emit a 2-/16-radix bit string as the VCD spec dictates.
     /// The UI radix formatter re-parses this lazily.
-    pub value:  String,
+    pub value: String,
 }
 
 /// Structured result of parsing a `.vcd` file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WaveformDump {
     pub signals: Vec<SignalMeta>,
-    pub events:  Vec<VcdChange>,
+    pub events: Vec<VcdChange>,
     /// File timescale converted to picoseconds so the UI can label
     /// the ruler without re-implementing the unit math.  `None` when
     /// the VCD omitted `$timescale`.
@@ -112,7 +112,7 @@ pub fn parse_vcd_file(path: &Path) -> Result<WaveformDump, VcdError> {
     let timescale_ps = header.timescale.map(|(num, unit)| {
         use vcd::TimescaleUnit::*;
         let per_unit_ps: u64 = match unit {
-            S  => 1_000_000_000_000,
+            S => 1_000_000_000_000,
             MS => 1_000_000_000,
             US => 1_000_000,
             NS => 1_000,
@@ -137,29 +137,29 @@ pub fn parse_vcd_file(path: &Path) -> Result<WaveformDump, VcdError> {
             Command::ChangeScalar(id, value) => {
                 events.push(VcdChange {
                     sig_id: id.to_string(),
-                    tick:   current_tick,
-                    value:  scalar_to_str(value).to_string(),
+                    tick: current_tick,
+                    value: scalar_to_str(value).to_string(),
                 });
             }
             Command::ChangeVector(id, vector) => {
                 events.push(VcdChange {
                     sig_id: id.to_string(),
-                    tick:   current_tick,
-                    value:  vector.to_string(),
+                    tick: current_tick,
+                    value: vector.to_string(),
                 });
             }
             Command::ChangeReal(id, r) => {
                 events.push(VcdChange {
                     sig_id: id.to_string(),
-                    tick:   current_tick,
-                    value:  format!("{r}"),
+                    tick: current_tick,
+                    value: format!("{r}"),
                 });
             }
             Command::ChangeString(id, s) => {
                 events.push(VcdChange {
                     sig_id: id.to_string(),
-                    tick:   current_tick,
-                    value:  s,
+                    tick: current_tick,
+                    value: s,
                 });
             }
             // Begin/End/Comment/Version/Date are informational only.
@@ -167,16 +167,16 @@ pub fn parse_vcd_file(path: &Path) -> Result<WaveformDump, VcdError> {
         }
     }
 
-    Ok(WaveformDump { signals, events, timescale_ps })
+    Ok(WaveformDump {
+        signals,
+        events,
+        timescale_ps,
+    })
 }
 
 // ─── Internal helpers ────────────────────────────────────────────────────
 
-fn collect_signals(
-    items: &[ScopeItem],
-    scope_stack: &mut Vec<String>,
-    out: &mut Vec<SignalMeta>,
-) {
+fn collect_signals(items: &[ScopeItem], scope_stack: &mut Vec<String>, out: &mut Vec<SignalMeta>) {
     for item in items {
         match item {
             ScopeItem::Scope(scope) => {
@@ -186,8 +186,8 @@ fn collect_signals(
             }
             ScopeItem::Var(var) => {
                 out.push(SignalMeta {
-                    id:    var.code.to_string(),
-                    name:  var.reference.clone(),
+                    id: var.code.to_string(),
+                    name: var.reference.clone(),
                     scope: scope_stack.join("."),
                     width: var.size,
                 });
@@ -202,8 +202,8 @@ fn scalar_to_str(v: VcdValue) -> &'static str {
     match v {
         VcdValue::V0 => "0",
         VcdValue::V1 => "1",
-        VcdValue::X  => "x",
-        VcdValue::Z  => "z",
+        VcdValue::X => "x",
+        VcdValue::Z => "z",
     }
 }
 
@@ -254,25 +254,36 @@ b00000010 #
         assert_eq!(dump.timescale_ps, Some(1_000), "1 ns = 1000 ps");
         assert_eq!(dump.signals.len(), 2, "two $var entries");
 
-        let clk = dump.signals.iter().find(|s| s.name == "clk").expect("clk present");
+        let clk = dump
+            .signals
+            .iter()
+            .find(|s| s.name == "clk")
+            .expect("clk present");
         assert_eq!(clk.width, 1);
         assert_eq!(clk.scope, "top.ctrl");
 
-        let counter = dump.signals.iter().find(|s| s.name == "counter").expect("counter present");
+        let counter = dump
+            .signals
+            .iter()
+            .find(|s| s.name == "counter")
+            .expect("counter present");
         assert_eq!(counter.width, 8);
         assert_eq!(counter.scope, "top.ctrl");
 
         // Value-change sanity.
         assert!(!dump.events.is_empty(), "at least one transition parsed");
-        let first_clk_rise = dump.events.iter().find(|e| {
-            e.sig_id == clk.id && e.tick == 10 && e.value == "1"
-        });
+        let first_clk_rise = dump
+            .events
+            .iter()
+            .find(|e| e.sig_id == clk.id && e.tick == 10 && e.value == "1");
         assert!(first_clk_rise.is_some(), "clk should rise at tick 10");
 
         // Counter transitions must round-trip into bit strings.
-        let counter_at_10 = dump.events.iter().find(|e| {
-            e.sig_id == counter.id && e.tick == 10
-        }).expect("counter updates at 10");
+        let counter_at_10 = dump
+            .events
+            .iter()
+            .find(|e| e.sig_id == counter.id && e.tick == 10)
+            .expect("counter updates at 10");
         assert_eq!(counter_at_10.value, "00000001");
     }
 

@@ -124,12 +124,23 @@ mod tests {
     fn completions_contain_core_sv_keywords() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         let labels: Vec<&str> = completions.iter().map(|c| c.label.as_str()).collect();
         assert!(labels.contains(&"module"), "must contain 'module'");
         assert!(labels.contains(&"always_ff"), "must contain 'always_ff'");
-        assert!(labels.contains(&"always_comb"), "must contain 'always_comb'");
+        assert!(
+            labels.contains(&"always_comb"),
+            "must contain 'always_comb'"
+        );
         assert!(labels.contains(&"logic"), "must contain 'logic'");
     }
 
@@ -137,29 +148,62 @@ mod tests {
     fn completions_contain_uvm_macros() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         let labels: Vec<&str> = completions.iter().map(|c| c.label.as_str()).collect();
         assert!(labels.contains(&"`uvm_info"), "must contain '`uvm_info'");
-        assert!(labels.contains(&"`uvm_component_utils"), "must contain '`uvm_component_utils'");
+        assert!(
+            labels.contains(&"`uvm_component_utils"),
+            "must contain '`uvm_component_utils'"
+        );
     }
 
     #[test]
     fn completions_contain_pccx_identifiers() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         let labels: Vec<&str> = completions.iter().map(|c| c.label.as_str()).collect();
-        assert!(labels.contains(&"pccx_transaction"), "must contain 'pccx_transaction'");
-        assert!(labels.contains(&"pccx_scoreboard"), "must contain 'pccx_scoreboard'");
+        assert!(
+            labels.contains(&"pccx_transaction"),
+            "must contain 'pccx_transaction'"
+        );
+        assert!(
+            labels.contains(&"pccx_scoreboard"),
+            "must contain 'pccx_scoreboard'"
+        );
     }
 
     #[test]
     fn all_completions_use_lsp_source() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         for c in &completions {
             assert_eq!(c.source, CompletionSource::Lsp);
@@ -170,10 +214,21 @@ mod tests {
     fn all_completions_have_detail_set() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         for c in &completions {
-            assert!(c.detail.is_some(), "every keyword must carry a detail string");
+            assert!(
+                c.detail.is_some(),
+                "every keyword must carry a detail string"
+            );
         }
     }
 
@@ -181,7 +236,15 @@ mod tests {
     fn insert_text_matches_label() {
         let provider = SvKeywordProvider::new();
         let completions = provider
-            .complete(Language::SystemVerilog, "test.sv", SourcePos { line: 0, character: 0 }, "")
+            .complete(
+                Language::SystemVerilog,
+                "test.sv",
+                SourcePos {
+                    line: 0,
+                    character: 0,
+                },
+                "",
+            )
             .expect("complete must succeed");
         for c in &completions {
             assert_eq!(c.label, c.insert_text);

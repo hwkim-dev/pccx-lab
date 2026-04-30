@@ -22,7 +22,7 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CovBin {
-    pub id:   String,
+    pub id: String,
     pub hits: u64,
     pub goal: u64,
 }
@@ -37,24 +37,31 @@ pub struct CovGroup {
 pub struct CrossTuple {
     pub a_group: String,
     pub b_group: String,
-    pub a_bin:   String,
-    pub b_bin:   String,
-    pub hits:    u64,
-    pub goal:    u64,
+    pub a_bin: String,
+    pub b_bin: String,
+    pub hits: u64,
+    pub goal: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct MergedCoverage {
-    pub groups:  Vec<CovGroup>,
+    pub groups: Vec<CovGroup>,
     pub crosses: Vec<CrossTuple>,
 }
 
 #[derive(Error, Debug)]
 pub enum CoverageError {
     #[error("IO error on {path}: {source}")]
-    IoError { path: String, source: std::io::Error },
+    IoError {
+        path: String,
+        source: std::io::Error,
+    },
     #[error("JSON error on {path} line {line}: {source}")]
-    JsonError { path: String, line: usize, source: serde_json::Error },
+    JsonError {
+        path: String,
+        line: usize,
+        source: serde_json::Error,
+    },
 }
 
 // ─── Raw JSONL record ────────────────────────────────────────────────────────
@@ -64,13 +71,20 @@ pub enum CoverageError {
 
 #[derive(Debug, Deserialize)]
 struct RawRecord {
-    #[serde(default)] group: Option<String>,
-    #[serde(default)] bin:   Option<String>,
-    #[serde(default)] cross: Option<(String, String)>,
-    #[serde(default)] a_bin: Option<String>,
-    #[serde(default)] b_bin: Option<String>,
-    #[serde(default)] hits:  u64,
-    #[serde(default)] goal:  Option<u64>,
+    #[serde(default)]
+    group: Option<String>,
+    #[serde(default)]
+    bin: Option<String>,
+    #[serde(default)]
+    cross: Option<(String, String)>,
+    #[serde(default)]
+    a_bin: Option<String>,
+    #[serde(default)]
+    b_bin: Option<String>,
+    #[serde(default)]
+    hits: u64,
+    #[serde(default)]
+    goal: Option<u64>,
 }
 
 /// Merges one or more JSONL coverage dumps into a single
@@ -85,16 +99,18 @@ pub fn merge_jsonl(paths: &[&Path]) -> Result<MergedCoverage, CoverageError> {
 
     for path in paths {
         let path_str = path.display().to_string();
-        let text = fs::read_to_string(path)
-            .map_err(|e| CoverageError::IoError { path: path_str.clone(), source: e })?;
+        let text = fs::read_to_string(path).map_err(|e| CoverageError::IoError {
+            path: path_str.clone(),
+            source: e,
+        })?;
 
         for (line_no, raw_line) in text.lines().enumerate() {
             let line = raw_line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            let rec: RawRecord = serde_json::from_str(line)
-                .map_err(|e| CoverageError::JsonError {
+            let rec: RawRecord =
+                serde_json::from_str(line).map_err(|e| CoverageError::JsonError {
                     path: path_str.clone(),
                     line: line_no + 1,
                     source: e,
@@ -103,15 +119,18 @@ pub fn merge_jsonl(paths: &[&Path]) -> Result<MergedCoverage, CoverageError> {
             if let Some((a_group, b_group)) = rec.cross {
                 let a_bin = rec.a_bin.unwrap_or_default();
                 let b_bin = rec.b_bin.unwrap_or_default();
-                let key   = (a_group, b_group, a_bin, b_bin);
-                let slot  = cross_map.entry(key).or_insert((0, 0));
-                slot.0   += rec.hits;
-                slot.1    = slot.1.max(rec.goal.unwrap_or(0));
-            } else if let (Some(group), Some(bin)) = (rec.group, rec.bin) {
-                let slot = bin_map.entry(group).or_default()
-                    .entry(bin).or_insert((0, 0));
+                let key = (a_group, b_group, a_bin, b_bin);
+                let slot = cross_map.entry(key).or_insert((0, 0));
                 slot.0 += rec.hits;
-                slot.1  = slot.1.max(rec.goal.unwrap_or(0));
+                slot.1 = slot.1.max(rec.goal.unwrap_or(0));
+            } else if let (Some(group), Some(bin)) = (rec.group, rec.bin) {
+                let slot = bin_map
+                    .entry(group)
+                    .or_default()
+                    .entry(bin)
+                    .or_insert((0, 0));
+                slot.0 += rec.hits;
+                slot.1 = slot.1.max(rec.goal.unwrap_or(0));
             }
             // Silently drop records that match neither shape — the
             // schema doc marks them as reserved for future extensions.
@@ -131,8 +150,16 @@ pub fn merge_jsonl(paths: &[&Path]) -> Result<MergedCoverage, CoverageError> {
 
     let crosses = cross_map
         .into_iter()
-        .map(|((a_group, b_group, a_bin, b_bin), (hits, goal))|
-            CrossTuple { a_group, b_group, a_bin, b_bin, hits, goal })
+        .map(
+            |((a_group, b_group, a_bin, b_bin), (hits, goal))| CrossTuple {
+                a_group,
+                b_group,
+                a_bin,
+                b_bin,
+                hits,
+                goal,
+            },
+        )
         .collect();
 
     Ok(MergedCoverage { groups, crosses })
@@ -164,31 +191,42 @@ mod merge {
 
     #[test]
     fn merge_single_run_preserves_bins() {
-        let p = write_tmp("single.jsonl", concat!(
-            r#"{"group":"gemm_tile_shape","bin":"32x32","hits":5,"goal":10}"#, "\n",
-            r#"{"group":"gemm_tile_shape","bin":"16x16","hits":2,"goal":4}"#,  "\n",
-        ));
+        let p = write_tmp(
+            "single.jsonl",
+            concat!(
+                r#"{"group":"gemm_tile_shape","bin":"32x32","hits":5,"goal":10}"#,
+                "\n",
+                r#"{"group":"gemm_tile_shape","bin":"16x16","hits":2,"goal":4}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.groups.len(), 1);
         let g = &merged.groups[0];
         assert_eq!(g.name, "gemm_tile_shape");
         assert_eq!(g.bins.len(), 2);
         // BTreeMap ordering: "16x16" < "32x32" lexically.
-        assert_eq!(g.bins[0].id,   "16x16");
+        assert_eq!(g.bins[0].id, "16x16");
         assert_eq!(g.bins[0].hits, 2);
         assert_eq!(g.bins[0].goal, 4);
-        assert_eq!(g.bins[1].id,   "32x32");
+        assert_eq!(g.bins[1].id, "32x32");
         assert_eq!(g.bins[1].hits, 5);
     }
 
     #[test]
     fn merge_three_runs_sums_hits_and_keeps_max_goal() {
-        let a = write_tmp("a.jsonl",
-            r#"{"group":"gemv_lane_sel","bin":"L0","hits":3,"goal":10}"#);
-        let b = write_tmp("b.jsonl",
-            r#"{"group":"gemv_lane_sel","bin":"L0","hits":4,"goal":12}"#);
-        let c = write_tmp("c.jsonl",
-            r#"{"group":"gemv_lane_sel","bin":"L0","hits":1}"#); // no goal field
+        let a = write_tmp(
+            "a.jsonl",
+            r#"{"group":"gemv_lane_sel","bin":"L0","hits":3,"goal":10}"#,
+        );
+        let b = write_tmp(
+            "b.jsonl",
+            r#"{"group":"gemv_lane_sel","bin":"L0","hits":4,"goal":12}"#,
+        );
+        let c = write_tmp(
+            "c.jsonl",
+            r#"{"group":"gemv_lane_sel","bin":"L0","hits":1}"#,
+        ); // no goal field
         let merged = merge_jsonl(&[a.as_path(), b.as_path(), c.as_path()]).unwrap();
         assert_eq!(merged.groups.len(), 1);
         let bin = &merged.groups[0].bins[0];
@@ -198,11 +236,17 @@ mod merge {
 
     #[test]
     fn merge_cross_tuples_accumulate() {
-        let p = write_tmp("cross.jsonl", concat!(
-            r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"4","b_bin":"hi","hits":3,"goal":10}"#, "\n",
-            r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"4","b_bin":"hi","hits":2,"goal":10}"#, "\n",
-            r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"8","b_bin":"lo","hits":1,"goal":6}"#,  "\n",
-        ));
+        let p = write_tmp(
+            "cross.jsonl",
+            concat!(
+                r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"4","b_bin":"hi","hits":3,"goal":10}"#,
+                "\n",
+                r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"4","b_bin":"hi","hits":2,"goal":10}"#,
+                "\n",
+                r#"{"cross":["gemm_k_stride","mem_hp_backpressure"],"a_bin":"8","b_bin":"lo","hits":1,"goal":6}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.crosses.len(), 2);
         let a = &merged.crosses[0];
@@ -214,11 +258,15 @@ mod merge {
 
     #[test]
     fn merge_blank_and_comment_lines_are_ignored() {
-        let p = write_tmp("commented.jsonl", concat!(
-            "# comment line\n",
-            "\n",
-            r#"{"group":"sfu_op_kind","bin":"exp","hits":7,"goal":8}"#, "\n",
-        ));
+        let p = write_tmp(
+            "commented.jsonl",
+            concat!(
+                "# comment line\n",
+                "\n",
+                r#"{"group":"sfu_op_kind","bin":"exp","hits":7,"goal":8}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.groups.len(), 1);
         assert_eq!(merged.groups[0].bins[0].hits, 7);
@@ -238,11 +286,17 @@ mod merge {
     /// merged output, sorted by group name (BTreeMap ordering).
     #[test]
     fn merge_multiple_groups() {
-        let p = write_tmp("multi_group.jsonl", concat!(
-            r#"{"group":"gemm_tile_shape","bin":"32x32","hits":3,"goal":10}"#, "\n",
-            r#"{"group":"sfu_op_kind","bin":"exp","hits":7,"goal":8}"#, "\n",
-            r#"{"group":"dma_burst_len","bin":"16","hits":2,"goal":4}"#, "\n",
-        ));
+        let p = write_tmp(
+            "multi_group.jsonl",
+            concat!(
+                r#"{"group":"gemm_tile_shape","bin":"32x32","hits":3,"goal":10}"#,
+                "\n",
+                r#"{"group":"sfu_op_kind","bin":"exp","hits":7,"goal":8}"#,
+                "\n",
+                r#"{"group":"dma_burst_len","bin":"16","hits":2,"goal":4}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.groups.len(), 3);
         // BTreeMap sorts lexically: dma < gemm < sfu
@@ -255,10 +309,15 @@ mod merge {
     /// in the merged output.
     #[test]
     fn merge_cross_product_distinct_pairs() {
-        let p = write_tmp("cross_pairs.jsonl", concat!(
-            r#"{"cross":["g1","g2"],"a_bin":"a","b_bin":"b","hits":1,"goal":5}"#, "\n",
-            r#"{"cross":["g3","g4"],"a_bin":"x","b_bin":"y","hits":2,"goal":6}"#, "\n",
-        ));
+        let p = write_tmp(
+            "cross_pairs.jsonl",
+            concat!(
+                r#"{"cross":["g1","g2"],"a_bin":"a","b_bin":"b","hits":1,"goal":5}"#,
+                "\n",
+                r#"{"cross":["g3","g4"],"a_bin":"x","b_bin":"y","hits":2,"goal":6}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.crosses.len(), 2);
         assert_eq!(merged.crosses[0].a_group, "g1");
@@ -269,10 +328,14 @@ mod merge {
     /// the maximum goal — the UCIS merge semantics contract.
     #[test]
     fn merge_overlapping_bins_from_separate_files() {
-        let f1 = write_tmp("overlap1.jsonl",
-            r#"{"group":"tile","bin":"8x8","hits":5,"goal":10}"#);
-        let f2 = write_tmp("overlap2.jsonl",
-            r#"{"group":"tile","bin":"8x8","hits":3,"goal":15}"#);
+        let f1 = write_tmp(
+            "overlap1.jsonl",
+            r#"{"group":"tile","bin":"8x8","hits":5,"goal":10}"#,
+        );
+        let f2 = write_tmp(
+            "overlap2.jsonl",
+            r#"{"group":"tile","bin":"8x8","hits":3,"goal":15}"#,
+        );
         let merged = merge_jsonl(&[f1.as_path(), f2.as_path()]).unwrap();
         assert_eq!(merged.groups.len(), 1);
         let bin = &merged.groups[0].bins[0];
@@ -288,8 +351,10 @@ mod merge {
         let err = merge_jsonl(&[bad]).unwrap_err();
         match err {
             CoverageError::IoError { path, .. } => {
-                assert!(path.contains("does_not_exist"),
-                    "error must reference the missing path");
+                assert!(
+                    path.contains("does_not_exist"),
+                    "error must reference the missing path"
+                );
             }
             other => panic!("expected IoError, got: {other:?}"),
         }
@@ -300,11 +365,17 @@ mod merge {
     /// "reserved for future extensions" rule.
     #[test]
     fn merge_reserved_shape_records_are_dropped() {
-        let p = write_tmp("reserved.jsonl", concat!(
-            r#"{"hits":99}"#, "\n",
-            r#"{"group":"g","hits":5}"#, "\n",
-            r#"{"group":"real","bin":"b","hits":1}"#, "\n",
-        ));
+        let p = write_tmp(
+            "reserved.jsonl",
+            concat!(
+                r#"{"hits":99}"#,
+                "\n",
+                r#"{"group":"g","hits":5}"#,
+                "\n",
+                r#"{"group":"real","bin":"b","hits":1}"#,
+                "\n",
+            ),
+        );
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         // Only the last line has both group and bin — others are silently dropped.
         assert_eq!(merged.groups.len(), 1);
@@ -316,8 +387,7 @@ mod merge {
     /// the merged goal must be 0.
     #[test]
     fn merge_absent_goal_defaults_to_zero() {
-        let p = write_tmp("no_goal.jsonl",
-            r#"{"group":"g","bin":"b","hits":7}"#);
+        let p = write_tmp("no_goal.jsonl", r#"{"group":"g","bin":"b","hits":7}"#);
         let merged = merge_jsonl(&[p.as_path()]).unwrap();
         assert_eq!(merged.groups[0].bins[0].goal, 0);
     }

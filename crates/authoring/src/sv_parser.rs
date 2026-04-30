@@ -139,7 +139,9 @@ fn extract_preceding_doc_comment(lines: &[&str], module_line: usize) -> Option<S
         } else {
             break;
         }
-        if j == 0 { break; }
+        if j == 0 {
+            break;
+        }
         j -= 1;
     }
 
@@ -165,8 +167,9 @@ fn parse_module_header(lines: &[&str], i: &mut usize) -> Option<SvModule> {
     }
 
     // Extract module name
-    let name = header.split_whitespace()
-        .nth(1)?  // word after "module"
+    let name = header
+        .split_whitespace()
+        .nth(1)? // word after "module"
         .trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_')
         .to_string();
 
@@ -191,7 +194,9 @@ fn extract_ports(header: &str) -> Vec<SvPort> {
         let mut found = None;
         for (i, ch) in header.char_indices() {
             match ch {
-                '(' => { depth += 1; }
+                '(' => {
+                    depth += 1;
+                }
                 ')' => {
                     depth -= 1;
                     if depth == 0 && found.is_none() {
@@ -201,7 +206,11 @@ fn extract_ports(header: &str) -> Vec<SvPort> {
                 _ => {}
             }
         }
-        found.and_then(|close_param| header[close_param + 1..].find('(').map(|off| close_param + 1 + off))
+        found.and_then(|close_param| {
+            header[close_param + 1..]
+                .find('(')
+                .map(|off| close_param + 1 + off)
+        })
     } else {
         header.find('(')
     };
@@ -211,19 +220,29 @@ fn extract_ports(header: &str) -> Vec<SvPort> {
             let port_str = &header[start + 1..end];
             for part in port_str.split(',') {
                 let part = part.trim();
-                if part.is_empty() { continue; }
+                if part.is_empty() {
+                    continue;
+                }
 
                 let tokens: Vec<&str> = part.split_whitespace().collect();
-                if tokens.is_empty() { continue; }
+                if tokens.is_empty() {
+                    continue;
+                }
 
                 let mut direction = PortDirection::Input;
                 let mut width = String::new();
 
                 for (_idx, &tok) in tokens.iter().enumerate() {
                     match tok {
-                        "input" => { direction = PortDirection::Input; }
-                        "output" => { direction = PortDirection::Output; }
-                        "inout" => { direction = PortDirection::Inout; }
+                        "input" => {
+                            direction = PortDirection::Input;
+                        }
+                        "output" => {
+                            direction = PortDirection::Output;
+                        }
+                        "inout" => {
+                            direction = PortDirection::Inout;
+                        }
                         _ if tok.starts_with('[') => {
                             width = tok.to_string();
                         }
@@ -237,7 +256,11 @@ fn extract_ports(header: &str) -> Vec<SvPort> {
                         ports.push(SvPort {
                             name: name.to_string(),
                             direction,
-                            width: if width.is_empty() { "1".to_string() } else { width },
+                            width: if width.is_empty() {
+                                "1".to_string()
+                            } else {
+                                width
+                            },
                             doc: None,
                         });
                     }
@@ -270,7 +293,22 @@ fn extract_parameters(header: &str) -> Vec<SvParam> {
                             let mut name_idx = idx + 1;
                             // Skip type keyword if present
                             if tokens.get(name_idx).map_or(false, |t| {
-                                matches!(*t, "int" | "integer" | "logic" | "bit" | "byte" | "shortint" | "longint" | "string" | "real" | "time" | "type" | "signed" | "unsigned")
+                                matches!(
+                                    *t,
+                                    "int"
+                                        | "integer"
+                                        | "logic"
+                                        | "bit"
+                                        | "byte"
+                                        | "shortint"
+                                        | "longint"
+                                        | "string"
+                                        | "real"
+                                        | "time"
+                                        | "type"
+                                        | "signed"
+                                        | "unsigned"
+                                )
                             }) {
                                 name_idx += 1;
                             }
@@ -280,14 +318,27 @@ fn extract_parameters(header: &str) -> Vec<SvParam> {
                             }
                             if let Some(&name_tok) = tokens.get(name_idx) {
                                 let (name, default) = if let Some(eq_pos) = part.find('=') {
-                                    let name = name_tok.trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_');
+                                    let name = name_tok.trim_end_matches(|c: char| {
+                                        !c.is_alphanumeric() && c != '_'
+                                    });
                                     let val = part[eq_pos + 1..].trim().to_string();
                                     (name.to_string(), Some(val))
                                 } else {
-                                    (name_tok.trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_').to_string(), None)
+                                    (
+                                        name_tok
+                                            .trim_end_matches(|c: char| {
+                                                !c.is_alphanumeric() && c != '_'
+                                            })
+                                            .to_string(),
+                                        None,
+                                    )
                                 };
 
-                                params.push(SvParam { name, default_value: default, doc: None });
+                                params.push(SvParam {
+                                    name,
+                                    default_value: default,
+                                    doc: None,
+                                });
                             }
                             break;
                         }
@@ -392,7 +443,9 @@ fn find_begin_end_close(lines: &[&str], start: usize) -> usize {
             // Strip trailing punctuation so "begin;" -> "begin"
             let w = word.trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_');
             match w {
-                "begin" => { depth += 1; }
+                "begin" => {
+                    depth += 1;
+                }
                 "end" => {
                     depth -= 1;
                     if depth == 0 {
@@ -424,8 +477,12 @@ fn find_endcase(lines: &[&str], start: usize) -> usize {
         for word in t.split_whitespace() {
             let w = word.trim_end_matches(|c: char| !c.is_alphanumeric() && c != '_');
             match w {
-                "begin" => { depth += 1; }
-                "end" => { depth -= 1; }
+                "begin" => {
+                    depth += 1;
+                }
+                "end" => {
+                    depth -= 1;
+                }
                 _ => {}
             }
         }
@@ -467,8 +524,13 @@ fn find_reset_state(body: &[&str]) -> Option<String> {
 fn looks_like_reset(cond: &str) -> bool {
     // Covers: !rst_n, ~rst_n, !i_rst_n, rst_n == 1'b0, srst etc.
     let c = cond.trim();
-    c.contains("!rst") || c.contains("~rst") || c.contains("!i_rst") || c.contains("~i_rst")
-        || c.contains("srst") || c.contains("== 1'b0") || c.contains("==1'b0")
+    c.contains("!rst")
+        || c.contains("~rst")
+        || c.contains("!i_rst")
+        || c.contains("~i_rst")
+        || c.contains("srst")
+        || c.contains("== 1'b0")
+        || c.contains("==1'b0")
 }
 
 /// Extract content inside the first pair of parentheses.
@@ -488,11 +550,7 @@ fn extract_paren_content(s: &str) -> String {
 ///   - Inside each arm, collect next-state assignments (`next_state <= X`
 ///     or `state <= X`, where the LHS matches the case variable)
 ///   - Track `if (cond)` lines for condition annotation
-fn parse_case_block(
-    var: String,
-    case_body: &[&str],
-    reset_state: Option<&str>,
-) -> Option<SvFsm> {
+fn parse_case_block(var: String, case_body: &[&str], reset_state: Option<&str>) -> Option<SvFsm> {
     let mut states: Vec<String> = Vec::new();
     let mut transitions: Vec<FsmTransition> = Vec::new();
 
@@ -578,16 +636,20 @@ fn parse_case_block(
     let states_with_transitions: std::collections::HashSet<&str> =
         transitions.iter().map(|t| t.from.as_str()).collect();
 
-    let dead_states: Vec<String> = states.iter()
+    let dead_states: Vec<String> = states
+        .iter()
         .filter(|s| !states_with_transitions.contains(s.as_str()))
         .cloned()
         .collect();
 
-    let fsm_states: Vec<FsmState> = states.iter().map(|s| FsmState {
-        is_initial: *s == initial,
-        is_dead: dead_states.contains(s),
-        name: s.clone(),
-    }).collect();
+    let fsm_states: Vec<FsmState> = states
+        .iter()
+        .map(|s| FsmState {
+            is_initial: *s == initial,
+            is_dead: dead_states.contains(s),
+            name: s.clone(),
+        })
+        .collect();
 
     Some(SvFsm {
         name: var,
@@ -671,8 +733,11 @@ fn nba_lhs(line: &str) -> String {
 /// `next_state` / `nxt_state` alias.
 fn lhs_is_state_var(lhs: &str, var: &str) -> bool {
     let l = lhs.trim();
-    l == var || l == "next_state" || l == "nxt_state"
-        || l == format!("next_{}", var) || l == format!("nxt_{}", var)
+    l == var
+        || l == "next_state"
+        || l == "nxt_state"
+        || l == format!("next_{}", var)
+        || l == format!("nxt_{}", var)
 }
 
 // ─── Markdown docs ───────────────────────────────────────────────────────────
@@ -682,7 +747,10 @@ pub fn generate_module_docs(result: &SvParseResult) -> String {
     let mut out = String::new();
 
     out.push_str(&format!("# {}\n\n", result.file_path));
-    out.push_str(&format!("Source: `{}` ({} lines)\n\n", result.file_path, result.total_lines));
+    out.push_str(&format!(
+        "Source: `{}` ({} lines)\n\n",
+        result.file_path, result.total_lines
+    ));
 
     for module in &result.modules {
         out.push_str(&format!("## Module: `{}`\n\n", module.name));
@@ -697,9 +765,11 @@ pub fn generate_module_docs(result: &SvParseResult) -> String {
             out.push_str("### Parameters\n\n");
             out.push_str("| Name | Default |\n|---|---|\n");
             for p in &module.parameters {
-                out.push_str(&format!("| `{}` | {} |\n",
+                out.push_str(&format!(
+                    "| `{}` | {} |\n",
                     p.name,
-                    p.default_value.as_deref().unwrap_or("-")));
+                    p.default_value.as_deref().unwrap_or("-")
+                ));
             }
             out.push_str("\n");
         }
@@ -881,13 +951,19 @@ endmodule
         assert_eq!(result.modules.len(), 3);
 
         assert_eq!(result.modules[0].name, "cdc_sync");
-        assert!(result.modules[0].doc_comment.as_ref()
-            .unwrap().contains("Clock domain crossing"));
+        assert!(result.modules[0]
+            .doc_comment
+            .as_ref()
+            .unwrap()
+            .contains("Clock domain crossing"));
         assert_eq!(result.modules[0].ports.len(), 3);
 
         assert_eq!(result.modules[1].name, "pipe_reg");
-        assert!(result.modules[1].doc_comment.as_ref()
-            .unwrap().contains("register stage"));
+        assert!(result.modules[1]
+            .doc_comment
+            .as_ref()
+            .unwrap()
+            .contains("register stage"));
         assert_eq!(result.modules[1].parameters.len(), 1);
         assert_eq!(result.modules[1].ports.len(), 3);
 
@@ -937,18 +1013,30 @@ endmodule
 
         // Verify i_ prefix -> Input
         for port in &m.ports[..4] {
-            assert!(port.name.starts_with("i_"),
-                "expected i_ prefix, got {}", port.name);
-            assert!(matches!(port.direction, PortDirection::Input),
-                "port {} should be Input", port.name);
+            assert!(
+                port.name.starts_with("i_"),
+                "expected i_ prefix, got {}",
+                port.name
+            );
+            assert!(
+                matches!(port.direction, PortDirection::Input),
+                "port {} should be Input",
+                port.name
+            );
         }
 
         // Verify o_ prefix -> Output
         for port in &m.ports[4..7] {
-            assert!(port.name.starts_with("o_"),
-                "expected o_ prefix, got {}", port.name);
-            assert!(matches!(port.direction, PortDirection::Output),
-                "port {} should be Output", port.name);
+            assert!(
+                port.name.starts_with("o_"),
+                "expected o_ prefix, got {}",
+                port.name
+            );
+            assert!(
+                matches!(port.direction, PortDirection::Output),
+                "port {} should be Output",
+                port.name
+            );
         }
 
         // Verify inout
@@ -1002,7 +1090,10 @@ endmodule
         assert_eq!(result.modules.len(), 1);
 
         let m = &result.modules[0];
-        let doc = m.doc_comment.as_ref().expect("block comment should be extracted");
+        let doc = m
+            .doc_comment
+            .as_ref()
+            .expect("block comment should be extracted");
         assert!(doc.contains("AXI-Lite command interface"));
         assert!(doc.contains("Decodes register writes"));
     }
@@ -1162,10 +1253,18 @@ endmodule
         // 3 transitions: IDLE->ACTIVE, ACTIVE->DONE, DONE->IDLE
         assert_eq!(fsm.transitions.len(), 3);
 
-        let t_ia = fsm.transitions.iter().find(|t| t.from == "IDLE" && t.to == "ACTIVE").unwrap();
+        let t_ia = fsm
+            .transitions
+            .iter()
+            .find(|t| t.from == "IDLE" && t.to == "ACTIVE")
+            .unwrap();
         assert_eq!(t_ia.condition.as_deref(), Some("i_start"));
 
-        let t_ad = fsm.transitions.iter().find(|t| t.from == "ACTIVE" && t.to == "DONE").unwrap();
+        let t_ad = fsm
+            .transitions
+            .iter()
+            .find(|t| t.from == "ACTIVE" && t.to == "DONE")
+            .unwrap();
         assert!(t_ad.condition.is_none());
 
         // No dead states — all three have transitions
@@ -1255,7 +1354,10 @@ endmodule
 
         // FIRST is initial because it is the first case label (no reset arm)
         let first = fsm.states.iter().find(|s| s.name == "FIRST").unwrap();
-        assert!(first.is_initial, "FIRST should be initial (fallback to first label)");
+        assert!(
+            first.is_initial,
+            "FIRST should be initial (fallback to first label)"
+        );
 
         // Others are not initial
         for s in fsm.states.iter().filter(|s| s.name != "FIRST") {
@@ -1302,13 +1404,16 @@ endmodule
         // Two always_ff blocks: the first (state <= ...) is trivial,
         // the second should yield a case-based FSM on 'state'
         // with next_state assignments captured.
-        let fsm_opt = result.fsms.iter().find(|f| !f.states.is_empty() && f.states.len() >= 3);
+        let fsm_opt = result
+            .fsms
+            .iter()
+            .find(|f| !f.states.is_empty() && f.states.len() >= 3);
         assert!(fsm_opt.is_some(), "expected at least one FSM with 3 states");
 
         let fsm = fsm_opt.unwrap();
         let names: Vec<&str> = fsm.states.iter().map(|s| s.name.as_str()).collect();
         assert!(names.contains(&"WAIT"), "WAIT not found in {:?}", names);
-        assert!(names.contains(&"RUN"),  "RUN not found in {:?}", names);
+        assert!(names.contains(&"RUN"), "RUN not found in {:?}", names);
         assert!(names.contains(&"HALT"), "HALT not found in {:?}", names);
     }
 

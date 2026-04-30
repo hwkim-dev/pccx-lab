@@ -10,11 +10,11 @@
 //     output longint cycles
 //   );
 
-use pccx_core::hw_model::HardwareModel;
 use pccx_core::cycle_estimator::{CycleEstimator, TileOperation};
+use pccx_core::hw_model::HardwareModel;
 
 // ─── Error Codes (return values for DPI-C calls) ──────────────────────────────
-const PCCX_OK:    i32 = 0;
+const PCCX_OK: i32 = 0;
 const PCCX_ERROR: i32 = 1;
 
 // ─── DPI-C Exports ────────────────────────────────────────────────────────────
@@ -28,10 +28,10 @@ const PCCX_ERROR: i32 = 1;
 /// Returns PCCX_OK (0) on success, PCCX_ERROR (1) on invalid arguments.
 #[no_mangle]
 pub unsafe extern "C" fn pccx_estimate_gemm_cycles(
-    m:          u32,
-    n:          u32,
-    k:          u32,
-    bpe:        u32,     // bytes per element: 1 (INT8), 2 (BF16/FP16), 4 (FP32)
+    m: u32,
+    n: u32,
+    k: u32,
+    bpe: u32, // bytes per element: 1 (INT8), 2 (BF16/FP16), 4 (FP32)
     out_cycles: *mut u64,
 ) -> i32 {
     if out_cycles.is_null() || m == 0 || n == 0 || k == 0 || bpe == 0 {
@@ -39,7 +39,12 @@ pub unsafe extern "C" fn pccx_estimate_gemm_cycles(
     }
     let hw = HardwareModel::pccx_reference();
     let est = CycleEstimator::new(&hw);
-    let op  = TileOperation { m, n, k, bytes_per_element: bpe };
+    let op = TileOperation {
+        m,
+        n,
+        k,
+        bytes_per_element: bpe,
+    };
     *out_cycles = est.estimate_gemm_cycles(&op);
     PCCX_OK
 }
@@ -49,10 +54,7 @@ pub unsafe extern "C" fn pccx_estimate_gemm_cycles(
 /// # Safety
 /// `out_cycles` must be a valid non-null pointer.
 #[no_mangle]
-pub unsafe extern "C" fn pccx_estimate_dma_cycles(
-    bytes:      u32,
-    out_cycles: *mut u64,
-) -> i32 {
+pub unsafe extern "C" fn pccx_estimate_dma_cycles(bytes: u32, out_cycles: *mut u64) -> i32 {
     if out_cycles.is_null() {
         return PCCX_ERROR;
     }
@@ -68,9 +70,9 @@ pub unsafe extern "C" fn pccx_estimate_dma_cycles(
 /// `out_cycles` must be a valid non-null pointer.
 #[no_mangle]
 pub unsafe extern "C" fn pccx_estimate_dma_cycles_contended(
-    bytes:        u32,
+    bytes: u32,
     active_cores: u32,
-    out_cycles:   *mut u64,
+    out_cycles: *mut u64,
 ) -> i32 {
     if out_cycles.is_null() || active_cores == 0 {
         return PCCX_ERROR;
@@ -84,19 +86,23 @@ pub unsafe extern "C" fn pccx_estimate_dma_cycles_contended(
 /// Returns 1 if the given tile operation is compute-bound, 0 if memory-bound,
 /// or PCCX_ERROR on invalid arguments.
 #[no_mangle]
-pub unsafe extern "C" fn pccx_is_compute_bound(
-    m:   u32,
-    n:   u32,
-    k:   u32,
-    bpe: u32,
-) -> i32 {
+pub unsafe extern "C" fn pccx_is_compute_bound(m: u32, n: u32, k: u32, bpe: u32) -> i32 {
     if m == 0 || n == 0 || k == 0 || bpe == 0 {
         return PCCX_ERROR;
     }
     let hw = HardwareModel::pccx_reference();
     let est = CycleEstimator::new(&hw);
-    let op  = TileOperation { m, n, k, bytes_per_element: bpe };
-    if est.is_compute_bound(&op) { 1 } else { 0 }
+    let op = TileOperation {
+        m,
+        n,
+        k,
+        bytes_per_element: bpe,
+    };
+    if est.is_compute_bound(&op) {
+        1
+    } else {
+        0
+    }
 }
 
 /// Returns the peak TOPS of the reference NPU (×100 for integer representation,
@@ -117,14 +123,19 @@ pub extern "C" fn pccx_clock_mhz() -> u32 {
 
 /// High-level Rust API: returns GEMM cycle estimate without unsafe raw pointers.
 pub fn estimate_gemm(m: u32, n: u32, k: u32, bpe: u32) -> u64 {
-    let hw  = HardwareModel::pccx_reference();
+    let hw = HardwareModel::pccx_reference();
     let est = CycleEstimator::new(&hw);
-    est.estimate_gemm_cycles(&TileOperation { m, n, k, bytes_per_element: bpe })
+    est.estimate_gemm_cycles(&TileOperation {
+        m,
+        n,
+        k,
+        bytes_per_element: bpe,
+    })
 }
 
 /// High-level Rust API: returns DMA cycle estimate.
 pub fn estimate_dma(bytes: u32, cores: u32) -> u64 {
-    let hw  = HardwareModel::pccx_reference();
+    let hw = HardwareModel::pccx_reference();
     let est = CycleEstimator::new(&hw);
     if cores > 1 {
         est.estimate_dma_cycles_contended(bytes, cores)

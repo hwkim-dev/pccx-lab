@@ -47,11 +47,7 @@ pub trait EvoOperator {
     type Individual;
 
     fn mutate(&self, individual: &Self::Individual) -> Self::Individual;
-    fn crossover(
-        &self,
-        a: &Self::Individual,
-        b: &Self::Individual,
-    ) -> Self::Individual;
+    fn crossover(&self, a: &Self::Individual, b: &Self::Individual) -> Self::Individual;
 }
 
 /// Process-reward model gate — yes/no admission check for

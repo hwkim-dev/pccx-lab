@@ -111,8 +111,18 @@ mod tests {
     fn viewport_tile_round_trip() {
         round_trip(&ViewportTile {
             events: vec![
-                TileEvent { core_id: 0, start_cycle: 100, duration: 10, type_id: 1 },
-                TileEvent { core_id: 1, start_cycle: 200, duration: 20, type_id: 2 },
+                TileEvent {
+                    core_id: 0,
+                    start_cycle: 100,
+                    duration: 10,
+                    type_id: 1,
+                },
+                TileEvent {
+                    core_id: 1,
+                    start_cycle: 200,
+                    duration: 20,
+                    type_id: 2,
+                },
             ],
             generation_id: 42,
             total_events: 2,

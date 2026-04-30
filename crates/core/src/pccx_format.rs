@@ -57,7 +57,9 @@ pub struct TraceConfig {
     pub clock_mhz: u32,
 }
 
-fn default_clock_mhz() -> u32 { 1000 }
+fn default_clock_mhz() -> u32 {
+    1000
+}
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct PayloadConfig {
@@ -163,8 +165,11 @@ impl PccxFile {
             let actual = fnv1a_64(&payload);
             if actual != expected_checksum {
                 // Non-fatal for now — log but don't abort (future: configurable)
-                eprintln!("[pccx_format] WARNING: payload checksum mismatch \
-                    (expected {:#018x}, got {:#018x})", expected_checksum, actual);
+                eprintln!(
+                    "[pccx_format] WARNING: payload checksum mismatch \
+                    (expected {:#018x}, got {:#018x})",
+                    expected_checksum, actual
+                );
             }
         }
 
@@ -178,5 +183,6 @@ impl PccxFile {
 pub fn fnv1a_64(data: &[u8]) -> u64 {
     const BASIS: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x00000100000001b3;
-    data.iter().fold(BASIS, |h, &b| (h ^ b as u64).wrapping_mul(PRIME))
+    data.iter()
+        .fold(BASIS, |h, &b| (h ^ b as u64).wrapping_mul(PRIME))
 }

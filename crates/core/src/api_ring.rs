@@ -14,26 +14,30 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::trace::{NpuTrace, event_type_id};
+use crate::trace::{event_type_id, NpuTrace};
 
 /// One summarised row per `uca_*` surface call.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ApiCall {
     /// Fully qualified API name: `"uca_submit_cmd"`.
-    pub api:             String,
+    pub api: String,
     /// Bucket tag: lifecycle / memory / transfer / dispatch / status / debug.
-    pub kind:            String,
+    pub kind: String,
     /// p99 latency in nanoseconds across all samples in the ring.
-    pub p99_latency_ns:  u64,
+    pub p99_latency_ns: u64,
     /// Count of dropped / truncated events observed.
-    pub drops:           u64,
+    pub drops: u64,
     /// OK | WARN | FAIL.
-    pub status:          ApiStatus,
+    pub status: ApiStatus,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
-pub enum ApiStatus { Ok, Warn, Fail }
+pub enum ApiStatus {
+    Ok,
+    Warn,
+    Fail,
+}
 
 /// Nanoseconds per cycle at the pccx v002 reference clock (200 MHz).
 /// Kept in lock-step with `chrome_trace::CYCLES_PER_US = 200`.
@@ -43,21 +47,21 @@ pub const NS_PER_CYCLE: u64 = 5;
 /// Fills to capacity then wraps (oldest drops are tallied).
 #[derive(Debug, Clone)]
 pub struct ApiRing {
-    buf:      Vec<(String, String, u64)>,
+    buf: Vec<(String, String, u64)>,
     capacity: usize,
-    head:     usize,
-    filled:   bool,
-    dropped:  u64,
+    head: usize,
+    filled: bool,
+    dropped: u64,
 }
 
 impl ApiRing {
     pub fn new(capacity: usize) -> Self {
         Self {
-            buf:      Vec::with_capacity(capacity.max(1)),
+            buf: Vec::with_capacity(capacity.max(1)),
             capacity: capacity.max(1),
-            head:     0,
-            filled:   false,
-            dropped:  0,
+            head: 0,
+            filled: false,
+            dropped: 0,
         }
     }
 
@@ -84,35 +88,51 @@ impl ApiRing {
         use std::collections::BTreeMap;
         let mut buckets: BTreeMap<(String, String), Vec<u64>> = BTreeMap::new();
         for (api, kind, lat) in &self.buf {
-            buckets.entry((api.clone(), kind.clone())).or_default().push(*lat);
+            buckets
+                .entry((api.clone(), kind.clone()))
+                .or_default()
+                .push(*lat);
         }
-        buckets.into_iter().map(|((api, kind), mut lats)| {
-            lats.sort_unstable();
-            let n    = lats.len();
-            let rank = ((0.99 * n as f64).ceil() as usize).saturating_sub(1).min(n - 1);
-            let p99  = lats[rank];
-            // Classify: > 1 ms → WARN, > 10 ms → FAIL.
-            let status = if p99 > 10_000_000 {
-                ApiStatus::Fail
-            } else if p99 > 1_000_000 {
-                ApiStatus::Warn
-            } else {
-                ApiStatus::Ok
-            };
-            ApiCall {
-                api,
-                kind,
-                p99_latency_ns: p99,
-                drops:          self.dropped,
-                status,
-            }
-        }).collect()
+        buckets
+            .into_iter()
+            .map(|((api, kind), mut lats)| {
+                lats.sort_unstable();
+                let n = lats.len();
+                let rank = ((0.99 * n as f64).ceil() as usize)
+                    .saturating_sub(1)
+                    .min(n - 1);
+                let p99 = lats[rank];
+                // Classify: > 1 ms → WARN, > 10 ms → FAIL.
+                let status = if p99 > 10_000_000 {
+                    ApiStatus::Fail
+                } else if p99 > 1_000_000 {
+                    ApiStatus::Warn
+                } else {
+                    ApiStatus::Ok
+                };
+                ApiCall {
+                    api,
+                    kind,
+                    p99_latency_ns: p99,
+                    drops: self.dropped,
+                    status,
+                }
+            })
+            .collect()
     }
 
-    pub fn len(&self)     -> usize { self.buf.len() }
-    pub fn is_empty(&self) -> bool { self.buf.is_empty() }
-    pub fn dropped(&self)  -> u64  { self.dropped }
-    pub fn filled(&self)   -> bool { self.filled }
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
+    }
+    pub fn dropped(&self) -> u64 {
+        self.dropped
+    }
+    pub fn filled(&self) -> bool {
+        self.filled
+    }
 }
 
 /// Classifies a `uca_*` API name into the canonical driver-surface
@@ -121,13 +141,13 @@ impl ApiRing {
 /// documented category column so UI + analytics share one taxonomy.
 fn classify_api_kind(name: &str) -> &'static str {
     match name {
-        "uca_init" | "uca_reset"              => "lifecycle",
-        "uca_alloc_buffer" | "uca_free_buffer"=> "memory",
-        "uca_load_weights" | "uca_fetch_result"=> "transfer",
-        "uca_submit_cmd"                      => "dispatch",
-        "uca_poll_completion"                 => "status",
-        "uca_get_perf_counters"               => "debug",
-        _                                     => "other",
+        "uca_init" | "uca_reset" => "lifecycle",
+        "uca_alloc_buffer" | "uca_free_buffer" => "memory",
+        "uca_load_weights" | "uca_fetch_result" => "transfer",
+        "uca_submit_cmd" => "dispatch",
+        "uca_poll_completion" => "status",
+        "uca_get_perf_counters" => "debug",
+        _ => "other",
     }
 }
 
@@ -177,7 +197,7 @@ mod tests {
     fn empty_ring_flushes_empty() {
         let r = ApiRing::new(16);
         assert!(r.flush().is_empty());
-        assert_eq!(r.len(),     0);
+        assert_eq!(r.len(), 0);
         assert_eq!(r.dropped(), 0);
     }
 
@@ -186,11 +206,11 @@ mod tests {
         let mut r = ApiRing::new(4);
         r.record("uca_init", "lifecycle", 4_100);
         let rows = r.flush();
-        assert_eq!(rows.len(),             1);
-        assert_eq!(rows[0].api,            "uca_init");
-        assert_eq!(rows[0].kind,           "lifecycle");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].api, "uca_init");
+        assert_eq!(rows[0].kind, "lifecycle");
         assert_eq!(rows[0].p99_latency_ns, 4_100);
-        assert_eq!(rows[0].status,         ApiStatus::Ok);
+        assert_eq!(rows[0].status, ApiStatus::Ok);
     }
 
     #[test]
@@ -198,9 +218,9 @@ mod tests {
         let mut r = ApiRing::new(2);
         r.record("uca_a", "k", 100);
         r.record("uca_b", "k", 200);
-        r.record("uca_c", "k", 300);      // overwrites uca_a
-        r.record("uca_d", "k", 400);      // overwrites uca_b
-        assert_eq!(r.len(),     2);
+        r.record("uca_c", "k", 300); // overwrites uca_a
+        r.record("uca_d", "k", 400); // overwrites uca_b
+        assert_eq!(r.len(), 2);
         assert_eq!(r.dropped(), 2);
         assert!(r.filled());
         let rows = r.flush();
@@ -232,13 +252,15 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 100,
             events: vec![
-                NpuEvent::new(0, 0,  50, "MAC_COMPUTE"),
+                NpuEvent::new(0, 0, 50, "MAC_COMPUTE"),
                 NpuEvent::new(1, 50, 50, "DMA_READ"),
             ],
         };
         let rows = list_from_trace(&trace);
-        assert!(rows.is_empty(),
-                "No API_CALL events must yield empty, never a literal fallback");
+        assert!(
+            rows.is_empty(),
+            "No API_CALL events must yield empty, never a literal fallback"
+        );
     }
 
     #[test]
@@ -248,17 +270,22 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 10_000,
             events: vec![
-                NpuEvent::api_call(0, 0,    820,    "uca_init"),
-                NpuEvent::api_call(0, 820,  2_520,  "uca_alloc_buffer"),
-                NpuEvent::api_call(0, 3_340, 360,   "uca_submit_cmd"),
-                NpuEvent::new(0,     4_000, 100,    "MAC_COMPUTE"),
-                NpuEvent::api_call(0, 5_000, 60,    "uca_poll_completion"),
+                NpuEvent::api_call(0, 0, 820, "uca_init"),
+                NpuEvent::api_call(0, 820, 2_520, "uca_alloc_buffer"),
+                NpuEvent::api_call(0, 3_340, 360, "uca_submit_cmd"),
+                NpuEvent::new(0, 4_000, 100, "MAC_COMPUTE"),
+                NpuEvent::api_call(0, 5_000, 60, "uca_poll_completion"),
             ],
         };
         let rows = list_from_trace(&trace);
         assert_eq!(rows.len(), 4, "4 distinct uca_* names = 4 rows");
         let apis: Vec<&str> = rows.iter().map(|r| r.api.as_str()).collect();
-        for want in ["uca_init", "uca_alloc_buffer", "uca_submit_cmd", "uca_poll_completion"] {
+        for want in [
+            "uca_init",
+            "uca_alloc_buffer",
+            "uca_submit_cmd",
+            "uca_poll_completion",
+        ] {
             assert!(apis.contains(&want), "missing {want} in {:?}", apis);
         }
         // Kind bucket checked via classify mapping.
@@ -277,24 +304,42 @@ mod tests {
         };
         let rows = list_from_trace(&trace);
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].p99_latency_ns, 1_000,
-                   "200 cy × 5 ns/cy must map to 1_000 ns");
+        assert_eq!(
+            rows[0].p99_latency_ns, 1_000,
+            "200 cy × 5 ns/cy must map to 1_000 ns"
+        );
     }
 
     #[test]
     fn list_from_trace_emits_eight_canonical_rows_from_simulator() {
         // Tight integration: the simulator's 8-call prelude should
         // show up as 8 rows here without any hand-written literal.
-        let trace = crate::simulator::generate_realistic_trace(
-            &crate::simulator::SimConfig { tiles: 1, cores: 1, ..Default::default() });
+        let trace = crate::simulator::generate_realistic_trace(&crate::simulator::SimConfig {
+            tiles: 1,
+            cores: 1,
+            ..Default::default()
+        });
         let rows = list_from_trace(&trace);
-        assert_eq!(rows.len(), 8, "simulator prelude emits 8 canonical uca_* calls");
+        assert_eq!(
+            rows.len(),
+            8,
+            "simulator prelude emits 8 canonical uca_* calls"
+        );
         let apis: Vec<&str> = rows.iter().map(|r| r.api.as_str()).collect();
-        for want in ["uca_init", "uca_alloc_buffer", "uca_load_weights",
-                     "uca_submit_cmd", "uca_poll_completion",
-                     "uca_fetch_result", "uca_reset",
-                     "uca_get_perf_counters"] {
-            assert!(apis.contains(&want), "simulator missing canonical api {want}");
+        for want in [
+            "uca_init",
+            "uca_alloc_buffer",
+            "uca_load_weights",
+            "uca_submit_cmd",
+            "uca_poll_completion",
+            "uca_fetch_result",
+            "uca_reset",
+            "uca_get_perf_counters",
+        ] {
+            assert!(
+                apis.contains(&want),
+                "simulator missing canonical api {want}"
+            );
         }
     }
 }

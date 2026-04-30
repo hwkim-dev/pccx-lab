@@ -66,10 +66,7 @@ impl VerificationGate for GoldenDiffGate {
     fn check(&self, trace: &NpuTrace) -> GateVerdict {
         let report = golden_diff::diff(trace, &self.reference);
         let passed = report.is_clean();
-        let summary = format!(
-            "{} / {} steps pass",
-            report.pass_count, report.step_count
-        );
+        let summary = format!("{} / {} steps pass", report.pass_count, report.step_count);
         let details = serde_json::to_value(&report).unwrap_or(serde_json::Value::Null);
         GateVerdict {
             gate: "golden-diff",
@@ -79,5 +76,7 @@ impl VerificationGate for GoldenDiffGate {
         }
     }
 
-    fn name(&self) -> &'static str { "golden-diff" }
+    fn name(&self) -> &'static str {
+        "golden-diff"
+    }
 }

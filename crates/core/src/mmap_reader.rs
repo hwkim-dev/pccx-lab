@@ -299,13 +299,13 @@ fn decode_event(payload: &[u8], i: usize) -> NpuEvent {
     let dur = u64::from_le_bytes(payload[off + 12..off + 20].try_into().unwrap());
     let type_id = u32::from_le_bytes(payload[off + 20..off + 24].try_into().unwrap());
     let event_type = match type_id {
-        event_type_id::MAC_COMPUTE    => "MAC_COMPUTE",
-        event_type_id::DMA_READ       => "DMA_READ",
-        event_type_id::DMA_WRITE      => "DMA_WRITE",
+        event_type_id::MAC_COMPUTE => "MAC_COMPUTE",
+        event_type_id::DMA_READ => "DMA_READ",
+        event_type_id::DMA_WRITE => "DMA_WRITE",
         event_type_id::SYSTOLIC_STALL => "SYSTOLIC_STALL",
-        event_type_id::BARRIER_SYNC   => "BARRIER_SYNC",
-        event_type_id::API_CALL       => "API_CALL",
-        _                             => "UNKNOWN",
+        event_type_id::BARRIER_SYNC => "BARRIER_SYNC",
+        event_type_id::API_CALL => "API_CALL",
+        _ => "UNKNOWN",
     };
     NpuEvent {
         core_id: CoreId::new(core_id),
@@ -338,8 +338,8 @@ fn partition_point_start_cycle(payload: &[u8], n: usize, target: u64) -> usize {
 mod tests {
     use super::*;
     use crate::pccx_format::{
-        ArchConfig, PccxFile, PccxHeader, PayloadConfig, TraceConfig,
-        MAJOR_VERSION, MINOR_VERSION, fnv1a_64,
+        fnv1a_64, ArchConfig, PayloadConfig, PccxFile, PccxHeader, TraceConfig, MAJOR_VERSION,
+        MINOR_VERSION,
     };
     use crate::trace::{NpuEvent, NpuTrace};
     use std::io::Write as IoWrite;
@@ -347,7 +347,10 @@ mod tests {
     /// Writes a .pccx file with flatbuf encoding to a temp path and
     /// returns the path handle (cleaned up on drop).
     fn write_flatbuf_pccx(events: Vec<NpuEvent>, total_cycles: u64) -> tempfile::NamedTempFile {
-        let trace = NpuTrace { total_cycles, events };
+        let trace = NpuTrace {
+            total_cycles,
+            events,
+        };
         let payload = trace.to_flat_buffer_sorted();
         let header = PccxHeader {
             pccx_lab_version: "test".into(),
@@ -375,10 +378,10 @@ mod tests {
     fn open_and_event_count() {
         // 4 sorted events across 2 cores.
         let events = vec![
-            NpuEvent::new(0,   0, 100, "MAC_COMPUTE"),
-            NpuEvent::new(1,  50,  80, "DMA_READ"),
+            NpuEvent::new(0, 0, 100, "MAC_COMPUTE"),
+            NpuEvent::new(1, 50, 80, "DMA_READ"),
             NpuEvent::new(0, 200, 150, "MAC_COMPUTE"),
-            NpuEvent::new(1, 300,  60, "DMA_WRITE"),
+            NpuEvent::new(1, 300, 60, "DMA_WRITE"),
         ];
         let tmp = write_flatbuf_pccx(events, 500);
         let mt = MmapTrace::open(tmp.path()).unwrap();
@@ -390,10 +393,10 @@ mod tests {
     fn viewport_returns_overlapping_events() {
         // Events sorted by start_cycle.
         let events = vec![
-            NpuEvent::new(0,   0,  50, "MAC_COMPUTE"),   // [0, 50)
-            NpuEvent::new(0,  50, 100, "DMA_READ"),      // [50, 150)
-            NpuEvent::new(0, 200,  80, "MAC_COMPUTE"),   // [200, 280)
-            NpuEvent::new(0, 400,  60, "DMA_WRITE"),     // [400, 460)
+            NpuEvent::new(0, 0, 50, "MAC_COMPUTE"),   // [0, 50)
+            NpuEvent::new(0, 50, 100, "DMA_READ"),    // [50, 150)
+            NpuEvent::new(0, 200, 80, "MAC_COMPUTE"), // [200, 280)
+            NpuEvent::new(0, 400, 60, "DMA_WRITE"),   // [400, 460)
         ];
         let tmp = write_flatbuf_pccx(events, 500);
         let mt = MmapTrace::open(tmp.path()).unwrap();
@@ -423,7 +426,7 @@ mod tests {
     #[test]
     fn viewport_no_overlap() {
         let events = vec![
-            NpuEvent::new(0,   0, 50, "MAC_COMPUTE"),
+            NpuEvent::new(0, 0, 50, "MAC_COMPUTE"),
             NpuEvent::new(0, 200, 50, "DMA_READ"),
         ];
         let tmp = write_flatbuf_pccx(events, 300);
@@ -436,8 +439,8 @@ mod tests {
     #[test]
     fn tile_extraction() {
         let events = vec![
-            NpuEvent::new(0,  0, 100, "MAC_COMPUTE"),
-            NpuEvent::new(0, 50,  80, "DMA_READ"),
+            NpuEvent::new(0, 0, 100, "MAC_COMPUTE"),
+            NpuEvent::new(0, 50, 80, "DMA_READ"),
         ];
         let tmp = write_flatbuf_pccx(events, 200);
         let mt = MmapTrace::open(tmp.path()).unwrap();
@@ -474,7 +477,11 @@ mod tests {
         let header = PccxHeader {
             pccx_lab_version: "test".into(),
             arch: ArchConfig::default(),
-            trace: TraceConfig { cycles: 100, cores: 1, clock_mhz: 200 },
+            trace: TraceConfig {
+                cycles: 100,
+                cores: 1,
+                clock_mhz: 200,
+            },
             payload: PayloadConfig {
                 encoding: "bincode".into(),
                 byte_length: payload.len() as u64,
@@ -489,7 +496,10 @@ mod tests {
 
         let err = MmapTrace::open(tmp.path()).unwrap_err();
         let msg = format!("{err}");
-        assert!(msg.contains("flatbuf"), "error should mention flatbuf: {msg}");
+        assert!(
+            msg.contains("flatbuf"),
+            "error should mention flatbuf: {msg}"
+        );
     }
 
     #[test]
@@ -497,9 +507,9 @@ mod tests {
         // Events with api_name produce a V2 trailer — event_count must
         // not include the trailer bytes.
         let events = vec![
-            NpuEvent::api_call(0,   0, 100, "uca_init"),
-            NpuEvent::new(0,     200,  50, "MAC_COMPUTE"),
-            NpuEvent::api_call(0, 400,  30, "uca_submit_cmd"),
+            NpuEvent::api_call(0, 0, 100, "uca_init"),
+            NpuEvent::new(0, 200, 50, "MAC_COMPUTE"),
+            NpuEvent::api_call(0, 400, 30, "uca_submit_cmd"),
         ];
         let tmp = write_flatbuf_pccx(events, 500);
         let mt = MmapTrace::open(tmp.path()).unwrap();

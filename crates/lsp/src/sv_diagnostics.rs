@@ -10,8 +10,7 @@
 use pccx_authoring::sv_parser::{parse_sv, PortDirection};
 
 use crate::{
-    Diagnostic, DiagnosticSeverity, DiagnosticsProvider, Language, LspError, SourcePos,
-    SourceRange,
+    Diagnostic, DiagnosticSeverity, DiagnosticsProvider, Language, LspError, SourcePos, SourceRange,
 };
 
 pub struct SvDiagnosticsProvider;
@@ -105,10 +104,7 @@ impl DiagnosticsProvider for SvDiagnosticsProvider {
 
 /// Returns the length of line `n` (0-indexed), or 0 if out of range.
 fn line_length(lines: &[&str], n: u32) -> u32 {
-    lines
-        .get(n as usize)
-        .map(|l| l.len() as u32)
-        .unwrap_or(0)
+    lines.get(n as usize).map(|l| l.len() as u32).unwrap_or(0)
 }
 
 /// Searches downward from `start_line` for the port name in source
@@ -173,7 +169,10 @@ endmodule
         let diags = provider
             .diagnostics(Language::SystemVerilog, "good.sv", sv)
             .expect("diagnostics must not error");
-        assert!(diags.is_empty(), "convention-following module should produce no diagnostics");
+        assert!(
+            diags.is_empty(),
+            "convention-following module should produce no diagnostics"
+        );
     }
 
     #[test]
@@ -192,7 +191,12 @@ endmodule
             .expect("diagnostics must not error");
 
         // Three ports violate the prefix convention.
-        assert_eq!(diags.len(), 3, "expected 3 prefix warnings, got {}", diags.len());
+        assert_eq!(
+            diags.len(),
+            3,
+            "expected 3 prefix warnings, got {}",
+            diags.len()
+        );
         for d in &diags {
             assert_eq!(d.severity, DiagnosticSeverity::Warning);
             assert!(d.message.contains("prefix convention"));
@@ -311,15 +315,18 @@ endmodule
 
         // Only reset_n and valid should be flagged.
         assert_eq!(diags.len(), 2);
-        let names: Vec<&str> = diags.iter().map(|d| {
-            if d.message.contains("reset_n") {
-                "reset_n"
-            } else if d.message.contains("valid") {
-                "valid"
-            } else {
-                "unknown"
-            }
-        }).collect();
+        let names: Vec<&str> = diags
+            .iter()
+            .map(|d| {
+                if d.message.contains("reset_n") {
+                    "reset_n"
+                } else if d.message.contains("valid") {
+                    "valid"
+                } else {
+                    "unknown"
+                }
+            })
+            .collect();
         assert!(names.contains(&"reset_n"));
         assert!(names.contains(&"valid"));
     }

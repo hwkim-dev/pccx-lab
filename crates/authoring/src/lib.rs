@@ -10,11 +10,11 @@
 // Roadmap: Phase 5D (Model-to-ISA-API compiler) consumes these specs
 // as ground truth for auto-generating model-specific driver code.
 
-pub mod isa_spec;
 pub mod api_spec;
-pub mod sv_parser;
 pub mod block_diagram;
 pub mod fsm_diagram;
+pub mod isa_spec;
+pub mod sv_parser;
 
 // ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
 //
@@ -38,10 +38,8 @@ pub struct CompilerArtefact {
 
 /// Takes an `IsaSpec` and emits one target file (SV pkg / docs / Rust).
 pub trait IsaCompiler {
-    fn compile(
-        &self,
-        spec: &isa_spec::IsaSpec,
-    ) -> Result<CompilerArtefact, isa_spec::IsaSpecError>;
+    fn compile(&self, spec: &isa_spec::IsaSpec)
+        -> Result<CompilerArtefact, isa_spec::IsaSpecError>;
 
     /// Stable backend name (`"sv-pkg"`, `"rst-table"`, `"rust-ffi"`).
     fn target(&self) -> &'static str;
@@ -50,10 +48,8 @@ pub trait IsaCompiler {
 /// Takes an `ApiSpec` and emits one target file (C header / Rust FFI /
 /// OpenAPI / Python binding).
 pub trait ApiCompiler {
-    fn compile(
-        &self,
-        spec: &api_spec::ApiSpec,
-    ) -> Result<CompilerArtefact, api_spec::ApiSpecError>;
+    fn compile(&self, spec: &api_spec::ApiSpec)
+        -> Result<CompilerArtefact, api_spec::ApiSpecError>;
 
     /// Stable backend name (`"c-header"`, `"rust-ffi"`, `"openapi"`).
     fn target(&self) -> &'static str;

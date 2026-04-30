@@ -6,11 +6,13 @@ mod tests {
     use pccx_core::{
         cycle_estimator::{CycleEstimator, TileOperation},
         hw_model::HardwareModel,
-        pccx_format::{PccxFile, PccxHeader, ArchConfig, TraceConfig, PayloadConfig, fnv1a_64,
-                      MAJOR_VERSION, MINOR_VERSION},
-        simulator::{SimConfig, generate_realistic_trace, save_dummy_pccx},
-        trace::{NpuTrace, NpuEvent, event_type_id},
         license::get_license_info,
+        pccx_format::{
+            fnv1a_64, ArchConfig, PayloadConfig, PccxFile, PccxHeader, TraceConfig, MAJOR_VERSION,
+            MINOR_VERSION,
+        },
+        simulator::{generate_realistic_trace, save_dummy_pccx, SimConfig},
+        trace::{event_type_id, NpuEvent, NpuTrace},
     };
     use std::io::Cursor;
 
@@ -21,8 +23,10 @@ mod tests {
         let hw = HardwareModel::pccx_reference();
         // 32×32 MAC × 2 ops/MAC × 32 cores × 1 GHz = 65.536 TOPS
         let tops = hw.peak_tops();
-        assert!(tops > 60.0 && tops < 70.0,
-            "peak_tops should be ~65.5, got {tops}");
+        assert!(
+            tops > 60.0 && tops < 70.0,
+            "peak_tops should be ~65.5, got {tops}"
+        );
     }
 
     #[test]
@@ -39,51 +43,85 @@ mod tests {
     fn test_gemm_estimate_sanity() {
         let hw = HardwareModel::pccx_reference();
         let est = CycleEstimator::new(&hw);
-        let op  = TileOperation { m: 64, n: 64, k: 64, bytes_per_element: 2 };
+        let op = TileOperation {
+            m: 64,
+            n: 64,
+            k: 64,
+            bytes_per_element: 2,
+        };
         let cycles = est.estimate_gemm_cycles(&op);
         // At minimum it should be compute bound: 64³ / (32×32) = 8 cycles + pipeline
-        assert!(cycles >= 8 + hw.mac.pipeline_depth as u64,
-            "GEMM estimate too low: {cycles}");
+        assert!(
+            cycles >= 8 + hw.mac.pipeline_depth as u64,
+            "GEMM estimate too low: {cycles}"
+        );
     }
 
     #[test]
     fn test_dma_zero_bytes() {
-        let hw  = HardwareModel::pccx_reference();
+        let hw = HardwareModel::pccx_reference();
         let est = CycleEstimator::new(&hw);
-        assert_eq!(est.estimate_dma_cycles(0), 0, "DMA with 0 bytes should return 0");
+        assert_eq!(
+            est.estimate_dma_cycles(0),
+            0,
+            "DMA with 0 bytes should return 0"
+        );
     }
 
     #[test]
     fn test_dma_contended_slower_than_solo() {
-        let hw  = HardwareModel::pccx_reference();
+        let hw = HardwareModel::pccx_reference();
         let est = CycleEstimator::new(&hw);
         let bytes = 1024 * 16; // 16 KB
-        let solo      = est.estimate_dma_cycles(bytes);
+        let solo = est.estimate_dma_cycles(bytes);
         let contended = est.estimate_dma_cycles_contended(bytes, 32);
-        assert!(contended >= solo,
-            "Contended DMA ({contended}) should be >= solo ({solo})");
+        assert!(
+            contended >= solo,
+            "Contended DMA ({contended}) should be >= solo ({solo})"
+        );
     }
 
     #[test]
     fn test_arithmetic_intensity() {
-        let hw  = HardwareModel::pccx_reference();
+        let hw = HardwareModel::pccx_reference();
         let est = CycleEstimator::new(&hw);
-        let op  = TileOperation { m: 64, n: 64, k: 64, bytes_per_element: 2 };
-        let ai  = est.arithmetic_intensity(&op);
+        let op = TileOperation {
+            m: 64,
+            n: 64,
+            k: 64,
+            bytes_per_element: 2,
+        };
+        let ai = est.arithmetic_intensity(&op);
         // 64³ ops / ((64*64 + 64*64)*2 bytes) = 262144 / 16384 = 16
         assert!((ai - 16.0).abs() < 0.1, "Expected AI ≈ 16, got {ai}");
     }
 
     #[test]
     fn test_is_compute_bound() {
-        let hw  = HardwareModel::pccx_reference();
+        let hw = HardwareModel::pccx_reference();
         let est = CycleEstimator::new(&hw);
         // Large square tiles → compute bound
-        let large = TileOperation { m: 128, n: 128, k: 128, bytes_per_element: 2 };
+        let large = TileOperation {
+            m: 128,
+            n: 128,
+            k: 128,
+            bytes_per_element: 2,
+        };
         // Small tiles with large bytes_per_element → memory bound
-        let small = TileOperation { m: 4, n: 4, k: 4, bytes_per_element: 4 };
-        assert!(est.is_compute_bound(&large), "128³ tile should be compute-bound");
-        assert!(!est.is_compute_bound(&small), "4³ FP32 tile should be memory-bound");
+        let small = TileOperation {
+            m: 4,
+            n: 4,
+            k: 4,
+            bytes_per_element: 4,
+        };
+        assert!(
+            est.is_compute_bound(&large),
+            "128³ tile should be compute-bound"
+        );
+        assert!(
+            !est.is_compute_bound(&small),
+            "4³ FP32 tile should be memory-bound"
+        );
     }
 
     // ─── NpuTrace & flat buffer ───────────────────────────────────────────────
@@ -92,10 +130,16 @@ mod tests {
     fn test_event_type_id_mapping() {
         let ev = NpuEvent::new(0, 0, 1, "DMA_WRITE");
         // This was the critical bug: DMA_WRITE must be 3, not 0
-        assert_eq!(ev.type_id().get(), event_type_id::DMA_WRITE,
-            "DMA_WRITE should map to type_id 3");
-        assert_ne!(ev.type_id().get(), event_type_id::UNKNOWN,
-            "DMA_WRITE must not map to UNKNOWN (0)");
+        assert_eq!(
+            ev.type_id().get(),
+            event_type_id::DMA_WRITE,
+            "DMA_WRITE should map to type_id 3"
+        );
+        assert_ne!(
+            ev.type_id().get(),
+            event_type_id::UNKNOWN,
+            "DMA_WRITE must not map to UNKNOWN (0)"
+        );
     }
 
     #[test]
@@ -120,8 +164,11 @@ mod tests {
 
         // Verify second event
         let type_id2 = u32::from_le_bytes(buf[44..48].try_into().unwrap());
-        assert_eq!(type_id2, event_type_id::DMA_WRITE,
-            "DMA_WRITE should be type_id 3 in flat buffer");
+        assert_eq!(
+            type_id2,
+            event_type_id::DMA_WRITE,
+            "DMA_WRITE should be type_id 3 in flat buffer"
+        );
     }
 
     #[test]
@@ -130,7 +177,7 @@ mod tests {
             total_cycles: 200,
             events: vec![
                 NpuEvent::new(0, 0, 100, "MAC_COMPUTE"),
-                NpuEvent::new(1, 0, 50,  "MAC_COMPUTE"),
+                NpuEvent::new(1, 0, 50, "MAC_COMPUTE"),
             ],
         };
         let utils = trace.core_utilisation();
@@ -145,9 +192,7 @@ mod tests {
     fn test_bincode_roundtrip() {
         let trace = NpuTrace {
             total_cycles: 999,
-            events: vec![
-                NpuEvent::new(7, 42, 13, "BARRIER_SYNC"),
-            ],
+            events: vec![NpuEvent::new(7, 42, 13, "BARRIER_SYNC")],
         };
         let payload = trace.to_payload();
         let decoded = NpuTrace::from_payload(&payload).expect("bincode roundtrip failed");
@@ -165,8 +210,16 @@ mod tests {
 
         let header = PccxHeader {
             pccx_lab_version: "v0.4.0-test".to_string(),
-            arch: ArchConfig { mac_dims: (16, 16), isa_version: "1.0".to_string(), peak_tops: 1.0 },
-            trace: TraceConfig { cycles: 12345, cores: 4, clock_mhz: 500 },
+            arch: ArchConfig {
+                mac_dims: (16, 16),
+                isa_version: "1.0".to_string(),
+                peak_tops: 1.0,
+            },
+            trace: TraceConfig {
+                cycles: 12345,
+                cores: 4,
+                clock_mhz: 500,
+            },
             payload: PayloadConfig {
                 encoding: "raw".to_string(),
                 byte_length: payload.len() as u64,
@@ -175,8 +228,11 @@ mod tests {
             format_minor: MINOR_VERSION,
         };
 
-        let pccx_out = PccxFile { header: header.clone(), payload: payload.clone() };
-        let mut buf  = Vec::new();
+        let pccx_out = PccxFile {
+            header: header.clone(),
+            payload: payload.clone(),
+        };
+        let mut buf = Vec::new();
         pccx_out.write(&mut buf).expect("write failed");
 
         // Verify magic bytes
@@ -186,7 +242,7 @@ mod tests {
 
         // Roundtrip read
         let mut cursor = Cursor::new(&buf);
-        let pccx_in   = PccxFile::read(&mut cursor).expect("read failed");
+        let pccx_in = PccxFile::read(&mut cursor).expect("read failed");
         assert_eq!(pccx_in.header.pccx_lab_version, "v0.4.0-test");
         assert_eq!(pccx_in.header.trace.cycles, 12345);
         assert_eq!(pccx_in.header.trace.clock_mhz, 500);
@@ -205,7 +261,7 @@ mod tests {
         let a = fnv1a_64(b"hello pccx");
         let b = fnv1a_64(b"hello pccx");
         assert_eq!(a, b, "FNV-1a must be deterministic");
-        let c = fnv1a_64(b"hello pccX");   // different case
+        let c = fnv1a_64(b"hello pccX"); // different case
         assert_ne!(a, c, "FNV-1a must be sensitive to case");
     }
 
@@ -213,38 +269,67 @@ mod tests {
 
     #[test]
     fn test_generate_trace_has_all_event_types() {
-        let cfg   = SimConfig { tiles: 2, cores: 2, bytes_per_element: 2, tile_m: 16, tile_n: 16, tile_k: 16 };
+        let cfg = SimConfig {
+            tiles: 2,
+            cores: 2,
+            bytes_per_element: 2,
+            tile_m: 16,
+            tile_n: 16,
+            tile_k: 16,
+        };
         let trace = generate_realistic_trace(&cfg);
 
-        let types: std::collections::HashSet<&str> = trace.events.iter()
-            .map(|e| e.event_type.as_str()).collect();
+        let types: std::collections::HashSet<&str> =
+            trace.events.iter().map(|e| e.event_type.as_str()).collect();
 
-        assert!(types.contains("MAC_COMPUTE"),    "Missing MAC_COMPUTE");
-        assert!(types.contains("DMA_READ"),       "Missing DMA_READ");
-        assert!(types.contains("DMA_WRITE"),      "Missing DMA_WRITE");
+        assert!(types.contains("MAC_COMPUTE"), "Missing MAC_COMPUTE");
+        assert!(types.contains("DMA_READ"), "Missing DMA_READ");
+        assert!(types.contains("DMA_WRITE"), "Missing DMA_WRITE");
         assert!(types.contains("SYSTOLIC_STALL"), "Missing SYSTOLIC_STALL");
-        assert!(types.contains("BARRIER_SYNC"),   "Missing BARRIER_SYNC");
+        assert!(types.contains("BARRIER_SYNC"), "Missing BARRIER_SYNC");
     }
 
     #[test]
     fn test_trace_event_count() {
         // 8 canonical API_CALL prelude events +
         // 2 tiles × 2 cores × 4 events/core + 2 cores × barrier = 8 + 2*(2*4+2) = 28
-        let cfg   = SimConfig { tiles: 2, cores: 2, bytes_per_element: 2, tile_m: 16, tile_n: 16, tile_k: 16 };
+        let cfg = SimConfig {
+            tiles: 2,
+            cores: 2,
+            bytes_per_element: 2,
+            tile_m: 16,
+            tile_n: 16,
+            tile_k: 16,
+        };
         let trace = generate_realistic_trace(&cfg);
-        assert_eq!(trace.events.len(), 28,
-                   "Expected 28 events = 8 API_CALL prelude + 20 (2 tiles × 2 cores)");
+        assert_eq!(
+            trace.events.len(),
+            28,
+            "Expected 28 events = 8 API_CALL prelude + 20 (2 tiles × 2 cores)"
+        );
         // Sanity-check: the first 8 events are the canonical uca_* surface calls.
-        let api_count = trace.events.iter()
+        let api_count = trace
+            .events
+            .iter()
             .filter(|e| e.event_type == "API_CALL")
             .count();
-        assert_eq!(api_count, 8, "simulator must emit 8 canonical uca_* API_CALL events");
+        assert_eq!(
+            api_count, 8,
+            "simulator must emit 8 canonical uca_* API_CALL events"
+        );
     }
 
     #[test]
     fn test_trace_monotone_global_cycle() {
         // Each tile must advance global_cycle forward
-        let cfg   = SimConfig { tiles: 5, cores: 4, bytes_per_element: 2, tile_m: 32, tile_n: 32, tile_k: 32 };
+        let cfg = SimConfig {
+            tiles: 5,
+            cores: 4,
+            bytes_per_element: 2,
+            tile_m: 32,
+            tile_n: 32,
+            tile_k: 32,
+        };
         let trace = generate_realistic_trace(&cfg);
         assert!(trace.total_cycles > 0, "Total cycles must be positive");
     }
@@ -313,11 +398,11 @@ All user specified timing constraints are met.
         assert_eq!(util.top_module, "NPU_top");
         assert_eq!(util.total_luts, 5611);
         assert_eq!(util.logic_luts, 5570);
-        assert_eq!(util.ffs,        8458);
-        assert_eq!(util.rams_36,    80);
-        assert_eq!(util.rams_18,    8);
-        assert_eq!(util.urams,      56);
-        assert_eq!(util.dsps,       4);
+        assert_eq!(util.ffs, 8458);
+        assert_eq!(util.rams_36, 80);
+        assert_eq!(util.rams_18, 8);
+        assert_eq!(util.urams, 56);
+        assert_eq!(util.dsps, 4);
     }
 
     #[test]
@@ -333,7 +418,10 @@ All user specified timing constraints are met.
         // captured as the top module.
         let text = "| Design State : Synthesized\n| Device       : xck26\n";
         let util = pccx_core::synth_report::parse_utilization(text);
-        assert_eq!(util.top_module, "", "Design State must not become top_module");
+        assert_eq!(
+            util.top_module, "",
+            "Design State must not become top_module"
+        );
     }
 
     #[test]

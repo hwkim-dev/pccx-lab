@@ -188,7 +188,10 @@ fn format_port_hover(port: &SvPort, module_name: &str) -> String {
         format!(" {}", port.width)
     };
 
-    out.push_str(&format!("`{}` -- {} {}{}\n\n", port.name, dir, "port", width));
+    out.push_str(&format!(
+        "`{}` -- {} {}{}\n\n",
+        port.name, dir, "port", width
+    ));
     out.push_str(&format!("Module: `{}`\n", module_name));
 
     if let Some(doc) = &port.doc {
@@ -251,7 +254,10 @@ endmodule
             .hover(
                 Language::SystemVerilog,
                 "test.sv",
-                SourcePos { line: 2, character: 10 },
+                SourcePos {
+                    line: 2,
+                    character: 10,
+                },
                 SAMPLE_SV,
             )
             .expect("hover must not error");
@@ -286,7 +292,10 @@ endmodule
             .hover(
                 Language::SystemVerilog,
                 "adder.sv",
-                SourcePos { line: 1, character: 24 },
+                SourcePos {
+                    line: 1,
+                    character: 24,
+                },
                 sv,
             )
             .expect("hover must not error");
@@ -308,16 +317,16 @@ endmodule
             .hover(
                 Language::SystemVerilog,
                 "test.sv",
-                SourcePos { line: 3, character: 20 },
+                SourcePos {
+                    line: 3,
+                    character: 20,
+                },
                 SAMPLE_SV,
             )
             .expect("hover must not error");
         let hover = result.expect("hover should return Some for param name");
         assert!(hover.contents.contains("ROWS"), "must mention param name");
-        assert!(
-            hover.contents.contains("32"),
-            "must mention default value"
-        );
+        assert!(hover.contents.contains("32"), "must mention default value");
     }
 
     #[test]
@@ -327,7 +336,10 @@ endmodule
             .hover(
                 Language::SystemVerilog,
                 "test.sv",
-                SourcePos { line: 10, character: 0 },
+                SourcePos {
+                    line: 10,
+                    character: 0,
+                },
                 SAMPLE_SV,
             )
             .expect("hover must not error");
@@ -343,7 +355,10 @@ endmodule
             .hover(
                 Language::SystemVerilog,
                 "test.sv",
-                SourcePos { line: 1, character: 0 },
+                SourcePos {
+                    line: 1,
+                    character: 0,
+                },
                 sv,
             )
             .expect("hover must not error");
@@ -352,14 +367,26 @@ endmodule
 
     #[test]
     fn extract_word_at_identifies_module_name() {
-        let word = extract_word_at(SAMPLE_SV, SourcePos { line: 2, character: 10 })
-            .expect("should find word");
+        let word = extract_word_at(
+            SAMPLE_SV,
+            SourcePos {
+                line: 2,
+                character: 10,
+            },
+        )
+        .expect("should find word");
         assert_eq!(word.text, "ctrl_npu_frontend");
     }
 
     #[test]
     fn extract_word_at_returns_none_on_whitespace() {
-        let result = extract_word_at("  hello  ", SourcePos { line: 0, character: 0 });
+        let result = extract_word_at(
+            "  hello  ",
+            SourcePos {
+                line: 0,
+                character: 0,
+            },
+        );
         assert!(result.is_none());
     }
 

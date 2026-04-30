@@ -20,17 +20,17 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::trace::{NpuTrace, event_type_id};
-use crate::typed::{CoreId, EventTypeId, CycleCount};
+use crate::trace::{event_type_id, NpuTrace};
+use crate::typed::{CoreId, CycleCount, EventTypeId};
 
 /// Per-core active-event descriptor at the queried cycle.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CoreState {
-    pub core_id:          CoreId,
+    pub core_id: CoreId,
     /// Canonical event-type id (`event_type_id::*`). `0` = UNKNOWN / idle.
-    pub event_type_id:    EventTypeId,
+    pub event_type_id: EventTypeId,
     /// Cycle at which the currently-active event began; 0 when idle.
-    pub event_start:      CycleCount,
+    pub event_start: CycleCount,
     /// Cycles remaining in the active event (`end - queried_cycle`).
     /// `0` when idle or when the event ended exactly on this cycle.
     pub cycles_remaining: CycleCount,
@@ -41,23 +41,23 @@ pub struct CoreState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RegisterSnapshot {
     /// The cycle the UI requested. Mirrors the input for round-tripping.
-    pub cycle:          CycleCount,
+    pub cycle: CycleCount,
     /// Total cycles in the trace; `0` when no trace is loaded.
-    pub total_cycles:   CycleCount,
+    pub total_cycles: CycleCount,
     /// Per-core active event. Cores with no event return an idle row
     /// (`event_type_id == 0`); ordering is ascending `core_id`.
-    pub cores:          Vec<CoreState>,
+    pub cores: Vec<CoreState>,
     /// Count of cores currently executing `MAC_COMPUTE`.
-    pub mac_active:     u32,
+    pub mac_active: u32,
     /// Count of cores currently executing `DMA_READ` or `DMA_WRITE`.
-    pub dma_active:     u32,
+    pub dma_active: u32,
     /// Count of cores in `SYSTOLIC_STALL`.
-    pub stall_active:   u32,
+    pub stall_active: u32,
     /// Count of cores on a `BARRIER_SYNC`.
     pub barrier_active: u32,
     /// Total number of events completed strictly before `cycle`.
     pub events_retired: u32,
-    pub generation_id:  u32,
+    pub generation_id: u32,
 }
 
 impl RegisterSnapshot {
@@ -66,15 +66,15 @@ impl RegisterSnapshot {
     /// the Yuan OSDI 2014 loud-fallback convention `live_window.rs` uses.
     pub fn empty(cycle: u64) -> Self {
         Self {
-            cycle:          CycleCount::new(cycle),
-            total_cycles:   CycleCount::ZERO,
-            cores:          Vec::new(),
-            mac_active:     0,
-            dma_active:     0,
-            stall_active:   0,
+            cycle: CycleCount::new(cycle),
+            total_cycles: CycleCount::ZERO,
+            cores: Vec::new(),
+            mac_active: 0,
+            dma_active: 0,
+            stall_active: 0,
             barrier_active: 0,
             events_retired: 0,
-            generation_id:  0,
+            generation_id: 0,
         }
     }
 }
@@ -89,7 +89,9 @@ impl RegisterSnapshot {
 /// per-signal stepping (WaveformViewer `stepEdge`) it uses the JS-side
 /// binary search instead, so this helper stays linear.
 pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
-    let Some(trace) = trace else { return RegisterSnapshot::empty(cycle); };
+    let Some(trace) = trace else {
+        return RegisterSnapshot::empty(cycle);
+    };
     if trace.events.is_empty() {
         return RegisterSnapshot {
             total_cycles: CycleCount::new(trace.total_cycles),
@@ -113,8 +115,8 @@ pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
 
     for ev in &trace.events {
         let start = ev.start_cycle.get();
-        let dur   = ev.duration.get();
-        let end   = start.saturating_add(dur);
+        let dur = ev.duration.get();
+        let end = start.saturating_add(dur);
         // Event fully before q → retired.
         if end <= q && dur > 0 {
             retired = retired.saturating_add(1);
@@ -122,7 +124,9 @@ pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
         }
         // Zero-duration pulse: fires only when start == q.
         if dur == 0 {
-            if start != q { continue; }
+            if start != q {
+                continue;
+            }
         } else if start > q || end <= q {
             continue;
         }
@@ -131,9 +135,9 @@ pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
         // (latest-dispatch wins on overlap).
         let tid = ev.type_id();
         let entry = CoreState {
-            core_id:          ev.core_id,
-            event_type_id:    tid,
-            event_start:      CycleCount::new(start),
+            core_id: ev.core_id,
+            event_type_id: tid,
+            event_start: CycleCount::new(start),
             cycles_remaining: CycleCount::new(end.saturating_sub(q)),
         };
 
@@ -151,25 +155,24 @@ pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
 
     for s in &per_core {
         match s.event_type_id.get() {
-            event_type_id::MAC_COMPUTE    => mac     = mac.saturating_add(1),
-            event_type_id::DMA_READ |
-            event_type_id::DMA_WRITE      => dma     = dma.saturating_add(1),
-            event_type_id::SYSTOLIC_STALL => stall   = stall.saturating_add(1),
-            event_type_id::BARRIER_SYNC   => barrier = barrier.saturating_add(1),
+            event_type_id::MAC_COMPUTE => mac = mac.saturating_add(1),
+            event_type_id::DMA_READ | event_type_id::DMA_WRITE => dma = dma.saturating_add(1),
+            event_type_id::SYSTOLIC_STALL => stall = stall.saturating_add(1),
+            event_type_id::BARRIER_SYNC => barrier = barrier.saturating_add(1),
             _ => {}
         }
     }
 
     RegisterSnapshot {
-        cycle:          CycleCount::new(q),
-        total_cycles:   CycleCount::new(trace.total_cycles),
-        cores:          per_core,
-        mac_active:     mac,
-        dma_active:     dma,
-        stall_active:   stall,
+        cycle: CycleCount::new(q),
+        total_cycles: CycleCount::new(trace.total_cycles),
+        cores: per_core,
+        mac_active: mac,
+        dma_active: dma,
+        stall_active: stall,
         barrier_active: barrier,
         events_retired: retired,
-        generation_id:  0,
+        generation_id: 0,
     }
 }
 
@@ -179,7 +182,7 @@ pub fn step_to_cycle(trace: Option<&NpuTrace>, cycle: u64) -> RegisterSnapshot {
 mod tests {
     use super::*;
     use crate::trace::{NpuEvent, NpuTrace};
-    use crate::typed::{CoreId, EventTypeId, CycleCount};
+    use crate::typed::{CoreId, CycleCount, EventTypeId};
 
     fn trace_fixture() -> NpuTrace {
         // Deliberately mixes event classes + core ids so the
@@ -187,11 +190,11 @@ mod tests {
         NpuTrace {
             total_cycles: 200,
             events: vec![
-                NpuEvent::new(0,  0, 100, "MAC_COMPUTE"),      // active at 42
-                NpuEvent::new(1, 20,  50, "DMA_READ"),         // active at 42
-                NpuEvent::new(2, 40,  10, "SYSTOLIC_STALL"),   // active at 42 (end=50)
-                NpuEvent::new(3, 60,  30, "BARRIER_SYNC"),     // not yet started
-                NpuEvent::new(0, 100, 50, "DMA_WRITE"),        // scheduled later on core 0
+                NpuEvent::new(0, 0, 100, "MAC_COMPUTE"),    // active at 42
+                NpuEvent::new(1, 20, 50, "DMA_READ"),       // active at 42
+                NpuEvent::new(2, 40, 10, "SYSTOLIC_STALL"), // active at 42 (end=50)
+                NpuEvent::new(3, 60, 30, "BARRIER_SYNC"),   // not yet started
+                NpuEvent::new(0, 100, 50, "DMA_WRITE"),     // scheduled later on core 0
             ],
         }
     }
@@ -214,13 +217,20 @@ mod tests {
         assert_eq!(a.cycle, CycleCount::new(42));
         assert_eq!(a.total_cycles, CycleCount::new(200));
         assert_eq!(a.cores.len(), 3);
-        assert_eq!(a.mac_active,     1);
-        assert_eq!(a.dma_active,     1);
-        assert_eq!(a.stall_active,   1);
+        assert_eq!(a.mac_active, 1);
+        assert_eq!(a.dma_active, 1);
+        assert_eq!(a.stall_active, 1);
         assert_eq!(a.barrier_active, 0);
         // Core 0 MAC_COMPUTE started at 0, runs 100 cycles → 58 remain.
-        let core0 = a.cores.iter().find(|c| c.core_id == CoreId::new(0)).unwrap();
-        assert_eq!(core0.event_type_id, EventTypeId::new(event_type_id::MAC_COMPUTE));
+        let core0 = a
+            .cores
+            .iter()
+            .find(|c| c.core_id == CoreId::new(0))
+            .unwrap();
+        assert_eq!(
+            core0.event_type_id,
+            EventTypeId::new(event_type_id::MAC_COMPUTE)
+        );
         assert_eq!(core0.event_start, CycleCount::new(0));
         assert_eq!(core0.cycles_remaining, CycleCount::new(58));
     }
@@ -232,13 +242,16 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 300,
             events: vec![
-                NpuEvent::new(7,   0, 200, "MAC_COMPUTE"),
-                NpuEvent::new(7, 100,  50, "DMA_READ"),
+                NpuEvent::new(7, 0, 200, "MAC_COMPUTE"),
+                NpuEvent::new(7, 100, 50, "DMA_READ"),
             ],
         };
         let snap = step_to_cycle(Some(&trace), 120);
         assert_eq!(snap.cores.len(), 1);
-        assert_eq!(snap.cores[0].event_type_id, EventTypeId::new(event_type_id::DMA_READ));
+        assert_eq!(
+            snap.cores[0].event_type_id,
+            EventTypeId::new(event_type_id::DMA_READ)
+        );
     }
 
     #[test]
@@ -251,7 +264,10 @@ mod tests {
         assert_eq!(snap.events_retired, 4);
         assert_eq!(snap.cores.len(), 1);
         assert_eq!(snap.cores[0].core_id, CoreId::new(0));
-        assert_eq!(snap.cores[0].event_type_id, EventTypeId::new(event_type_id::DMA_WRITE));
+        assert_eq!(
+            snap.cores[0].event_type_id,
+            EventTypeId::new(event_type_id::DMA_WRITE)
+        );
         // cycle_remaining = 150 - 125 = 25.
         assert_eq!(snap.cores[0].cycles_remaining, CycleCount::new(25));
     }
@@ -274,7 +290,10 @@ mod tests {
         assert_eq!(snap.cycle, CycleCount::new(0));
         assert_eq!(snap.cores.len(), 1);
         assert_eq!(snap.cores[0].core_id, CoreId::new(0));
-        assert_eq!(snap.cores[0].event_type_id, EventTypeId::new(event_type_id::MAC_COMPUTE));
+        assert_eq!(
+            snap.cores[0].event_type_id,
+            EventTypeId::new(event_type_id::MAC_COMPUTE)
+        );
         assert_eq!(snap.cores[0].event_start, CycleCount::new(0));
         assert_eq!(snap.cores[0].cycles_remaining, CycleCount::new(100));
         assert_eq!(snap.events_retired, 0);

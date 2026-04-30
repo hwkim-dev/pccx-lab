@@ -35,11 +35,11 @@ pub enum ExtensionCategory {
 impl std::fmt::Display for ExtensionCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LocalLlm              => write!(f, "Local LLM"),
-            Self::HardwareAcceleration  => write!(f, "Hardware Acceleration"),
-            Self::CloudBridge           => write!(f, "Cloud Bridge"),
-            Self::AnalysisPlugin        => write!(f, "Analysis Plugin"),
-            Self::ExportPlugin          => write!(f, "Export Plugin"),
+            Self::LocalLlm => write!(f, "Local LLM"),
+            Self::HardwareAcceleration => write!(f, "Hardware Acceleration"),
+            Self::CloudBridge => write!(f, "Cloud Bridge"),
+            Self::AnalysisPlugin => write!(f, "Analysis Plugin"),
+            Self::ExportPlugin => write!(f, "Export Plugin"),
         }
     }
 }
@@ -155,8 +155,8 @@ pub fn compress_context(cycles: u64, bottlenecks: usize) -> String {
         {bottleneck_desc} \
         AXI bus contention visible during simultaneous multi-core DMA. \
         Peak theoretical: 2.05 TOPS.",
-        cycles  = cycles,
-        est_us  = cycles as f64 / 1000.0, // 1 GHz → µs
+        cycles = cycles,
+        est_us = cycles as f64 / 1000.0, // 1 GHz → µs
         bottleneck_desc = bottleneck_desc,
     )
 }
@@ -298,11 +298,20 @@ mod uvm_tests {
     fn test_every_strategy_produces_valid_stub() {
         for s in list_uvm_strategies() {
             let body = generate_uvm_sequence(s);
-            assert!(body.starts_with("class "),        "strategy {s}: no class header");
-            assert!(body.contains("uvm_object_utils"), "strategy {s}: missing uvm_object_utils");
-            assert!(body.contains("task body();"),     "strategy {s}: missing task body()");
-            assert!(body.contains("endclass"),         "strategy {s}: missing endclass");
-            assert!(!body.contains("generic_opt_seq"), "strategy {s} must produce a real stub");
+            assert!(body.starts_with("class "), "strategy {s}: no class header");
+            assert!(
+                body.contains("uvm_object_utils"),
+                "strategy {s}: missing uvm_object_utils"
+            );
+            assert!(
+                body.contains("task body();"),
+                "strategy {s}: missing task body()"
+            );
+            assert!(body.contains("endclass"), "strategy {s}: missing endclass");
+            assert!(
+                !body.contains("generic_opt_seq"),
+                "strategy {s} must produce a real stub"
+            );
         }
     }
 
@@ -319,8 +328,10 @@ mod uvm_tests {
         for s in list_uvm_strategies() {
             let body = generate_uvm_sequence(s);
             let first_line = body.lines().next().unwrap();
-            assert!(seen.insert(first_line.to_string()),
-                "duplicate class header: {first_line}");
+            assert!(
+                seen.insert(first_line.to_string()),
+                "duplicate class header: {first_line}"
+            );
         }
     }
 }

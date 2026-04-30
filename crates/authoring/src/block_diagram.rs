@@ -25,14 +25,19 @@ pub fn generate_mermaid(modules: &[SvModule]) -> String {
 
         let mut label = format!("{}<br/>ports: {}", m.name, port_count);
         if param_count > 0 {
-            label = format!("{}<br/>params: {}, ports: {}", m.name, param_count, port_count);
+            label = format!(
+                "{}<br/>params: {}, ports: {}",
+                m.name, param_count, port_count
+            );
             // Append actual parameter values
-            let param_strs: Vec<String> = m.parameters.iter().map(|p| {
-                match &p.default_value {
+            let param_strs: Vec<String> = m
+                .parameters
+                .iter()
+                .map(|p| match &p.default_value {
                     Some(v) => format!("{}={}", p.name, v),
                     None => p.name.clone(),
-                }
-            }).collect();
+                })
+                .collect();
             label.push_str(&format!("<br/>{}", param_strs.join(", ")));
         }
         out.push_str(&format!("    {}[\"{}\"]\n", m.name, label));
@@ -49,16 +54,12 @@ pub fn generate_mermaid(modules: &[SvModule]) -> String {
             match port.direction {
                 PortDirection::Output => {
                     if let Some(stem) = port.name.strip_prefix("o_") {
-                        outputs.entry(stem.to_string())
-                            .or_default()
-                            .push(&m.name);
+                        outputs.entry(stem.to_string()).or_default().push(&m.name);
                     }
                 }
                 PortDirection::Input => {
                     if let Some(stem) = port.name.strip_prefix("i_") {
-                        inputs.entry(stem.to_string())
-                            .or_default()
-                            .push(&m.name);
+                        inputs.entry(stem.to_string()).or_default().push(&m.name);
                     }
                 }
                 PortDirection::Inout => {
@@ -91,18 +92,23 @@ pub fn generate_mermaid(modules: &[SvModule]) -> String {
 pub fn generate_module_detail(module: &SvModule) -> String {
     let mut out = String::from("flowchart TD\n");
 
-    out.push_str(&format!("    subgraph {}[\"{}\"]\n", module.name, module.name));
+    out.push_str(&format!(
+        "    subgraph {}[\"{}\"]\n",
+        module.name, module.name
+    ));
 
     // Internal body node for port arrows to point at
     let body_id = format!("{}_body", module.name);
     let mut body_label = module.name.clone();
     if !module.parameters.is_empty() {
-        let param_strs: Vec<String> = module.parameters.iter().map(|p| {
-            match &p.default_value {
+        let param_strs: Vec<String> = module
+            .parameters
+            .iter()
+            .map(|p| match &p.default_value {
                 Some(v) => format!("{}={}", p.name, v),
                 None => p.name.clone(),
-            }
-        }).collect();
+            })
+            .collect();
         body_label.push_str(&format!("<br/>{}", param_strs.join(", ")));
     }
     out.push_str(&format!("        {}[\"{}\"]\n", body_id, body_label));
@@ -148,7 +154,7 @@ pub fn generate_module_detail(module: &SvModule) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sv_parser::{SvModule, SvParam, SvPort, PortDirection};
+    use crate::sv_parser::{PortDirection, SvModule, SvParam, SvPort};
 
     fn make_port(name: &str, dir: PortDirection, width: &str) -> SvPort {
         SvPort {
@@ -261,18 +267,14 @@ mod tests {
         let modules = vec![
             SvModule {
                 name: "source".to_string(),
-                ports: vec![
-                    make_port("o_data", PortDirection::Output, "[15:0]"),
-                ],
+                ports: vec![make_port("o_data", PortDirection::Output, "[15:0]")],
                 parameters: vec![],
                 doc_comment: None,
                 line_number: 1,
             },
             SvModule {
                 name: "sink".to_string(),
-                ports: vec![
-                    make_port("i_data", PortDirection::Input, "[15:0]"),
-                ],
+                ports: vec![make_port("i_data", PortDirection::Input, "[15:0]")],
                 parameters: vec![],
                 doc_comment: None,
                 line_number: 5,
@@ -320,18 +322,14 @@ mod tests {
         let modules = vec![
             SvModule {
                 name: "mod_a".to_string(),
-                ports: vec![
-                    make_port("io_bus", PortDirection::Inout, "[7:0]"),
-                ],
+                ports: vec![make_port("io_bus", PortDirection::Inout, "[7:0]")],
                 parameters: vec![],
                 doc_comment: None,
                 line_number: 1,
             },
             SvModule {
                 name: "mod_b".to_string(),
-                ports: vec![
-                    make_port("io_bus", PortDirection::Inout, "[7:0]"),
-                ],
+                ports: vec![make_port("io_bus", PortDirection::Inout, "[7:0]")],
                 parameters: vec![],
                 doc_comment: None,
                 line_number: 5,
@@ -354,9 +352,7 @@ mod tests {
                 make_port("i_weight", PortDirection::Input, "[7:0]"),
                 make_port("o_acc", PortDirection::Output, "[31:0]"),
             ],
-            parameters: vec![
-                make_param("WIDTH", Some("8")),
-            ],
+            parameters: vec![make_param("WIDTH", Some("8"))],
             doc_comment: None,
             line_number: 1,
         };

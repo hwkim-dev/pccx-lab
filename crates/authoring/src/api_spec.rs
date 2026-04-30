@@ -51,28 +51,28 @@ use std::collections::BTreeSet;
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiSpec {
-    pub name:      String,
+    pub name: String,
     #[serde(default)]
-    pub version:   String,
+    pub version: String,
     /// Common prefix required on every exported function.  Enforced by
     /// the linter — e.g. "uca_" for the pccx driver.
     #[serde(default)]
-    pub prefix:    String,
+    pub prefix: String,
     /// Citation / paper URL — surfaces in the emitted header so LLMs
     /// scraping the generated bindings still find the canonical site.
     #[serde(default)]
-    pub citation:  Option<String>,
+    pub citation: Option<String>,
     /// User-defined types (opaque / struct / enum) — visible to every
     /// generator.
     #[serde(default)]
-    pub types:     Vec<TypeSpec>,
+    pub types: Vec<TypeSpec>,
     /// Exported functions in declaration order.
     #[serde(default)]
     pub functions: Vec<FunctionSpec>,
     /// Error-code enum — emitted as ``#define UCA_E_* n`` in C and as
     /// a ``#[repr(i32)] enum`` in Rust.
     #[serde(default)]
-    pub errors:    Vec<ErrorCode>,
+    pub errors: Vec<ErrorCode>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,54 +83,54 @@ pub struct TypeSpec {
     /// For `kind = "struct"` the list of ``{ name, ty }`` fields.
     /// For `kind = "enum"` the list of variants with optional values.
     #[serde(default)]
-    pub fields:   Vec<StructField>,
+    pub fields: Vec<StructField>,
     #[serde(default)]
     pub variants: Vec<EnumVariant>,
     #[serde(default)]
-    pub doc:      String,
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructField {
     pub name: String,
-    pub ty:   String,
+    pub ty: String,
     #[serde(default)]
-    pub doc:  String,
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnumVariant {
-    pub name:  String,
+    pub name: String,
     #[serde(default)]
     pub value: Option<i64>,
     #[serde(default)]
-    pub doc:   String,
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionSpec {
-    pub name:    String,
+    pub name: String,
     pub returns: String,
     #[serde(default)]
-    pub args:    Vec<ArgSpec>,
+    pub args: Vec<ArgSpec>,
     #[serde(default)]
-    pub doc:     String,
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArgSpec {
     pub name: String,
-    pub ty:   String,
+    pub ty: String,
     #[serde(default)]
-    pub doc:  String,
+    pub doc: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorCode {
-    pub name:  String,
+    pub name: String,
     pub value: i64,
     #[serde(default)]
-    pub doc:   String,
+    pub doc: String,
 }
 
 // ─── Errors ─────────────────────────────────────────────────────────────────
@@ -145,38 +145,69 @@ pub enum ApiSpecError {
 
 #[derive(Debug, Default, Clone)]
 pub struct LintReport {
-    pub errors:   Vec<String>,
+    pub errors: Vec<String>,
     pub warnings: Vec<String>,
 }
 
 impl LintReport {
-    pub fn is_clean(&self) -> bool { self.errors.is_empty() }
-    pub fn push_err(&mut self, m: impl Into<String>)  { self.errors.push(m.into()); }
-    pub fn push_warn(&mut self, m: impl Into<String>) { self.warnings.push(m.into()); }
+    pub fn is_clean(&self) -> bool {
+        self.errors.is_empty()
+    }
+    pub fn push_err(&mut self, m: impl Into<String>) {
+        self.errors.push(m.into());
+    }
+    pub fn push_warn(&mut self, m: impl Into<String>) {
+        self.warnings.push(m.into());
+    }
 }
 
 // ─── Built-in C primitive types (recognised by every generator) ─────────────
 
 const C_PRIMITIVES: &[&str] = &[
-    "void", "bool",
-    "char", "signed char", "unsigned char",
-    "short", "int", "long", "long long",
-    "unsigned short", "unsigned int", "unsigned long", "unsigned long long",
-    "float", "double",
-    "int8_t", "int16_t", "int32_t", "int64_t",
-    "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-    "size_t", "ssize_t", "intptr_t", "uintptr_t",
+    "void",
+    "bool",
+    "char",
+    "signed char",
+    "unsigned char",
+    "short",
+    "int",
+    "long",
+    "long long",
+    "unsigned short",
+    "unsigned int",
+    "unsigned long",
+    "unsigned long long",
+    "float",
+    "double",
+    "int8_t",
+    "int16_t",
+    "int32_t",
+    "int64_t",
+    "uint8_t",
+    "uint16_t",
+    "uint32_t",
+    "uint64_t",
+    "size_t",
+    "ssize_t",
+    "intptr_t",
+    "uintptr_t",
 ];
 
-fn is_pointer(ty: &str) -> bool { ty.contains('*') }
+fn is_pointer(ty: &str) -> bool {
+    ty.contains('*')
+}
 
 /// Strip pointer / const modifiers so the base type name can be
 /// looked up in `user_types`.  Doesn't need to handle every C corner
 /// case — just the shapes `api_spec` actually emits.
 fn base_type(ty: &str) -> &str {
     let mut t = ty.trim();
-    while let Some(rest) = t.strip_suffix('*') { t = rest.trim(); }
-    if let Some(rest) = t.strip_prefix("const ") { t = rest.trim(); }
+    while let Some(rest) = t.strip_suffix('*') {
+        t = rest.trim();
+    }
+    if let Some(rest) = t.strip_prefix("const ") {
+        t = rest.trim();
+    }
     t
 }
 
@@ -196,7 +227,9 @@ impl ApiSpec {
 
     pub fn lint(&self) -> LintReport {
         let mut r = LintReport::default();
-        if self.name.trim().is_empty() { r.push_err("spec.name is empty"); }
+        if self.name.trim().is_empty() {
+            r.push_err("spec.name is empty");
+        }
 
         let user_types: BTreeSet<String> = self.types.iter().map(|t| t.name.clone()).collect();
 
@@ -207,7 +240,10 @@ impl ApiSpec {
                 r.push_err(format!("duplicate function name: {}", f.name));
             }
             if !self.prefix.is_empty() && !f.name.starts_with(&self.prefix) {
-                r.push_warn(format!("{} does not start with prefix '{}'", f.name, self.prefix));
+                r.push_warn(format!(
+                    "{} does not start with prefix '{}'",
+                    f.name, self.prefix
+                ));
             }
             // Return type resolution.
             let rb = base_type(&f.returns);
@@ -222,7 +258,10 @@ impl ApiSpec {
                 }
                 let ab = base_type(&a.ty);
                 if !C_PRIMITIVES.contains(&ab) && !user_types.contains(ab) {
-                    r.push_err(format!("{}.{}: unknown argument type '{}'", f.name, a.name, a.ty));
+                    r.push_err(format!(
+                        "{}.{}: unknown argument type '{}'",
+                        f.name, a.name, a.ty
+                    ));
                 }
             }
         }
@@ -235,8 +274,10 @@ impl ApiSpec {
                     for f in &t.fields {
                         let fb = base_type(&f.ty);
                         if !C_PRIMITIVES.contains(&fb) && !user_types.contains(fb) {
-                            r.push_err(format!("{}.{}: unknown field type '{}'",
-                                t.name, f.name, f.ty));
+                            r.push_err(format!(
+                                "{}.{}: unknown field type '{}'",
+                                t.name, f.name, f.ty
+                            ));
                         }
                     }
                 }
@@ -265,9 +306,15 @@ impl ApiSpec {
     pub fn gen_c_header(&self) -> String {
         let mut s = String::new();
         let guard = format!("PCCX_{}_H_", self.name.to_uppercase().replace('-', "_"));
-        s.push_str(&format!("/* Auto-generated from API spec `{}` ({}).  Do not edit.\n",
+        s.push_str(&format!(
+            "/* Auto-generated from API spec `{}` ({}).  Do not edit.\n",
             self.name,
-            if self.version.is_empty() { "unversioned" } else { &self.version }));
+            if self.version.is_empty() {
+                "unversioned"
+            } else {
+                &self.version
+            }
+        ));
         if let Some(c) = &self.citation {
             s.push_str(&format!(" * Research citation: {}\n", c));
         }
@@ -281,7 +328,9 @@ impl ApiSpec {
         if !self.errors.is_empty() {
             s.push_str("/* Error codes */\n");
             for e in &self.errors {
-                if !e.doc.is_empty() { s.push_str(&format!("/* {} */\n", e.doc)); }
+                if !e.doc.is_empty() {
+                    s.push_str(&format!("/* {} */\n", e.doc));
+                }
                 s.push_str(&format!("#define {} {}\n", e.name, e.value));
             }
             s.push('\n');
@@ -289,7 +338,9 @@ impl ApiSpec {
 
         // Types.
         for t in &self.types {
-            if !t.doc.is_empty() { s.push_str(&format!("/* {} */\n", t.doc)); }
+            if !t.doc.is_empty() {
+                s.push_str(&format!("/* {} */\n", t.doc));
+            }
             match t.kind.as_str() {
                 "opaque" => {
                     s.push_str(&format!("typedef struct {0}_s {0};\n\n", t.name));
@@ -297,7 +348,9 @@ impl ApiSpec {
                 "struct" => {
                     s.push_str(&format!("typedef struct {} {{\n", t.name));
                     for f in &t.fields {
-                        if !f.doc.is_empty() { s.push_str(&format!("    /* {} */\n", f.doc)); }
+                        if !f.doc.is_empty() {
+                            s.push_str(&format!("    /* {} */\n", f.doc));
+                        }
                         s.push_str(&format!("    {} {};\n", f.ty, f.name));
                     }
                     s.push_str(&format!("}} {};\n\n", t.name));
@@ -305,10 +358,12 @@ impl ApiSpec {
                 "enum" => {
                     s.push_str(&format!("typedef enum {} {{\n", t.name));
                     for v in &t.variants {
-                        if !v.doc.is_empty() { s.push_str(&format!("    /* {} */\n", v.doc)); }
+                        if !v.doc.is_empty() {
+                            s.push_str(&format!("    /* {} */\n", v.doc));
+                        }
                         match v.value {
                             Some(val) => s.push_str(&format!("    {} = {},\n", v.name, val)),
-                            None      => s.push_str(&format!("    {},\n", v.name)),
+                            None => s.push_str(&format!("    {},\n", v.name)),
                         }
                     }
                     s.push_str(&format!("}} {};\n\n", t.name));
@@ -335,8 +390,11 @@ impl ApiSpec {
             if f.args.is_empty() {
                 s.push_str("void");
             } else {
-                let args: Vec<String> = f.args.iter()
-                    .map(|a| format!("{} {}", a.ty, a.name)).collect();
+                let args: Vec<String> = f
+                    .args
+                    .iter()
+                    .map(|a| format!("{} {}", a.ty, a.name))
+                    .collect();
                 s.push_str(&args.join(", "));
             }
             s.push_str(");\n");
@@ -351,9 +409,15 @@ impl ApiSpec {
 
     pub fn gen_rust_ffi(&self) -> String {
         let mut s = String::new();
-        s.push_str(&format!("//! Auto-generated from API spec `{}` ({}).  Do not edit.\n",
+        s.push_str(&format!(
+            "//! Auto-generated from API spec `{}` ({}).  Do not edit.\n",
             self.name,
-            if self.version.is_empty() { "unversioned" } else { &self.version }));
+            if self.version.is_empty() {
+                "unversioned"
+            } else {
+                &self.version
+            }
+        ));
         if let Some(c) = &self.citation {
             s.push_str(&format!("//! Research citation: {}\n", c));
         }
@@ -363,7 +427,10 @@ impl ApiSpec {
         for t in &self.types {
             match t.kind.as_str() {
                 "opaque" => {
-                    s.push_str(&format!("#[repr(C)]\npub struct {} {{ _private: [u8; 0] }}\n\n", t.name));
+                    s.push_str(&format!(
+                        "#[repr(C)]\npub struct {} {{ _private: [u8; 0] }}\n\n",
+                        t.name
+                    ));
                 }
                 "struct" => {
                     s.push_str(&format!("#[repr(C)]\npub struct {} {{\n", t.name));
@@ -377,7 +444,7 @@ impl ApiSpec {
                     for v in &t.variants {
                         match v.value {
                             Some(val) => s.push_str(&format!("    {} = {},\n", v.name, val)),
-                            None      => s.push_str(&format!("    {},\n", v.name)),
+                            None => s.push_str(&format!("    {},\n", v.name)),
                         }
                     }
                     s.push_str("}\n\n");
@@ -395,8 +462,11 @@ impl ApiSpec {
                 }
             }
             s.push_str(&format!("    pub fn {}(", f.name));
-            let args: Vec<String> = f.args.iter()
-                .map(|a| format!("{}: {}", a.name, c_to_rust_ty(&a.ty))).collect();
+            let args: Vec<String> = f
+                .args
+                .iter()
+                .map(|a| format!("{}: {}", a.name, c_to_rust_ty(&a.ty)))
+                .collect();
             s.push_str(&args.join(", "));
             s.push_str(&format!(") -> {};\n", c_to_rust_ty(&f.returns)));
         }
@@ -408,15 +478,28 @@ impl ApiSpec {
 
     pub fn gen_python_ctypes(&self) -> String {
         let mut s = String::new();
-        s.push_str(&format!("\"\"\"Auto-generated from API spec `{}` ({}).  Do not edit.\n\n",
+        s.push_str(&format!(
+            "\"\"\"Auto-generated from API spec `{}` ({}).  Do not edit.\n\n",
             self.name,
-            if self.version.is_empty() { "unversioned" } else { &self.version }));
+            if self.version.is_empty() {
+                "unversioned"
+            } else {
+                &self.version
+            }
+        ));
         s.push_str("See https://pccxai.github.io/pccx/ for the architecture spec.\n\"\"\"\n\n");
         s.push_str("from __future__ import annotations\n");
-        s.push_str("import ctypes\nfrom ctypes import c_int, c_uint, c_long, c_longlong, c_short\n");
+        s.push_str(
+            "import ctypes\nfrom ctypes import c_int, c_uint, c_long, c_longlong, c_short\n",
+        );
         s.push_str("from ctypes import c_ubyte, c_ushort, c_uint32, c_uint64, c_int32, c_int64\n");
-        s.push_str("from ctypes import c_float, c_double, c_size_t, c_void_p, c_char_p, c_bool\n\n");
-        s.push_str(&format!("_LIB_NAME = \"{}\"\n", self.name.to_lowercase().replace('-', "_")));
+        s.push_str(
+            "from ctypes import c_float, c_double, c_size_t, c_void_p, c_char_p, c_bool\n\n",
+        );
+        s.push_str(&format!(
+            "_LIB_NAME = \"{}\"\n",
+            self.name.to_lowercase().replace('-', "_")
+        ));
         s.push_str("_lib: ctypes.CDLL | None = None\n\n");
         s.push_str("def _load(path: str | None = None) -> ctypes.CDLL:\n");
         s.push_str("    global _lib\n");
@@ -438,12 +521,22 @@ impl ApiSpec {
         for t in &self.types {
             match t.kind.as_str() {
                 "opaque" => {
-                    s.push_str(&format!("class {}(ctypes.Structure): pass  # opaque\n\n", t.name));
+                    s.push_str(&format!(
+                        "class {}(ctypes.Structure): pass  # opaque\n\n",
+                        t.name
+                    ));
                 }
                 "struct" => {
-                    s.push_str(&format!("class {}(ctypes.Structure):\n    _fields_ = [\n", t.name));
+                    s.push_str(&format!(
+                        "class {}(ctypes.Structure):\n    _fields_ = [\n",
+                        t.name
+                    ));
                     for f in &t.fields {
-                        s.push_str(&format!("        (\"{}\", {}),\n", f.name, c_to_py_ty(&f.ty)));
+                        s.push_str(&format!(
+                            "        (\"{}\", {}),\n",
+                            f.name,
+                            c_to_py_ty(&f.ty)
+                        ));
                     }
                     s.push_str("    ]\n\n");
                 }
@@ -464,9 +557,17 @@ impl ApiSpec {
             s.push_str("    return\n");
         }
         for f in &self.functions {
-            s.push_str(&format!("    lib.{}.restype  = {}\n", f.name, c_to_py_ty(&f.returns)));
+            s.push_str(&format!(
+                "    lib.{}.restype  = {}\n",
+                f.name,
+                c_to_py_ty(&f.returns)
+            ));
             let argty: Vec<String> = f.args.iter().map(|a| c_to_py_ty(&a.ty)).collect();
-            s.push_str(&format!("    lib.{}.argtypes = [{}]\n", f.name, argty.join(", ")));
+            s.push_str(&format!(
+                "    lib.{}.argtypes = [{}]\n",
+                f.name,
+                argty.join(", ")
+            ));
         }
         s
     }
@@ -476,7 +577,9 @@ impl ApiSpec {
     pub fn gen_markdown(&self) -> String {
         let mut s = String::new();
         s.push_str(&format!("# API `{}`", self.name));
-        if !self.version.is_empty() { s.push_str(&format!(" — {}", self.version)); }
+        if !self.version.is_empty() {
+            s.push_str(&format!(" — {}", self.version));
+        }
         s.push_str("\n\n");
         if !self.prefix.is_empty() {
             s.push_str(&format!("Symbol prefix: `{}`\n\n", self.prefix));
@@ -486,11 +589,16 @@ impl ApiSpec {
             s.push_str("| name | returns | arguments | doc |\n");
             s.push_str("|---|---|---|---|\n");
             for f in &self.functions {
-                let args = f.args.iter()
+                let args = f
+                    .args
+                    .iter()
                     .map(|a| format!("`{} {}`", a.ty, a.name))
-                    .collect::<Vec<_>>().join(", ");
-                s.push_str(&format!("| **{}** | `{}` | {} | {} |\n",
-                    f.name, f.returns, args, f.doc));
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                s.push_str(&format!(
+                    "| **{}** | `{}` | {} | {} |\n",
+                    f.name, f.returns, args, f.doc
+                ));
             }
         }
         s
@@ -504,37 +612,40 @@ fn c_to_rust_ty(c: &str) -> String {
     // Handle pointer shapes.
     if let Some(inner) = c.strip_suffix('*').map(str::trim) {
         return if inner.starts_with("const ") {
-            format!("*const {}", c_to_rust_ty(inner.strip_prefix("const ").unwrap().trim()))
+            format!(
+                "*const {}",
+                c_to_rust_ty(inner.strip_prefix("const ").unwrap().trim())
+            )
         } else {
             format!("*mut {}", c_to_rust_ty(inner))
         };
     }
     match c {
-        "void"     => "()".into(),
-        "bool"     => "bool".into(),
-        "int"      => "i32".into(),
+        "void" => "()".into(),
+        "bool" => "bool".into(),
+        "int" => "i32".into(),
         "unsigned int" => "u32".into(),
-        "long"     => "i64".into(),
+        "long" => "i64".into(),
         "unsigned long" => "u64".into(),
-        "long long"     => "i64".into(),
+        "long long" => "i64".into(),
         "unsigned long long" => "u64".into(),
-        "char"     => "i8".into(),
+        "char" => "i8".into(),
         "unsigned char" => "u8".into(),
-        "short"    => "i16".into(),
+        "short" => "i16".into(),
         "unsigned short" => "u16".into(),
-        "float"    => "f32".into(),
-        "double"   => "f64".into(),
-        "int8_t"   => "i8".into(),
-        "int16_t"  => "i16".into(),
-        "int32_t"  => "i32".into(),
-        "int64_t"  => "i64".into(),
-        "uint8_t"  => "u8".into(),
+        "float" => "f32".into(),
+        "double" => "f64".into(),
+        "int8_t" => "i8".into(),
+        "int16_t" => "i16".into(),
+        "int32_t" => "i32".into(),
+        "int64_t" => "i64".into(),
+        "uint8_t" => "u8".into(),
         "uint16_t" => "u16".into(),
         "uint32_t" => "u32".into(),
         "uint64_t" => "u64".into(),
-        "size_t"   => "usize".into(),
-        "ssize_t"  => "isize".into(),
-        other      => other.to_string(),  // user-defined type
+        "size_t" => "usize".into(),
+        "ssize_t" => "isize".into(),
+        other => other.to_string(), // user-defined type
     }
 }
 
@@ -550,30 +661,30 @@ fn c_to_py_ty(c: &str) -> String {
         };
     }
     match c {
-        "void"     => "None".into(),
-        "bool"     => "c_bool".into(),
-        "int"      => "c_int".into(),
+        "void" => "None".into(),
+        "bool" => "c_bool".into(),
+        "int" => "c_int".into(),
         "unsigned int" => "c_uint".into(),
-        "long"     => "c_long".into(),
+        "long" => "c_long".into(),
         "unsigned long" => "c_ulong".into(),
-        "long long"     => "c_longlong".into(),
+        "long long" => "c_longlong".into(),
         "unsigned long long" => "c_ulonglong".into(),
-        "char"     => "c_byte".into(),
+        "char" => "c_byte".into(),
         "unsigned char" => "c_ubyte".into(),
-        "short"    => "c_short".into(),
+        "short" => "c_short".into(),
         "unsigned short" => "c_ushort".into(),
-        "float"    => "c_float".into(),
-        "double"   => "c_double".into(),
-        "int8_t"   => "ctypes.c_int8".into(),
-        "int16_t"  => "ctypes.c_int16".into(),
-        "int32_t"  => "c_int32".into(),
-        "int64_t"  => "c_int64".into(),
-        "uint8_t"  => "ctypes.c_uint8".into(),
+        "float" => "c_float".into(),
+        "double" => "c_double".into(),
+        "int8_t" => "ctypes.c_int8".into(),
+        "int16_t" => "ctypes.c_int16".into(),
+        "int32_t" => "c_int32".into(),
+        "int64_t" => "c_int64".into(),
+        "uint8_t" => "ctypes.c_uint8".into(),
         "uint16_t" => "ctypes.c_uint16".into(),
         "uint32_t" => "c_uint32".into(),
         "uint64_t" => "c_uint64".into(),
-        "size_t"   => "c_size_t".into(),
-        other      => other.to_string(),
+        "size_t" => "c_size_t".into(),
+        other => other.to_string(),
     }
 }
 
@@ -656,7 +767,10 @@ mod tests {
             returns = "int"
         "#;
         let r = ApiSpec::from_toml_str(src).unwrap().lint();
-        assert!(r.errors.iter().any(|e| e.contains("duplicate function name")));
+        assert!(r
+            .errors
+            .iter()
+            .any(|e| e.contains("duplicate function name")));
     }
 
     #[test]
@@ -672,7 +786,10 @@ mod tests {
             ]
         "#;
         let r = ApiSpec::from_toml_str(src).unwrap().lint();
-        assert!(r.errors.iter().any(|e| e.contains("duplicate argument name")));
+        assert!(r
+            .errors
+            .iter()
+            .any(|e| e.contains("duplicate argument name")));
     }
 
     #[test]
@@ -697,7 +814,10 @@ mod tests {
             returns = "int"
         "#;
         let r = ApiSpec::from_toml_str(src).unwrap().lint();
-        assert!(r.warnings.iter().any(|w| w.contains("does not start with prefix")));
+        assert!(r
+            .warnings
+            .iter()
+            .any(|w| w.contains("does not start with prefix")));
     }
 
     #[test]
@@ -743,10 +863,10 @@ mod tests {
 
     #[test]
     fn c_to_rust_ty_handles_pointers() {
-        assert_eq!(c_to_rust_ty("int"),              "i32");
-        assert_eq!(c_to_rust_ty("uint32_t"),         "u32");
-        assert_eq!(c_to_rust_ty("const uint8_t*"),   "*const u8");
-        assert_eq!(c_to_rust_ty("int8_t*"),          "*mut i8");
-        assert_eq!(c_to_rust_ty("uca_handle_t*"),    "*mut uca_handle_t");
+        assert_eq!(c_to_rust_ty("int"), "i32");
+        assert_eq!(c_to_rust_ty("uint32_t"), "u32");
+        assert_eq!(c_to_rust_ty("const uint8_t*"), "*const u8");
+        assert_eq!(c_to_rust_ty("int8_t*"), "*mut i8");
+        assert_eq!(c_to_rust_ty("uca_handle_t*"), "*mut uca_handle_t");
     }
 }

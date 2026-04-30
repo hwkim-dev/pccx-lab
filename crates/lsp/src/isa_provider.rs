@@ -19,13 +19,24 @@ use crate::{Completion, CompletionProvider, CompletionSource, Language, LspError
 
 /// Static TOML section headers for ISA spec files.
 const SECTION_HEADERS: &[(&str, &str, &str)] = &[
-    ("[[opcodes]]", "Opcode definition table", "[[opcodes]]\nname = \"\"\nencoding = 0x00\ndescription = \"\"\nfields = []\n"),
-    ("[[reserved]]", "Reserved bit range", "[[reserved]]\nmsb = 0\nlsb = 0\n"),
+    (
+        "[[opcodes]]",
+        "Opcode definition table",
+        "[[opcodes]]\nname = \"\"\nencoding = 0x00\ndescription = \"\"\nfields = []\n",
+    ),
+    (
+        "[[reserved]]",
+        "Reserved bit range",
+        "[[reserved]]\nmsb = 0\nlsb = 0\n",
+    ),
 ];
 
 /// Top-level spec keys (outside any `[[opcodes]]` or `[[reserved]]`).
 const TOP_LEVEL_KEYS: &[(&str, &str)] = &[
-    ("name", "ISA name — used as identifier prefix in emitted code"),
+    (
+        "name",
+        "ISA name — used as identifier prefix in emitted code",
+    ),
     ("width_bits", "Total instruction width in bits (8..128)"),
     ("version", "Optional version string (e.g. \"v002.0.0\")"),
     ("citation", "Optional research citation URL or arxiv id"),
@@ -37,7 +48,10 @@ const TOP_LEVEL_KEYS: &[(&str, &str)] = &[
 const OPCODE_KEYS: &[(&str, &str)] = &[
     ("name", "Opcode mnemonic (ALL CAPS by convention)"),
     ("encoding", "Numerical encoding value (hex)"),
-    ("opcode_field_bits", "Bit width of the opcode field (default 6)"),
+    (
+        "opcode_field_bits",
+        "Bit width of the opcode field (default 6)",
+    ),
     ("fields", "Operand field list"),
     ("description", "Free-text description for docs"),
 ];
@@ -160,12 +174,7 @@ impl IsaCompletionProvider {
                 if seen_fields.insert(f.name.clone()) {
                     out.push(Completion {
                         label: f.name.clone(),
-                        detail: Some(format!(
-                            "Field [{}..{}] ({} bits)",
-                            f.msb,
-                            f.lsb,
-                            f.width()
-                        )),
+                        detail: Some(format!("Field [{}..{}] ({} bits)", f.msb, f.lsb, f.width())),
                         documentation: None,
                         insert_text: f.name.clone(),
                         source: CompletionSource::Lsp,
@@ -269,7 +278,12 @@ mod tests {
     fn sample_toml_extends_with_dynamic_completions() {
         let provider = IsaCompletionProvider::new();
         let items = provider
-            .complete(Language::SystemVerilog, "isa.toml", origin(), SAMPLE_ISA_TOML)
+            .complete(
+                Language::SystemVerilog,
+                "isa.toml",
+                origin(),
+                SAMPLE_ISA_TOML,
+            )
             .expect("must not error");
         let static_count = IsaCompletionProvider::static_completions().len();
         assert!(
@@ -309,20 +323,42 @@ mod tests {
     fn dynamic_completions_include_extracted_field_names() {
         let provider = IsaCompletionProvider::new();
         let items = provider
-            .complete(Language::SystemVerilog, "isa.toml", origin(), SAMPLE_ISA_TOML)
+            .complete(
+                Language::SystemVerilog,
+                "isa.toml",
+                origin(),
+                SAMPLE_ISA_TOML,
+            )
             .expect("must not error");
         let labels: Vec<&str> = items.iter().map(|c| c.label.as_str()).collect();
-        assert!(labels.contains(&"dst"), "must contain extracted field 'dst'");
-        assert!(labels.contains(&"src_a"), "must contain extracted field 'src_a'");
-        assert!(labels.contains(&"tile_m"), "must contain extracted field 'tile_m'");
-        assert!(labels.contains(&"tile_k"), "must contain extracted field 'tile_k'");
+        assert!(
+            labels.contains(&"dst"),
+            "must contain extracted field 'dst'"
+        );
+        assert!(
+            labels.contains(&"src_a"),
+            "must contain extracted field 'src_a'"
+        );
+        assert!(
+            labels.contains(&"tile_m"),
+            "must contain extracted field 'tile_m'"
+        );
+        assert!(
+            labels.contains(&"tile_k"),
+            "must contain extracted field 'tile_k'"
+        );
     }
 
     #[test]
     fn all_completions_use_lsp_source() {
         let provider = IsaCompletionProvider::new();
         let items = provider
-            .complete(Language::SystemVerilog, "isa.toml", origin(), SAMPLE_ISA_TOML)
+            .complete(
+                Language::SystemVerilog,
+                "isa.toml",
+                origin(),
+                SAMPLE_ISA_TOML,
+            )
             .expect("must not error");
         for c in &items {
             assert_eq!(c.source, CompletionSource::Lsp);
@@ -333,7 +369,12 @@ mod tests {
     fn all_completions_have_detail_set() {
         let provider = IsaCompletionProvider::new();
         let items = provider
-            .complete(Language::SystemVerilog, "isa.toml", origin(), SAMPLE_ISA_TOML)
+            .complete(
+                Language::SystemVerilog,
+                "isa.toml",
+                origin(),
+                SAMPLE_ISA_TOML,
+            )
             .expect("must not error");
         for c in &items {
             assert!(

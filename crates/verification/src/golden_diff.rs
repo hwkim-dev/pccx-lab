@@ -35,52 +35,54 @@ use std::path::Path;
 /// small drift without noise.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RefProfileRow {
-    pub step:              u32,
+    pub step: u32,
     #[serde(default)]
-    pub api_name:          Option<String>,
+    pub api_name: Option<String>,
     #[serde(default)]
-    pub expect_mac:        u64,
+    pub expect_mac: u64,
     #[serde(default)]
-    pub expect_dma_read:   u64,
+    pub expect_dma_read: u64,
     #[serde(default)]
-    pub expect_dma_write:  u64,
+    pub expect_dma_write: u64,
     #[serde(default)]
-    pub expect_barrier:    u64,
+    pub expect_barrier: u64,
     /// Upper bound on this step's wall-clock cycles (inclusive).
     #[serde(default)]
-    pub cycle_budget:      u64,
+    pub cycle_budget: u64,
     /// Allowable drift on `cycle_budget` and every `expect_*` count.
     /// Default = 10 % if unspecified.
     #[serde(default = "default_tolerance")]
-    pub tolerance_pct:     f64,
+    pub tolerance_pct: f64,
     /// Optional absolute tolerance.  When set, a metric passes if the
     /// observed value is within `±abs_tolerance` of the expected value
     /// OR within `tolerance_pct` — whichever is more permissive.
     #[serde(default)]
-    pub abs_tolerance:     Option<u64>,
+    pub abs_tolerance: Option<u64>,
 }
 
-fn default_tolerance() -> f64 { 10.0 }
+fn default_tolerance() -> f64 {
+    10.0
+}
 
 /// Diff result for a single step.  `is_pass` is the bottom line the
 /// CLI uses to decide its exit code.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepDiff {
-    pub step:               u32,
-    pub is_pass:            bool,
+    pub step: u32,
+    pub is_pass: bool,
     /// Human-readable one-liner — surfaces in the CLI.
-    pub summary:            String,
+    pub summary: String,
     /// Per-metric `(observed, expected, tolerance_pct, pass)` rows.
-    pub metrics:            Vec<MetricDiff>,
+    pub metrics: Vec<MetricDiff>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricDiff {
-    pub name:           String,
-    pub observed:       i64,
-    pub expected:       i64,
-    pub tolerance_pct:  f64,
-    pub pass:           bool,
+    pub name: String,
+    pub observed: i64,
+    pub expected: i64,
+    pub tolerance_pct: f64,
+    pub pass: bool,
 }
 
 impl fmt::Display for MetricDiff {
@@ -110,29 +112,31 @@ impl fmt::Display for StepDiff {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoldenDiffReport {
     /// Total number of reference steps.
-    pub step_count:          u32,
+    pub step_count: u32,
     /// Number that passed every metric under the configured tolerance.
-    pub pass_count:          u32,
+    pub pass_count: u32,
     /// Per-step detail.
-    pub steps:               Vec<StepDiff>,
+    pub steps: Vec<StepDiff>,
     /// Summary sentence — feeds the CLI / UI card.
-    pub summary:             String,
+    pub summary: String,
     /// Total individual metric comparisons performed.
     #[serde(default)]
-    pub total_metrics:       u32,
+    pub total_metrics: u32,
     /// Metrics that passed with observed == expected (exact match).
     #[serde(default)]
-    pub exact_matches:       u32,
+    pub exact_matches: u32,
     /// Metrics that passed but observed != expected (within tolerance).
     #[serde(default)]
-    pub tolerance_passes:    u32,
+    pub tolerance_passes: u32,
     /// Metrics that failed (outside tolerance).
     #[serde(default)]
-    pub metric_mismatches:   u32,
+    pub metric_mismatches: u32,
 }
 
 impl GoldenDiffReport {
-    pub fn is_clean(&self) -> bool { self.pass_count == self.step_count }
+    pub fn is_clean(&self) -> bool {
+        self.pass_count == self.step_count
+    }
 }
 
 impl fmt::Display for GoldenDiffReport {
@@ -141,8 +145,7 @@ impl fmt::Display for GoldenDiffReport {
         writeln!(
             f,
             "metrics: {} total, {} exact, {} tolerance, {} mismatch",
-            self.total_metrics, self.exact_matches,
-            self.tolerance_passes, self.metric_mismatches,
+            self.total_metrics, self.exact_matches, self.tolerance_passes, self.metric_mismatches,
         )?;
         for step in &self.steps {
             write!(f, "{}", step)?;
@@ -156,16 +159,26 @@ impl fmt::Display for GoldenDiffReport {
 #[derive(Debug, thiserror::Error)]
 pub enum GoldenDiffError {
     #[error("io error reading '{path}': {source}")]
-    Io { path: String, source: std::io::Error },
+    Io {
+        path: String,
+        source: std::io::Error,
+    },
     #[error("json parse error at {path}:{line}: {source}")]
-    Parse { path: String, line: usize, source: serde_json::Error },
+    Parse {
+        path: String,
+        line: usize,
+        source: serde_json::Error,
+    },
     #[error("empty reference file: {path}")]
     Empty { path: String },
 }
 
 impl From<std::io::Error> for GoldenDiffError {
     fn from(e: std::io::Error) -> Self {
-        GoldenDiffError::Io { path: "<unknown>".into(), source: e }
+        GoldenDiffError::Io {
+            path: "<unknown>".into(),
+            source: e,
+        }
     }
 }
 
@@ -182,28 +195,39 @@ pub fn parse_reference_jsonl(src: &str) -> Result<Vec<RefProfileRow>, GoldenDiff
 /// the path in any error messages for better diagnostics.
 pub fn parse_reference_jsonl_at_path(path: &Path) -> Result<Vec<RefProfileRow>, GoldenDiffError> {
     let display = path.display().to_string();
-    let src = std::fs::read_to_string(path)
-        .map_err(|e| GoldenDiffError::Io { path: display.clone(), source: e })?;
+    let src = std::fs::read_to_string(path).map_err(|e| GoldenDiffError::Io {
+        path: display.clone(),
+        source: e,
+    })?;
     parse_reference_jsonl_inner(&src, &display)
 }
 
 // Shared parser with configurable path label for error context.
-fn parse_reference_jsonl_inner(src: &str, path: &str) -> Result<Vec<RefProfileRow>, GoldenDiffError> {
+fn parse_reference_jsonl_inner(
+    src: &str,
+    path: &str,
+) -> Result<Vec<RefProfileRow>, GoldenDiffError> {
     let mut out = Vec::new();
     for (i, line) in src.lines().enumerate() {
         let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') { continue; }
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
         match serde_json::from_str::<RefProfileRow>(trimmed) {
-            Ok(row)  => out.push(row),
-            Err(e)   => return Err(GoldenDiffError::Parse {
-                path: path.to_string(),
-                line: i + 1,
-                source: e,
-            }),
+            Ok(row) => out.push(row),
+            Err(e) => {
+                return Err(GoldenDiffError::Parse {
+                    path: path.to_string(),
+                    line: i + 1,
+                    source: e,
+                })
+            }
         }
     }
     if out.is_empty() {
-        return Err(GoldenDiffError::Empty { path: path.to_string() });
+        return Err(GoldenDiffError::Empty {
+            path: path.to_string(),
+        });
     }
     Ok(out)
 }
@@ -224,63 +248,72 @@ pub fn bucketise(trace: &NpuTrace) -> Vec<TraceStep> {
             if !current.is_empty() || !steps.is_empty() {
                 steps.push(current);
                 current = TraceStep {
-                    step:      (steps.len() as u32),
-                    api_name:  ev.api_name.clone(),
-                    first_cy:  ev.start_cycle.get(),
-                    last_cy:   ev.start_cycle.get() + ev.duration.get(),
+                    step: (steps.len() as u32),
+                    api_name: ev.api_name.clone(),
+                    first_cy: ev.start_cycle.get(),
+                    last_cy: ev.start_cycle.get() + ev.duration.get(),
                     ..Default::default()
                 };
             } else {
                 current.api_name = ev.api_name.clone();
                 current.first_cy = ev.start_cycle.get();
-                current.last_cy  = ev.start_cycle.get() + ev.duration.get();
+                current.last_cy = ev.start_cycle.get() + ev.duration.get();
             }
             continue;
         }
         current.accumulate(ev);
     }
-    if !current.is_empty() { steps.push(current); }
+    if !current.is_empty() {
+        steps.push(current);
+    }
     steps
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
 pub struct TraceStep {
-    pub step:       u32,
-    pub api_name:   Option<String>,
-    pub first_cy:   u64,
-    pub last_cy:    u64,
-    pub mac:        u64,
-    pub dma_read:   u64,
-    pub dma_write:  u64,
-    pub barrier:    u64,
-    pub stall:      u64,
+    pub step: u32,
+    pub api_name: Option<String>,
+    pub first_cy: u64,
+    pub last_cy: u64,
+    pub mac: u64,
+    pub dma_read: u64,
+    pub dma_write: u64,
+    pub barrier: u64,
+    pub stall: u64,
 }
 
 impl TraceStep {
     fn is_empty(&self) -> bool {
-        self.mac == 0 && self.dma_read == 0 && self.dma_write == 0 &&
-        self.barrier == 0 && self.stall == 0 && self.api_name.is_none()
+        self.mac == 0
+            && self.dma_read == 0
+            && self.dma_write == 0
+            && self.barrier == 0
+            && self.stall == 0
+            && self.api_name.is_none()
     }
     fn accumulate(&mut self, ev: &pccx_core::trace::NpuEvent) {
         let end = ev.start_cycle.get() + ev.duration.get();
         // "Never accumulated anything" if no counter is set AND the
         // caller hasn't pre-seeded the span on an API_CALL boundary.
-        let had_events =
-            self.mac + self.dma_read + self.dma_write + self.barrier + self.stall > 0
+        let had_events = self.mac + self.dma_read + self.dma_write + self.barrier + self.stall > 0
             || self.last_cy > 0;
         if !had_events {
             self.first_cy = ev.start_cycle.get();
-            self.last_cy  = end;
+            self.last_cy = end;
         } else {
-            if ev.start_cycle.get() < self.first_cy { self.first_cy = ev.start_cycle.get(); }
-            if end                  > self.last_cy   { self.last_cy   = end; }
+            if ev.start_cycle.get() < self.first_cy {
+                self.first_cy = ev.start_cycle.get();
+            }
+            if end > self.last_cy {
+                self.last_cy = end;
+            }
         }
         match ev.event_type.as_str() {
-            "MAC_COMPUTE"    => self.mac       += 1,
-            "DMA_READ"       => self.dma_read  += 1,
-            "DMA_WRITE"      => self.dma_write += 1,
-            "BARRIER_SYNC"   => self.barrier   += 1,
-            "SYSTOLIC_STALL" => self.stall     += 1,
+            "MAC_COMPUTE" => self.mac += 1,
+            "DMA_READ" => self.dma_read += 1,
+            "DMA_WRITE" => self.dma_write += 1,
+            "BARRIER_SYNC" => self.barrier += 1,
+            "SYSTOLIC_STALL" => self.stall += 1,
             _ => {}
         }
     }
@@ -303,7 +336,9 @@ fn check(observed: i64, expected: i64, tolerance_pct: f64, abs_tol: Option<u64>)
         let allowed = (expected as f64).abs() * tolerance_pct / 100.0;
         drift <= allowed
     };
-    if pct_pass { return true; }
+    if pct_pass {
+        return true;
+    }
     // Absolute tolerance fallback — when set, permits ±N drift
     // regardless of the percentage-based gate.
     if let Some(abs) = abs_tol {
@@ -327,19 +362,54 @@ pub fn diff(trace: &NpuTrace, reference: &[RefProfileRow]) -> GoldenDiffReport {
     for row in reference {
         let obs = buckets.iter().find(|b| b.step == row.step);
         let (mac, dma_r, dma_w, barrier, cycles) = match obs {
-            Some(b) => (b.mac as i64, b.dma_read as i64, b.dma_write as i64,
-                        b.barrier as i64, b.cycles() as i64),
-            None    => (0, 0, 0, 0, 0),
+            Some(b) => (
+                b.mac as i64,
+                b.dma_read as i64,
+                b.dma_write as i64,
+                b.barrier as i64,
+                b.cycles() as i64,
+            ),
+            None => (0, 0, 0, 0, 0),
         };
         let abs_tol = row.abs_tolerance;
         let mut metrics = vec![
-            mk_metric("mac",       mac,       row.expect_mac as i64,        row.tolerance_pct, abs_tol),
-            mk_metric("dma_read",  dma_r,     row.expect_dma_read as i64,   row.tolerance_pct, abs_tol),
-            mk_metric("dma_write", dma_w,     row.expect_dma_write as i64,  row.tolerance_pct, abs_tol),
-            mk_metric("barrier",   barrier,   row.expect_barrier as i64,    row.tolerance_pct, abs_tol),
+            mk_metric(
+                "mac",
+                mac,
+                row.expect_mac as i64,
+                row.tolerance_pct,
+                abs_tol,
+            ),
+            mk_metric(
+                "dma_read",
+                dma_r,
+                row.expect_dma_read as i64,
+                row.tolerance_pct,
+                abs_tol,
+            ),
+            mk_metric(
+                "dma_write",
+                dma_w,
+                row.expect_dma_write as i64,
+                row.tolerance_pct,
+                abs_tol,
+            ),
+            mk_metric(
+                "barrier",
+                barrier,
+                row.expect_barrier as i64,
+                row.tolerance_pct,
+                abs_tol,
+            ),
         ];
         if row.cycle_budget > 0 {
-            metrics.push(mk_metric("cycles", cycles, row.cycle_budget as i64, row.tolerance_pct, abs_tol));
+            metrics.push(mk_metric(
+                "cycles",
+                cycles,
+                row.cycle_budget as i64,
+                row.tolerance_pct,
+                abs_tol,
+            ));
         }
         // Accumulate per-metric statistics.
         for m in &metrics {
@@ -355,35 +425,63 @@ pub fn diff(trace: &NpuTrace, reference: &[RefProfileRow]) -> GoldenDiffReport {
             }
         }
         let step_pass = metrics.iter().all(|m| m.pass);
-        if step_pass { pass += 1; }
+        if step_pass {
+            pass += 1;
+        }
         let summary = if step_pass {
             format!("step {:>3} pass", row.step)
         } else {
-            let bad: Vec<&str> = metrics.iter().filter(|m| !m.pass).map(|m| m.name.as_str()).collect();
+            let bad: Vec<&str> = metrics
+                .iter()
+                .filter(|m| !m.pass)
+                .map(|m| m.name.as_str())
+                .collect();
             format!("step {:>3} drift on [{}]", row.step, bad.join(", "))
         };
-        out.push(StepDiff { step: row.step, is_pass: step_pass, summary, metrics });
+        out.push(StepDiff {
+            step: row.step,
+            is_pass: step_pass,
+            summary,
+            metrics,
+        });
     }
 
     let total = reference.len() as u32;
     let summary = if pass == total {
         format!("golden-diff: all {} steps within tolerance", total)
     } else {
-        format!("golden-diff: {} / {} steps PASS — {} regressed", pass, total, total - pass)
+        format!(
+            "golden-diff: {} / {} steps PASS — {} regressed",
+            pass,
+            total,
+            total - pass
+        )
     };
     GoldenDiffReport {
-        step_count: total, pass_count: pass, steps: out, summary,
-        total_metrics, exact_matches, tolerance_passes, metric_mismatches,
+        step_count: total,
+        pass_count: pass,
+        steps: out,
+        summary,
+        total_metrics,
+        exact_matches,
+        tolerance_passes,
+        metric_mismatches,
     }
 }
 
-fn mk_metric(name: &str, observed: i64, expected: i64, tolerance_pct: f64, abs_tol: Option<u64>) -> MetricDiff {
+fn mk_metric(
+    name: &str,
+    observed: i64,
+    expected: i64,
+    tolerance_pct: f64,
+    abs_tol: Option<u64>,
+) -> MetricDiff {
     MetricDiff {
-        name:          name.to_string(),
+        name: name.to_string(),
         observed,
         expected,
         tolerance_pct,
-        pass:          check(observed, expected, tolerance_pct, abs_tol),
+        pass: check(observed, expected, tolerance_pct, abs_tol),
     }
 }
 
@@ -396,24 +494,29 @@ fn mk_metric(name: &str, observed: i64, expected: i64, tolerance_pct: f64, abs_t
 /// grounded expectations, but the schema is identical.
 pub fn profile_from_trace(trace: &NpuTrace, tolerance_pct: f64) -> Vec<RefProfileRow> {
     let buckets = bucketise(trace);
-    buckets.into_iter().map(|b| {
-        let cycles = b.cycles();
-        RefProfileRow {
-            step:             b.step,
-            api_name:         b.api_name,
-            expect_mac:       b.mac,
-            expect_dma_read:  b.dma_read,
-            expect_dma_write: b.dma_write,
-            expect_barrier:   b.barrier,
-            // Cycle budget = observed + tolerance (rounded up), so a
-            // freshly-emitted profile is guaranteed to pass against
-            // its own source trace.  Always at least 1 to avoid a 0
-            // budget for empty steps.
-            cycle_budget:     (cycles as f64 * (1.0 + tolerance_pct / 100.0)).ceil().max(1.0) as u64,
-            tolerance_pct,
-            abs_tolerance:    None,
-        }
-    }).collect()
+    buckets
+        .into_iter()
+        .map(|b| {
+            let cycles = b.cycles();
+            RefProfileRow {
+                step: b.step,
+                api_name: b.api_name,
+                expect_mac: b.mac,
+                expect_dma_read: b.dma_read,
+                expect_dma_write: b.dma_write,
+                expect_barrier: b.barrier,
+                // Cycle budget = observed + tolerance (rounded up), so a
+                // freshly-emitted profile is guaranteed to pass against
+                // its own source trace.  Always at least 1 to avoid a 0
+                // budget for empty steps.
+                cycle_budget: (cycles as f64 * (1.0 + tolerance_pct / 100.0))
+                    .ceil()
+                    .max(1.0) as u64,
+                tolerance_pct,
+                abs_tolerance: None,
+            }
+        })
+        .collect()
 }
 
 /// Serialise a profile to a JSONL string — one row per line, trailing
@@ -440,19 +543,22 @@ mod tests {
     fn mk_trace() -> NpuTrace {
         let mut events = Vec::new();
         // Step 0 — two MAC + one DMA_READ before any API_CALL.
-        events.push(NpuEvent::new(0,   0, 100, "MAC_COMPUTE"));
+        events.push(NpuEvent::new(0, 0, 100, "MAC_COMPUTE"));
         events.push(NpuEvent::new(0, 100, 100, "MAC_COMPUTE"));
-        events.push(NpuEvent::new(0, 200,  50, "DMA_READ"));
+        events.push(NpuEvent::new(0, 200, 50, "DMA_READ"));
         events.push(NpuEvent::api_call(0, 250, 5, "uca_iter_0"));
         // Step 1 — three MAC + one DMA_WRITE.
         events.push(NpuEvent::new(0, 300, 100, "MAC_COMPUTE"));
         events.push(NpuEvent::new(0, 400, 100, "MAC_COMPUTE"));
         events.push(NpuEvent::new(0, 500, 100, "MAC_COMPUTE"));
-        events.push(NpuEvent::new(0, 600,  50, "DMA_WRITE"));
+        events.push(NpuEvent::new(0, 600, 50, "DMA_WRITE"));
         events.push(NpuEvent::api_call(0, 650, 5, "uca_iter_1"));
         // Step 2 — one stall, then done.
         events.push(NpuEvent::new(0, 700, 50, "SYSTOLIC_STALL"));
-        NpuTrace { total_cycles: 800, events }
+        NpuTrace {
+            total_cycles: 800,
+            events,
+        }
     }
 
     #[test]
@@ -469,7 +575,7 @@ mod tests {
 
     #[test]
     fn self_diff_is_clean() {
-        let t  = mk_trace();
+        let t = mk_trace();
         let rp = profile_from_trace(&t, 10.0);
         let rep = diff(&t, &rp);
         assert!(rep.is_clean(), "self-diff should pass: {}", rep.summary);
@@ -481,9 +587,15 @@ mod tests {
         let t = mk_trace();
         // Tight reference that expects 10 MAC at step 0 — trace has 2.
         let tight = vec![RefProfileRow {
-            step: 0, api_name: Some("uca_iter_0".into()),
-            expect_mac: 10, expect_dma_read: 0, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 0, tolerance_pct: 10.0, abs_tolerance: None,
+            step: 0,
+            api_name: Some("uca_iter_0".into()),
+            expect_mac: 10,
+            expect_dma_read: 0,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 0,
+            tolerance_pct: 10.0,
+            abs_tolerance: None,
         }];
         let rep = diff(&t, &tight);
         assert!(!rep.is_clean());
@@ -492,9 +604,9 @@ mod tests {
 
     #[test]
     fn parse_jsonl_round_trips() {
-        let t    = mk_trace();
+        let t = mk_trace();
         let rows = profile_from_trace(&t, 10.0);
-        let s    = profile_to_jsonl(&rows);
+        let s = profile_to_jsonl(&rows);
         let back = parse_reference_jsonl(&s).unwrap();
         assert_eq!(back.len(), rows.len());
     }
@@ -512,9 +624,15 @@ mod tests {
         // Expect 2 MAC with 60 % tolerance — observed=2, still passes.
         // Expect 100 cycles with 60 % tolerance — observed=250, fails.
         let rows = vec![RefProfileRow {
-            step: 0, api_name: None,
-            expect_mac: 2, expect_dma_read: 1, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 100, tolerance_pct: 60.0, abs_tolerance: None,
+            step: 0,
+            api_name: None,
+            expect_mac: 2,
+            expect_dma_read: 1,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 100,
+            tolerance_pct: 60.0,
+            abs_tolerance: None,
         }];
         let rep = diff(&t, &rows);
         let step = &rep.steps[0];
@@ -531,12 +649,20 @@ mod tests {
         let t = mk_trace();
         // Build a reference that exactly mirrors the trace with 0% tolerance.
         let buckets = bucketise(&t);
-        let rows: Vec<RefProfileRow> = buckets.iter().map(|b| RefProfileRow {
-            step: b.step, api_name: b.api_name.clone(),
-            expect_mac: b.mac, expect_dma_read: b.dma_read,
-            expect_dma_write: b.dma_write, expect_barrier: b.barrier,
-            cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: None,
-        }).collect();
+        let rows: Vec<RefProfileRow> = buckets
+            .iter()
+            .map(|b| RefProfileRow {
+                step: b.step,
+                api_name: b.api_name.clone(),
+                expect_mac: b.mac,
+                expect_dma_read: b.dma_read,
+                expect_dma_write: b.dma_write,
+                expect_barrier: b.barrier,
+                cycle_budget: 0,
+                tolerance_pct: 0.0,
+                abs_tolerance: None,
+            })
+            .collect();
         let rep = diff(&t, &rows);
         assert!(rep.is_clean());
         // All metrics should be exact matches (no cycle_budget set).
@@ -552,9 +678,15 @@ mod tests {
         let t = mk_trace();
         // Step 0 has mac=2; set expected to 5 with 0% tolerance.
         let rows = vec![RefProfileRow {
-            step: 0, api_name: None,
-            expect_mac: 5, expect_dma_read: 1, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: None,
+            step: 0,
+            api_name: None,
+            expect_mac: 5,
+            expect_dma_read: 1,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 0,
+            tolerance_pct: 0.0,
+            abs_tolerance: None,
         }];
         let rep = diff(&t, &rows);
         assert!(!rep.is_clean());
@@ -577,14 +709,26 @@ mod tests {
         let t = mk_trace();
         let rows = vec![
             RefProfileRow {
-                step: 0, api_name: None,
-                expect_mac: 99, expect_dma_read: 99, expect_dma_write: 0, expect_barrier: 0,
-                cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: None,
+                step: 0,
+                api_name: None,
+                expect_mac: 99,
+                expect_dma_read: 99,
+                expect_dma_write: 0,
+                expect_barrier: 0,
+                cycle_budget: 0,
+                tolerance_pct: 0.0,
+                abs_tolerance: None,
             },
             RefProfileRow {
-                step: 1, api_name: None,
-                expect_mac: 99, expect_dma_read: 0, expect_dma_write: 99, expect_barrier: 0,
-                cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: None,
+                step: 1,
+                api_name: None,
+                expect_mac: 99,
+                expect_dma_read: 0,
+                expect_dma_write: 99,
+                expect_barrier: 0,
+                cycle_budget: 0,
+                tolerance_pct: 0.0,
+                abs_tolerance: None,
             },
         ];
         let rep = diff(&t, &rows);
@@ -599,15 +743,28 @@ mod tests {
 
     #[test]
     fn empty_trace_mismatches_nonzero_expectations() {
-        let empty = NpuTrace { total_cycles: 0, events: vec![] };
+        let empty = NpuTrace {
+            total_cycles: 0,
+            events: vec![],
+        };
         let rows = vec![RefProfileRow {
-            step: 0, api_name: None,
-            expect_mac: 5, expect_dma_read: 0, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 0, tolerance_pct: 10.0, abs_tolerance: None,
+            step: 0,
+            api_name: None,
+            expect_mac: 5,
+            expect_dma_read: 0,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 0,
+            tolerance_pct: 10.0,
+            abs_tolerance: None,
         }];
         let rep = diff(&empty, &rows);
         assert!(!rep.is_clean());
-        let mac = rep.steps[0].metrics.iter().find(|m| m.name == "mac").unwrap();
+        let mac = rep.steps[0]
+            .metrics
+            .iter()
+            .find(|m| m.name == "mac")
+            .unwrap();
         assert!(!mac.pass);
         assert_eq!(mac.observed, 0);
     }
@@ -632,12 +789,22 @@ mod tests {
         // Step 0: mac=2. Expect 10 with 0% tolerance (fails pct-wise)
         // but abs_tolerance=10 should rescue it.
         let rows = vec![RefProfileRow {
-            step: 0, api_name: None,
-            expect_mac: 10, expect_dma_read: 1, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: Some(10),
+            step: 0,
+            api_name: None,
+            expect_mac: 10,
+            expect_dma_read: 1,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 0,
+            tolerance_pct: 0.0,
+            abs_tolerance: Some(10),
         }];
         let rep = diff(&t, &rows);
-        let mac = rep.steps[0].metrics.iter().find(|m| m.name == "mac").unwrap();
+        let mac = rep.steps[0]
+            .metrics
+            .iter()
+            .find(|m| m.name == "mac")
+            .unwrap();
         assert!(mac.pass, "abs_tolerance=10 should pass drift of 8");
     }
 
@@ -646,12 +813,22 @@ mod tests {
         let t = mk_trace();
         // Step 0: mac=2. Expect 100; abs_tolerance=5, pct=0%.
         let rows = vec![RefProfileRow {
-            step: 0, api_name: None,
-            expect_mac: 100, expect_dma_read: 0, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 0, tolerance_pct: 0.0, abs_tolerance: Some(5),
+            step: 0,
+            api_name: None,
+            expect_mac: 100,
+            expect_dma_read: 0,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 0,
+            tolerance_pct: 0.0,
+            abs_tolerance: Some(5),
         }];
         let rep = diff(&t, &rows);
-        let mac = rep.steps[0].metrics.iter().find(|m| m.name == "mac").unwrap();
+        let mac = rep.steps[0]
+            .metrics
+            .iter()
+            .find(|m| m.name == "mac")
+            .unwrap();
         assert!(!mac.pass, "abs_tolerance=5 should not cover drift of 98");
     }
 
@@ -684,8 +861,11 @@ mod tests {
     #[test]
     fn metric_display_shows_verdict() {
         let m = MetricDiff {
-            name: "mac".into(), observed: 5, expected: 5,
-            tolerance_pct: 10.0, pass: true,
+            name: "mac".into(),
+            observed: 5,
+            expected: 5,
+            tolerance_pct: 10.0,
+            pass: true,
         };
         let s = format!("{}", m);
         assert!(s.contains("PASS"));
@@ -716,9 +896,15 @@ mod tests {
     #[test]
     fn jsonl_round_trip_preserves_abs_tolerance() {
         let rows = vec![RefProfileRow {
-            step: 0, api_name: Some("test".into()),
-            expect_mac: 5, expect_dma_read: 0, expect_dma_write: 0, expect_barrier: 0,
-            cycle_budget: 100, tolerance_pct: 10.0, abs_tolerance: Some(3),
+            step: 0,
+            api_name: Some("test".into()),
+            expect_mac: 5,
+            expect_dma_read: 0,
+            expect_dma_write: 0,
+            expect_barrier: 0,
+            cycle_budget: 100,
+            tolerance_pct: 10.0,
+            abs_tolerance: Some(3),
         }];
         let s = profile_to_jsonl(&rows);
         let back = parse_reference_jsonl(&s).unwrap();

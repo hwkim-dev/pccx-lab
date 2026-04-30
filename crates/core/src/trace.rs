@@ -1,7 +1,7 @@
 // Module Boundary: core/
 // NPU Trace data structures and serialization utilities.
+use crate::typed::{CoreId, CycleCount, EventTypeId};
 use serde::{Deserialize, Serialize};
-use crate::typed::{CycleCount, CoreId, EventTypeId};
 
 /// Canonical event type IDs used in the flat binary buffer.
 /// These MUST be kept in sync with the JS DataView parsing logic.
@@ -23,13 +23,13 @@ pub mod event_type_id {
 /// so UI parsers and writers share one source of truth (keeps
 /// `FlameGraph.tsx:EVENT_TYPE_NAMES` in lock-step with Rust).
 pub const EVENT_TYPE_NAMES: &[(&str, u32)] = &[
-    ("UNKNOWN",        event_type_id::UNKNOWN),
-    ("MAC_COMPUTE",    event_type_id::MAC_COMPUTE),
-    ("DMA_READ",       event_type_id::DMA_READ),
-    ("DMA_WRITE",      event_type_id::DMA_WRITE),
+    ("UNKNOWN", event_type_id::UNKNOWN),
+    ("MAC_COMPUTE", event_type_id::MAC_COMPUTE),
+    ("DMA_READ", event_type_id::DMA_READ),
+    ("DMA_WRITE", event_type_id::DMA_WRITE),
     ("SYSTOLIC_STALL", event_type_id::SYSTOLIC_STALL),
-    ("BARRIER_SYNC",   event_type_id::BARRIER_SYNC),
-    ("API_CALL",       event_type_id::API_CALL),
+    ("BARRIER_SYNC", event_type_id::BARRIER_SYNC),
+    ("API_CALL", event_type_id::API_CALL),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,20 +52,25 @@ impl NpuEvent {
     /// Centralising this lookup ensures flat_buffer and any future codec stay in sync.
     pub fn type_id(&self) -> EventTypeId {
         EventTypeId::new(match self.event_type.as_str() {
-            "MAC_COMPUTE"    => event_type_id::MAC_COMPUTE,
-            "DMA_READ"       => event_type_id::DMA_READ,
-            "DMA_WRITE"      => event_type_id::DMA_WRITE,
+            "MAC_COMPUTE" => event_type_id::MAC_COMPUTE,
+            "DMA_READ" => event_type_id::DMA_READ,
+            "DMA_WRITE" => event_type_id::DMA_WRITE,
             "SYSTOLIC_STALL" => event_type_id::SYSTOLIC_STALL,
-            "BARRIER_SYNC"   => event_type_id::BARRIER_SYNC,
-            "API_CALL"       => event_type_id::API_CALL,
-            _                => event_type_id::UNKNOWN,
+            "BARRIER_SYNC" => event_type_id::BARRIER_SYNC,
+            "API_CALL" => event_type_id::API_CALL,
+            _ => event_type_id::UNKNOWN,
         })
     }
 
     /// Constructs a non-API event (the common case). `api_name` stays
     /// `None` so the extra field in `NpuEvent` never leaks into
     /// callers that pre-date the API_CALL variant.
-    pub fn new(core_id: u32, start_cycle: u64, duration: u64, event_type: impl Into<String>) -> Self {
+    pub fn new(
+        core_id: u32,
+        start_cycle: u64,
+        duration: u64,
+        event_type: impl Into<String>,
+    ) -> Self {
         Self {
             core_id: CoreId::new(core_id),
             start_cycle: CycleCount::new(start_cycle),
@@ -77,7 +82,12 @@ impl NpuEvent {
 
     /// Constructs an `API_CALL` event tagged with the qualified `uca_*`
     /// name. Duration is the measured entry→exit span in cycles.
-    pub fn api_call(core_id: u32, start_cycle: u64, duration: u64, api_name: impl Into<String>) -> Self {
+    pub fn api_call(
+        core_id: u32,
+        start_cycle: u64,
+        duration: u64,
+        api_name: impl Into<String>,
+    ) -> Self {
         Self {
             core_id: CoreId::new(core_id),
             start_cycle: CycleCount::new(start_cycle),
@@ -219,19 +229,19 @@ impl NpuTrace {
 
         let mut off = 0;
         while off + STRIDE <= event_end {
-            let raw_core    = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
-            let raw_start   = u64::from_le_bytes(bytes[off + 4..off + 12].try_into().unwrap());
-            let raw_dur     = u64::from_le_bytes(bytes[off + 12..off + 20].try_into().unwrap());
-            let type_id     = u32::from_le_bytes(bytes[off + 20..off + 24].try_into().unwrap());
+            let raw_core = u32::from_le_bytes(bytes[off..off + 4].try_into().unwrap());
+            let raw_start = u64::from_le_bytes(bytes[off + 4..off + 12].try_into().unwrap());
+            let raw_dur = u64::from_le_bytes(bytes[off + 12..off + 20].try_into().unwrap());
+            let type_id = u32::from_le_bytes(bytes[off + 20..off + 24].try_into().unwrap());
             total = total.max(raw_start.saturating_add(raw_dur));
             let event_type = match type_id {
-                event_type_id::MAC_COMPUTE    => "MAC_COMPUTE",
-                event_type_id::DMA_READ       => "DMA_READ",
-                event_type_id::DMA_WRITE      => "DMA_WRITE",
+                event_type_id::MAC_COMPUTE => "MAC_COMPUTE",
+                event_type_id::DMA_READ => "DMA_READ",
+                event_type_id::DMA_WRITE => "DMA_WRITE",
                 event_type_id::SYSTOLIC_STALL => "SYSTOLIC_STALL",
-                event_type_id::BARRIER_SYNC   => "BARRIER_SYNC",
-                event_type_id::API_CALL       => "API_CALL",
-                _                             => "UNKNOWN",
+                event_type_id::BARRIER_SYNC => "BARRIER_SYNC",
+                event_type_id::API_CALL => "API_CALL",
+                _ => "UNKNOWN",
             };
             events.push(NpuEvent {
                 core_id: CoreId::new(raw_core),
@@ -247,16 +257,21 @@ impl NpuTrace {
         if event_end + 8 <= bytes.len() {
             let magic = u32::from_le_bytes(bytes[event_end..event_end + 4].try_into().unwrap());
             if magic == Self::FLAT_BUFFER_V2_MAGIC {
-                let count = u32::from_le_bytes(
-                    bytes[event_end + 4..event_end + 8].try_into().unwrap()
-                ) as usize;
+                let count =
+                    u32::from_le_bytes(bytes[event_end + 4..event_end + 8].try_into().unwrap())
+                        as usize;
                 let mut cur = event_end + 8;
                 for _ in 0..count {
-                    if cur + 6 > bytes.len() { break; }
+                    if cur + 6 > bytes.len() {
+                        break;
+                    }
                     let idx = u32::from_le_bytes(bytes[cur..cur + 4].try_into().unwrap()) as usize;
-                    let len = u16::from_le_bytes(bytes[cur + 4..cur + 6].try_into().unwrap()) as usize;
+                    let len =
+                        u16::from_le_bytes(bytes[cur + 4..cur + 6].try_into().unwrap()) as usize;
                     cur += 6;
-                    if cur + len > bytes.len() { break; }
+                    if cur + len > bytes.len() {
+                        break;
+                    }
                     let name = std::str::from_utf8(&bytes[cur..cur + len])
                         .unwrap_or("")
                         .to_owned();
@@ -268,7 +283,10 @@ impl NpuTrace {
             }
         }
 
-        NpuTrace { total_cycles: total, events }
+        NpuTrace {
+            total_cycles: total,
+            events,
+        }
     }
 
     /// Returns per-core utilisation in [0.0, 1.0] over the entire trace window.
@@ -301,7 +319,8 @@ impl NpuTrace {
             .iter()
             .filter(|ev| {
                 (ev.event_type == "DMA_READ" || ev.event_type == "DMA_WRITE")
-                    && (ev.duration.get() as f64) > threshold_ratio * (self.total_cycles as f64 / 100.0)
+                    && (ev.duration.get() as f64)
+                        > threshold_ratio * (self.total_cycles as f64 / 100.0)
             })
             .collect()
     }
@@ -320,9 +339,9 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 4096,
             events: vec![
-                NpuEvent::api_call(0, 0,    42,  "uca_init"),
-                NpuEvent::new      (1, 100,  50, "MAC_COMPUTE"),
-                NpuEvent::api_call(0, 200, 17,  "uca_alloc_buffer"),
+                NpuEvent::api_call(0, 0, 42, "uca_init"),
+                NpuEvent::new(1, 100, 50, "MAC_COMPUTE"),
+                NpuEvent::api_call(0, 200, 17, "uca_alloc_buffer"),
                 NpuEvent::api_call(2, 512, 128, "uca_submit_cmd"),
             ],
         };
@@ -332,15 +351,23 @@ mod tests {
         assert_eq!(&buf[0..96].len(), &96usize);
         // Trailer magic follows at offset 96.
         let magic = u32::from_le_bytes(buf[96..100].try_into().unwrap());
-        assert_eq!(magic, NpuTrace::FLAT_BUFFER_V2_MAGIC,
-            "trailer magic 'PCC2' must appear immediately after the event array");
+        assert_eq!(
+            magic,
+            NpuTrace::FLAT_BUFFER_V2_MAGIC,
+            "trailer magic 'PCC2' must appear immediately after the event array"
+        );
 
         let round = NpuTrace::from_flat_buffer_v2(&buf);
         assert_eq!(round.events.len(), 4);
         assert_eq!(round.events[0].api_name.as_deref(), Some("uca_init"));
-        assert_eq!(round.events[1].api_name, None,
-            "non-API_CALL events must not carry a name after roundtrip");
-        assert_eq!(round.events[2].api_name.as_deref(), Some("uca_alloc_buffer"));
+        assert_eq!(
+            round.events[1].api_name, None,
+            "non-API_CALL events must not carry a name after roundtrip"
+        );
+        assert_eq!(
+            round.events[2].api_name.as_deref(),
+            Some("uca_alloc_buffer")
+        );
         assert_eq!(round.events[3].api_name.as_deref(), Some("uca_submit_cmd"));
         // total_cycles is reconstructed from the max end cycle.
         assert_eq!(round.total_cycles, 512 + 128);
@@ -354,7 +381,7 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 500,
             events: vec![
-                NpuEvent::new(0, 0,   100, "MAC_COMPUTE"),
+                NpuEvent::new(0, 0, 100, "MAC_COMPUTE"),
                 NpuEvent::new(1, 100, 200, "DMA_READ"),
             ],
         };
@@ -373,9 +400,9 @@ mod tests {
     fn flat_buffer_v2_decodes_v1_payload() {
         // Hand-built v1 buffer: single MAC_COMPUTE event.
         let mut buf = Vec::with_capacity(24);
-        buf.extend_from_slice(&7u32.to_le_bytes());   // core_id
-        buf.extend_from_slice(&99u64.to_le_bytes());  // start_cycle
-        buf.extend_from_slice(&33u64.to_le_bytes());  // duration
+        buf.extend_from_slice(&7u32.to_le_bytes()); // core_id
+        buf.extend_from_slice(&99u64.to_le_bytes()); // start_cycle
+        buf.extend_from_slice(&33u64.to_le_bytes()); // duration
         buf.extend_from_slice(&event_type_id::MAC_COMPUTE.to_le_bytes());
 
         let round = NpuTrace::from_flat_buffer_v2(&buf);

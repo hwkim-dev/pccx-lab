@@ -22,11 +22,11 @@ pub enum BottleneckKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BottleneckInterval {
-    pub kind:       BottleneckKind,
+    pub kind: BottleneckKind,
     pub start_cycle: u64,
-    pub end_cycle:   u64,
+    pub end_cycle: u64,
     /// Share of the window dominated by this event kind, in [0.0, 1.0].
-    pub share:       f64,
+    pub share: f64,
     pub event_count: u64,
 }
 
@@ -35,12 +35,15 @@ pub struct DetectorConfig {
     pub window_cycles: u64,
     /// Minimum share (in [0.0, 1.0]) of a window an event kind must
     /// occupy before the window is reported as a bottleneck.
-    pub threshold:     f64,
+    pub threshold: f64,
 }
 
 impl Default for DetectorConfig {
     fn default() -> Self {
-        Self { window_cycles: 256, threshold: 0.5 }
+        Self {
+            window_cycles: 256,
+            threshold: 0.5,
+        }
     }
 }
 
@@ -62,27 +65,28 @@ pub fn detect(trace: &NpuTrace, config: &DetectorConfig) -> Vec<BottleneckInterv
         .unwrap_or(1)
         .max(1) as u64;
 
-    let n_windows = ((trace.total_cycles + config.window_cycles - 1) / config.window_cycles) as usize;
+    let n_windows =
+        ((trace.total_cycles + config.window_cycles - 1) / config.window_cycles) as usize;
     // Per-window occupancy per class. `[window][kind] => cycles`.
     let mut occ: Vec<[u64; 4]> = vec![[0; 4]; n_windows];
 
     for ev in &trace.events {
         let kind_idx = match ev.type_id().get() {
-            id if id == event_type_id::DMA_READ       => Some(0),
-            id if id == event_type_id::DMA_WRITE      => Some(1),
+            id if id == event_type_id::DMA_READ => Some(0),
+            id if id == event_type_id::DMA_WRITE => Some(1),
             id if id == event_type_id::SYSTOLIC_STALL => Some(2),
-            id if id == event_type_id::BARRIER_SYNC   => Some(3),
+            id if id == event_type_id::BARRIER_SYNC => Some(3),
             _ => None,
         };
         if let Some(ki) = kind_idx {
             // Distribute the event's duration across every window it crosses.
             let start = ev.start_cycle.get();
-            let end   = start.saturating_add(ev.duration.get());
+            let end = start.saturating_add(ev.duration.get());
             let start_win = (start / config.window_cycles) as usize;
-            let end_win   = (end.saturating_sub(1) / config.window_cycles) as usize;
+            let end_win = (end.saturating_sub(1) / config.window_cycles) as usize;
             for w in start_win..=end_win.min(n_windows.saturating_sub(1)) {
                 let win_start = (w as u64) * config.window_cycles;
-                let win_end   = win_start + config.window_cycles;
+                let win_end = win_start + config.window_cycles;
                 let lo = start.max(win_start);
                 let hi = end.min(win_end);
                 if hi > lo {
@@ -95,7 +99,7 @@ pub fn detect(trace: &NpuTrace, config: &DetectorConfig) -> Vec<BottleneckInterv
     let mut out = Vec::new();
     for (w_idx, per_kind) in occ.iter().enumerate() {
         let win_start = (w_idx as u64) * config.window_cycles;
-        let win_end   = (win_start + config.window_cycles).min(trace.total_cycles);
+        let win_end = (win_start + config.window_cycles).min(trace.total_cycles);
         if win_end <= win_start {
             continue;
         }
@@ -111,16 +115,23 @@ pub fn detect(trace: &NpuTrace, config: &DetectorConfig) -> Vec<BottleneckInterv
                         BottleneckKind::BarrierSync,
                     ][ki],
                     start_cycle: win_start,
-                    end_cycle:   win_end,
+                    end_cycle: win_end,
                     share,
-                    event_count: trace.events.iter().filter(|e| {
-                        e.type_id().get() == match ki {
-                            0 => event_type_id::DMA_READ,
-                            1 => event_type_id::DMA_WRITE,
-                            2 => event_type_id::SYSTOLIC_STALL,
-                            _ => event_type_id::BARRIER_SYNC,
-                        } && e.start_cycle.get() < win_end && e.start_cycle.get() + e.duration.get() > win_start
-                    }).count() as u64,
+                    event_count: trace
+                        .events
+                        .iter()
+                        .filter(|e| {
+                            e.type_id().get()
+                                == match ki {
+                                    0 => event_type_id::DMA_READ,
+                                    1 => event_type_id::DMA_WRITE,
+                                    2 => event_type_id::SYSTOLIC_STALL,
+                                    _ => event_type_id::BARRIER_SYNC,
+                                }
+                                && e.start_cycle.get() < win_end
+                                && e.start_cycle.get() + e.duration.get() > win_start
+                        })
+                        .count() as u64,
                 });
             }
         }
@@ -140,7 +151,10 @@ mod tests {
 
     #[test]
     fn test_empty_trace_returns_nothing() {
-        let trace = NpuTrace { total_cycles: 0, events: vec![] };
+        let trace = NpuTrace {
+            total_cycles: 0,
+            events: vec![],
+        };
         let out = detect(&trace, &DetectorConfig::default());
         assert!(out.is_empty());
     }
@@ -150,18 +164,18 @@ mod tests {
         // Window 0 (0..256) is dominated by DMA_READ (200 out of 256 cycles).
         let trace = NpuTrace {
             total_cycles: 512,
-            events: vec![
-                mk_ev("DMA_READ",    0, 200),
-                mk_ev("MAC_COMPUTE", 256, 200),
-            ],
+            events: vec![mk_ev("DMA_READ", 0, 200), mk_ev("MAC_COMPUTE", 256, 200)],
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
         assert_eq!(out.len(), 1, "expected one bottleneck window, got {out:?}");
         let b = &out[0];
         assert_eq!(b.kind, BottleneckKind::DmaRead);
         assert_eq!(b.start_cycle, 0);
-        assert_eq!(b.end_cycle,   256);
+        assert_eq!(b.end_cycle, 256);
         assert!(b.share >= 0.75, "{}", b.share);
     }
 
@@ -171,7 +185,10 @@ mod tests {
             total_cycles: 256,
             events: vec![mk_ev("DMA_READ", 0, 100)], // 39% of window
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
         assert!(out.is_empty());
     }
@@ -184,10 +201,17 @@ mod tests {
             total_cycles: 512,
             events: vec![mk_ev("SYSTOLIC_STALL", 100, 300)], // 100..400
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
         // Window 0 has 156/256 = 61% stall, window 1 has 144/256 = 56% stall.
-        assert_eq!(out.len(), 2, "expected stall to surface in both windows: {out:?}");
+        assert_eq!(
+            out.len(),
+            2,
+            "expected stall to surface in both windows: {out:?}"
+        );
         for b in &out {
             assert_eq!(b.kind, BottleneckKind::SystolicStall);
         }
@@ -203,16 +227,21 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 256,
             events: vec![
-                mk_ev("DMA_READ",       0,   60),
-                mk_ev("DMA_WRITE",      60,  60),
+                mk_ev("DMA_READ", 0, 60),
+                mk_ev("DMA_WRITE", 60, 60),
                 mk_ev("SYSTOLIC_STALL", 120, 60),
-                mk_ev("BARRIER_SYNC",   180, 60),
+                mk_ev("BARRIER_SYNC", 180, 60),
             ],
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
-        assert!(out.is_empty(),
-            "evenly distributed events should not trigger a bottleneck");
+        assert!(
+            out.is_empty(),
+            "evenly distributed events should not trigger a bottleneck"
+        );
     }
 
     /// Multiple distinct bottleneck windows — a DMA-read stall in the
@@ -223,12 +252,15 @@ mod tests {
         let trace = NpuTrace {
             total_cycles: 768,
             events: vec![
-                mk_ev("DMA_READ",     0,   200),   // Window 0: 200/256 = 78%
-                mk_ev("MAC_COMPUTE",  256, 256),    // Window 1: pure compute, not a stall type
-                mk_ev("BARRIER_SYNC", 512, 200),    // Window 2: 200/256 = 78%
+                mk_ev("DMA_READ", 0, 200),       // Window 0: 200/256 = 78%
+                mk_ev("MAC_COMPUTE", 256, 256),  // Window 1: pure compute, not a stall type
+                mk_ev("BARRIER_SYNC", 512, 200), // Window 2: 200/256 = 78%
             ],
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
         assert_eq!(out.len(), 2, "expected two bottleneck windows: {out:?}");
         assert_eq!(out[0].kind, BottleneckKind::DmaRead);
@@ -248,10 +280,15 @@ mod tests {
         };
         // Default threshold (0.5) should miss it.
         let out_default = detect(&trace, &DetectorConfig::default());
-        assert!(out_default.is_empty(),
-            "31% share should not exceed 50% threshold");
+        assert!(
+            out_default.is_empty(),
+            "31% share should not exceed 50% threshold"
+        );
         // Low threshold (0.2) should catch it.
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.2 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.2,
+        };
         let out_low = detect(&trace, &cfg);
         assert_eq!(out_low.len(), 1);
         assert_eq!(out_low[0].kind, BottleneckKind::DmaWrite);
@@ -264,12 +301,18 @@ mod tests {
             total_cycles: 256,
             events: vec![mk_ev("BARRIER_SYNC", 0, 256)],
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].kind, BottleneckKind::BarrierSync);
-        assert!((out[0].share - 1.0).abs() < 1e-9,
-            "full-window barrier must have share == 1.0, got {}", out[0].share);
+        assert!(
+            (out[0].share - 1.0).abs() < 1e-9,
+            "full-window barrier must have share == 1.0, got {}",
+            out[0].share
+        );
     }
 
     /// A zero window_cycles config must not panic or loop — it should
@@ -280,10 +323,15 @@ mod tests {
             total_cycles: 100,
             events: vec![mk_ev("DMA_READ", 0, 50)],
         };
-        let cfg = DetectorConfig { window_cycles: 0, threshold: 0.5 };
+        let cfg = DetectorConfig {
+            window_cycles: 0,
+            threshold: 0.5,
+        };
         let out = detect(&trace, &cfg);
-        assert!(out.is_empty(),
-            "zero window_cycles must be handled gracefully");
+        assert!(
+            out.is_empty(),
+            "zero window_cycles must be handled gracefully"
+        );
     }
 
     /// Events whose type is not in the stall/DMA set (e.g. MAC_COMPUTE)
@@ -294,9 +342,14 @@ mod tests {
             total_cycles: 256,
             events: vec![mk_ev("MAC_COMPUTE", 0, 256)],
         };
-        let cfg = DetectorConfig { window_cycles: 256, threshold: 0.1 };
+        let cfg = DetectorConfig {
+            window_cycles: 256,
+            threshold: 0.1,
+        };
         let out = detect(&trace, &cfg);
-        assert!(out.is_empty(),
-            "MAC_COMPUTE is not a stall class and must not surface");
+        assert!(
+            out.is_empty(),
+            "MAC_COMPUTE is not a stall class and must not surface"
+        );
     }
 }

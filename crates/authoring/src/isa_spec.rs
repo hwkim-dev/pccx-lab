@@ -34,39 +34,39 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IsaSpec {
     /// Name — used as a prefix in emitted identifiers.
-    pub name:       String,
+    pub name: String,
     /// Total instruction width in bits. pccx v002 is 64; the v001
     /// archive used 32.  Any value in [8, 128] is accepted.
     pub width_bits: u8,
     /// Optional version string — e.g. "v002.0.0".
     #[serde(default)]
-    pub version:    String,
+    pub version: String,
     /// Optional research citation — arxiv id or URL the ISA design
     /// is grounded in.  Surfaces in emitted docs + research.rs.
     #[serde(default)]
-    pub citation:   Option<String>,
+    pub citation: Option<String>,
     /// The opcode table.
-    pub opcodes:    Vec<OpcodeSpec>,
+    pub opcodes: Vec<OpcodeSpec>,
     /// Bit-level reserved ranges that MUST be zero. Linter flags any
     /// opcode that allocates a field into this range.
     #[serde(default)]
-    pub reserved:   Vec<BitRange>,
+    pub reserved: Vec<BitRange>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpcodeSpec {
     /// Opcode mnemonic — ALL CAPS by convention.
-    pub name:       String,
+    pub name: String,
     /// Numerical encoding placed in the opcode field (see
     /// `opcode_field` on the spec; conventionally bits [width-1..width-6]).
-    pub encoding:   u64,
+    pub encoding: u64,
     /// Bit width of the `encoding` field itself (default 6).
     #[serde(default = "default_opcode_field_bits")]
     pub opcode_field_bits: u8,
     /// Operand field list.  Order matters: emitted Rust/SV signatures
     /// follow this order.
     #[serde(default)]
-    pub fields:     Vec<FieldSpec>,
+    pub fields: Vec<FieldSpec>,
     /// Free-text description — one sentence, surfaces in the Markdown
     /// summary and the SV decoder header comment.
     #[serde(default)]
@@ -77,9 +77,9 @@ pub struct OpcodeSpec {
 pub struct FieldSpec {
     pub name: String,
     /// High bit (MSB) of the field — inclusive.
-    pub msb:  u8,
+    pub msb: u8,
     /// Low bit  (LSB) of the field — inclusive.
-    pub lsb:  u8,
+    pub lsb: u8,
     /// Optional doc string for this operand.
     #[serde(default)]
     pub description: String,
@@ -91,11 +91,15 @@ pub struct BitRange {
     pub lsb: u8,
 }
 
-fn default_opcode_field_bits() -> u8 { 6 }
+fn default_opcode_field_bits() -> u8 {
+    6
+}
 
 impl FieldSpec {
     /// Number of bits this field occupies (inclusive).
-    pub fn width(&self) -> u8 { self.msb - self.lsb + 1 }
+    pub fn width(&self) -> u8 {
+        self.msb - self.lsb + 1
+    }
 }
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
@@ -113,14 +117,20 @@ pub enum IsaSpecError {
 /// Linter output — aggregated so a single run reports every issue.
 #[derive(Debug, Default, Clone)]
 pub struct LintReport {
-    pub errors:   Vec<String>,
+    pub errors: Vec<String>,
     pub warnings: Vec<String>,
 }
 
 impl LintReport {
-    pub fn is_clean(&self) -> bool { self.errors.is_empty() }
-    pub fn push_err(&mut self, msg: impl Into<String>)  { self.errors.push(msg.into()); }
-    pub fn push_warn(&mut self, msg: impl Into<String>) { self.warnings.push(msg.into()); }
+    pub fn is_clean(&self) -> bool {
+        self.errors.is_empty()
+    }
+    pub fn push_err(&mut self, msg: impl Into<String>) {
+        self.errors.push(msg.into());
+    }
+    pub fn push_warn(&mut self, msg: impl Into<String>) {
+        self.warnings.push(msg.into());
+    }
 }
 
 // ─── Loading ─────────────────────────────────────────────────────────────────
@@ -154,31 +164,38 @@ impl IsaSpec {
             if let Some(prev) = seen.insert(op.encoding, op.name.clone()) {
                 r.push_err(format!(
                     "opcode encoding collision: {} and {} both use 0x{:X}",
-                    prev, op.name, op.encoding));
+                    prev, op.name, op.encoding
+                ));
             }
             if op.opcode_field_bits == 0 || op.opcode_field_bits > self.width_bits {
                 r.push_err(format!(
                     "{}.opcode_field_bits {} invalid for {}-bit instruction",
-                    op.name, op.opcode_field_bits, self.width_bits));
+                    op.name, op.opcode_field_bits, self.width_bits
+                ));
             }
             // Field sanity.
             let mut claimed: BTreeSet<u8> = BTreeSet::new();
             for f in &op.fields {
                 if f.lsb > f.msb {
-                    r.push_err(format!("{}.{}: lsb {} > msb {}", op.name, f.name, f.lsb, f.msb));
+                    r.push_err(format!(
+                        "{}.{}: lsb {} > msb {}",
+                        op.name, f.name, f.lsb, f.msb
+                    ));
                     continue;
                 }
                 if f.msb >= self.width_bits {
                     r.push_err(format!(
                         "{}.{}: msb {} outside instruction width {}",
-                        op.name, f.name, f.msb, self.width_bits));
+                        op.name, f.name, f.msb, self.width_bits
+                    ));
                 }
                 // Overlap within the opcode.
                 for bit in f.lsb..=f.msb {
                     if !claimed.insert(bit) {
                         r.push_err(format!(
                             "{}: field {} overlaps a previous field at bit {}",
-                            op.name, f.name, bit));
+                            op.name, f.name, bit
+                        ));
                     }
                 }
                 // Reserved bits.
@@ -187,7 +204,8 @@ impl IsaSpec {
                     if (f.lsb..=f.msb).any(|b| res_range.contains(&b)) {
                         r.push_err(format!(
                             "{}.{}: overlaps reserved bits [{}..{}]",
-                            op.name, f.name, res.lsb, res.msb));
+                            op.name, f.name, res.lsb, res.msb
+                        ));
                     }
                 }
             }
@@ -199,7 +217,11 @@ impl IsaSpec {
                 if f.msb >= top_lsb {
                     r.push_warn(format!(
                         "{}.{}: field extends into opcode-id range [{}..{}]",
-                        op.name, f.name, top_lsb, self.width_bits - 1));
+                        op.name,
+                        f.name,
+                        top_lsb,
+                        self.width_bits - 1
+                    ));
                 }
             }
         }
@@ -214,11 +236,18 @@ impl IsaSpec {
         s.push_str(&format!(
             "// Auto-generated from ISA spec `{}` ({}).  Do not edit by hand.\n",
             self.name,
-            if self.version.is_empty() { "unversioned" } else { &self.version }));
+            if self.version.is_empty() {
+                "unversioned"
+            } else {
+                &self.version
+            }
+        ));
         if let Some(cit) = &self.citation {
             s.push_str(&format!("// Research citation: {}\n", cit));
         }
-        s.push_str(&format!("// See https://pccxai.github.io/pccx/ for the architecture spec.\n\n"));
+        s.push_str(&format!(
+            "// See https://pccxai.github.io/pccx/ for the architecture spec.\n\n"
+        ));
         s.push_str("#![allow(clippy::identity_op)]\n\n");
         for op in &self.opcodes {
             s.push_str(&format!("/// Encode a `{}` instruction.", op.name));
@@ -228,7 +257,9 @@ impl IsaSpec {
             s.push_str("\n#[inline]\npub fn encode_");
             s.push_str(&op.name.to_lowercase());
             s.push('(');
-            let params: Vec<String> = op.fields.iter()
+            let params: Vec<String> = op
+                .fields
+                .iter()
                 .map(|f| format!("{}: u64", f.name))
                 .collect();
             s.push_str(&params.join(", "));
@@ -238,13 +269,15 @@ impl IsaSpec {
             let op_lsb = self.width_bits - op.opcode_field_bits;
             s.push_str(&format!(
                 "    w |= (0x{:X}u64 & ((1u64 << {}) - 1)) << {};\n",
-                op.encoding, op.opcode_field_bits, op_lsb));
+                op.encoding, op.opcode_field_bits, op_lsb
+            ));
             for f in &op.fields {
                 let w = f.width();
                 let mask = if w >= 64 { u64::MAX } else { (1u64 << w) - 1 };
                 s.push_str(&format!(
                     "    w |= ({} & 0x{:X}u64) << {};\n",
-                    f.name, mask, f.lsb));
+                    f.name, mask, f.lsb
+                ));
             }
             s.push_str("    w\n}\n\n");
         }
@@ -261,19 +294,34 @@ impl IsaSpec {
         s.push_str(&format!(
             "// Auto-generated from ISA spec `{}` ({}).  Do not edit.\n",
             self.name,
-            if self.version.is_empty() { "unversioned" } else { &self.version }));
+            if self.version.is_empty() {
+                "unversioned"
+            } else {
+                &self.version
+            }
+        ));
         if let Some(cit) = &self.citation {
             s.push_str(&format!("// Research citation: {}\n", cit));
         }
-        s.push_str(&format!("// See https://pccxai.github.io/pccx/ for the architecture spec.\n\n"));
+        s.push_str(&format!(
+            "// See https://pccxai.github.io/pccx/ for the architecture spec.\n\n"
+        ));
         s.push_str(&format!("package {};\n\n", pkg));
         // Opcode enum.
         s.push_str("    typedef enum logic [");
-        let op_bits = self.opcodes.iter().map(|o| o.opcode_field_bits).max().unwrap_or(6);
+        let op_bits = self
+            .opcodes
+            .iter()
+            .map(|o| o.opcode_field_bits)
+            .max()
+            .unwrap_or(6);
         s.push_str(&format!("{}:0] {{\n", op_bits.saturating_sub(1)));
         for (i, op) in self.opcodes.iter().enumerate() {
             let comma = if i + 1 == self.opcodes.len() { "" } else { "," };
-            s.push_str(&format!("        OP_{:10} = 'h{:X}{}\n", op.name, op.encoding, comma));
+            s.push_str(&format!(
+                "        OP_{:10} = 'h{:X}{}\n",
+                op.name, op.encoding, comma
+            ));
         }
         s.push_str("    } opcode_e;\n\n");
         // Packed struct per opcode.
@@ -288,18 +336,25 @@ impl IsaSpec {
             for f in &by_msb {
                 s.push_str(&format!(
                     "        logic [{}:0] {};   // bits [{}..{}]\n",
-                    f.width() - 1, f.name, f.msb, f.lsb));
+                    f.width() - 1,
+                    f.name,
+                    f.msb,
+                    f.lsb
+                ));
             }
             s.push_str(&format!("    }} {}_fields_t;\n\n", op.name.to_lowercase()));
         }
         // Decode function — returns the opcode enum + raw payload.
         s.push_str(&format!(
             "    function automatic opcode_e decode_opcode(input logic [{}:0] instr);\n",
-            self.width_bits - 1));
+            self.width_bits - 1
+        ));
         let op_lsb = self.width_bits - op_bits;
         s.push_str(&format!(
             "        return opcode_e'(instr[{}:{}]);\n    endfunction\n\n",
-            self.width_bits - 1, op_lsb));
+            self.width_bits - 1,
+            op_lsb
+        ));
         s.push_str(&format!("endpackage : {}\n", pkg));
         s
     }
@@ -324,13 +379,16 @@ impl IsaSpec {
         s.push_str("| mnemonic | encoding | operands | description |\n");
         s.push_str("|---|---|---|---|\n");
         for op in &self.opcodes {
-            let operands = op.fields.iter()
+            let operands = op
+                .fields
+                .iter()
                 .map(|f| format!("`{}` [{}..{}]", f.name, f.msb, f.lsb))
                 .collect::<Vec<_>>()
                 .join(", ");
             s.push_str(&format!(
                 "| **{}** | `0x{:X}` | {} | {} |\n",
-                op.name, op.encoding, operands, op.description));
+                op.name, op.encoding, operands, op.description
+            ));
         }
         s
     }

@@ -35,7 +35,8 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let help = args.len() < 2 || args.iter().any(|a| a == "--help" || a == "-h");
     if help {
-        eprintln!("\
+        eprintln!(
+            "\
 usage:\n  \
   {bin} --emit-profile <trace.pccx> [--tolerance-pct N]\n  \
   {bin} --check <ref.jsonl> <trace.pccx> [--json]\n\
@@ -45,7 +46,8 @@ flags:\n  \
   --tolerance-pct N      tolerance stamped onto every emitted row (default: 10)\n  \
   --check REF TRACE      regression gate: exits 1 on any drift\n  \
   --json                 machine-readable GoldenDiffReport instead of pretty output\n",
-            bin = args[0]);
+            bin = args[0]
+        );
         return ExitCode::from(if help && args.len() < 2 { 2 } else { 0 });
     }
 
@@ -55,13 +57,18 @@ flags:\n  \
             eprintln!("--emit-profile requires <trace.pccx>");
             return ExitCode::from(2);
         };
-        let tolerance = args.iter().position(|a| a == "--tolerance-pct")
+        let tolerance = args
+            .iter()
+            .position(|a| a == "--tolerance-pct")
             .and_then(|i| args.get(i + 1))
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(10.0);
         let trace = match load_trace(path) {
             Ok(t) => t,
-            Err(e) => { eprintln!("{e}"); return ExitCode::from(1); }
+            Err(e) => {
+                eprintln!("{e}");
+                return ExitCode::from(1);
+            }
         };
         let profile = golden_diff::profile_from_trace(&trace, tolerance);
         print!("{}", golden_diff::profile_to_jsonl(&profile));
@@ -70,7 +77,7 @@ flags:\n  \
 
     // ── --check branch ─────────────────────────────────────────────
     if let Some(pos) = args.iter().position(|a| a == "--check") {
-        let Some(ref_path)   = args.get(pos + 1) else {
+        let Some(ref_path) = args.get(pos + 1) else {
             eprintln!("--check requires <ref.jsonl> <trace.pccx>");
             return ExitCode::from(2);
         };
@@ -81,30 +88,42 @@ flags:\n  \
         let want_json = args.iter().any(|a| a == "--json");
 
         let mut src = String::new();
-        if let Err(e) = File::open(ref_path)
-            .and_then(|mut f| f.read_to_string(&mut src)) {
+        if let Err(e) = File::open(ref_path).and_then(|mut f| f.read_to_string(&mut src)) {
             eprintln!("cannot read '{}': {}", ref_path, e);
             return ExitCode::from(1);
         }
         let reference = match golden_diff::parse_reference_jsonl(&src) {
-            Ok(r)  => r,
-            Err(e) => { eprintln!("reference parse error: {}", e); return ExitCode::from(1); }
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("reference parse error: {}", e);
+                return ExitCode::from(1);
+            }
         };
         let trace = match load_trace(trace_path) {
             Ok(t) => t,
-            Err(e) => { eprintln!("{e}"); return ExitCode::from(1); }
+            Err(e) => {
+                eprintln!("{e}");
+                return ExitCode::from(1);
+            }
         };
         let report = golden_diff::diff(&trace, &reference);
 
         if want_json {
             match serde_json::to_string_pretty(&report) {
                 Ok(s) => println!("{}", s),
-                Err(e) => { eprintln!("json encode failed: {}", e); return ExitCode::from(1); }
+                Err(e) => {
+                    eprintln!("json encode failed: {}", e);
+                    return ExitCode::from(1);
+                }
             }
         } else {
             pretty_print(&report);
         }
-        return if report.is_clean() { ExitCode::SUCCESS } else { ExitCode::from(1) };
+        return if report.is_clean() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(1)
+        };
     }
 
     eprintln!("specify --emit-profile or --check (see --help)");
@@ -126,8 +145,10 @@ fn pretty_print(r: &golden_diff::GoldenDiffReport) {
         if !s.is_pass {
             for m in &s.metrics {
                 if !m.pass {
-                    println!("    └─ {:<9} observed={} · expected={} · tol ±{:.1}%",
-                        m.name, m.observed, m.expected, m.tolerance_pct);
+                    println!(
+                        "    └─ {:<9} observed={} · expected={} · tol ±{:.1}%",
+                        m.name, m.observed, m.expected, m.tolerance_pct
+                    );
                 }
             }
         }

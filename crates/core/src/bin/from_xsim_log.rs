@@ -39,8 +39,14 @@ fn parse_args() -> Args {
         i += 2;
     }
     Args {
-        log: map.get("--log").cloned().unwrap_or_else(|| "xsim.log".into()),
-        output: map.get("--output").cloned().unwrap_or_else(|| "sim_result.pccx".into()),
+        log: map
+            .get("--log")
+            .cloned()
+            .unwrap_or_else(|| "xsim.log".into()),
+        output: map
+            .get("--output")
+            .cloned()
+            .unwrap_or_else(|| "sim_result.pccx".into()),
         core_id: map
             .get("--core-id")
             .and_then(|s| s.parse().ok())
@@ -70,7 +76,11 @@ fn parse_log(text: &str) -> anyhow::Result<Outcome> {
                 .next()
                 .and_then(|s| s.parse::<u64>().ok())
                 .ok_or_else(|| anyhow::anyhow!("could not parse cycles from PASS line"))?;
-            return Ok(Outcome { cycles, errors: 0, passed: true });
+            return Ok(Outcome {
+                cycles,
+                errors: 0,
+                passed: true,
+            });
         }
         if let Some(rest) = trimmed.strip_prefix("FAIL:") {
             // "FAIL: <E> mismatches over <N> cycles."
@@ -90,7 +100,11 @@ fn parse_log(text: &str) -> anyhow::Result<Outcome> {
                     }
                 })
                 .unwrap_or(0);
-            return Ok(Outcome { cycles, errors, passed: false });
+            return Ok(Outcome {
+                cycles,
+                errors,
+                passed: false,
+            });
         }
     }
     anyhow::bail!("no PASS/FAIL line found in xsim log")
@@ -113,14 +127,17 @@ fn build_trace(outcome: &Outcome, core_id: u32) -> NpuTrace {
 
 fn main() -> anyhow::Result<()> {
     let args = parse_args();
-    let text = read_to_string(&args.log)
-        .map_err(|e| anyhow::anyhow!("reading {}: {}", args.log, e))?;
+    let text =
+        read_to_string(&args.log).map_err(|e| anyhow::anyhow!("reading {}: {}", args.log, e))?;
 
     let outcome = parse_log(&text)?;
 
     println!("xsim log     : {}", args.log);
     println!("  testbench  : {}", args.testbench);
-    println!("  outcome    : {}", if outcome.passed { "PASS" } else { "FAIL" });
+    println!(
+        "  outcome    : {}",
+        if outcome.passed { "PASS" } else { "FAIL" }
+    );
     println!("  cycles     : {}", outcome.cycles);
     if !outcome.passed {
         println!("  mismatches : {}", outcome.errors);

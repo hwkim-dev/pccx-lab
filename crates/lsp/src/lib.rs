@@ -59,14 +59,14 @@ pub struct SourceRange {
 /// Languages the Phase 2 multiplexer dispatches over.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Language {
-    SystemVerilog,   // verible
-    Rust,            // rust-analyzer
-    C,               // clangd
-    Cpp,             // clangd
-    Python,          // pylsp
-    Sail,            // no LSP upstream; pccx-lsp provides basic syntax
-    MyStMarkdown,    // prosemirror via tree-sitter-markdown
-    RstDoc,          // esbonio
+    SystemVerilog, // verible
+    Rust,          // rust-analyzer
+    C,             // clangd
+    Cpp,           // clangd
+    Python,        // pylsp
+    Sail,          // no LSP upstream; pccx-lsp provides basic syntax
+    MyStMarkdown,  // prosemirror via tree-sitter-markdown
+    RstDoc,        // esbonio
 }
 
 impl Language {
@@ -812,10 +812,7 @@ fn frame_io_error(err: FrameError) -> std::io::Error {
 /// Writes a complete framed message to the transport and flushes it.
 /// Calls `encode_frame` internally so callers only think about the
 /// body.
-pub async fn write_frame<W: AsyncWrite + Unpin>(
-    w: &mut W,
-    body: &[u8],
-) -> std::io::Result<()> {
+pub async fn write_frame<W: AsyncWrite + Unpin>(w: &mut W, body: &[u8]) -> std::io::Result<()> {
     let framed = encode_frame(body);
     w.write_all(&framed).await?;
     w.flush().await
@@ -1006,8 +1003,14 @@ mod tests {
 
     #[test]
     fn language_from_extension_maps_sv_and_svh() {
-        assert_eq!(Language::from_extension("sv"), Some(Language::SystemVerilog));
-        assert_eq!(Language::from_extension("SVH"), Some(Language::SystemVerilog));
+        assert_eq!(
+            Language::from_extension("sv"),
+            Some(Language::SystemVerilog)
+        );
+        assert_eq!(
+            Language::from_extension("SVH"),
+            Some(Language::SystemVerilog)
+        );
         assert_eq!(Language::from_extension("unknown"), None);
     }
 
@@ -1221,10 +1224,7 @@ mod tests {
             LspSubprocess::spawn(SpawnConfig::new("sleep").arg("30")).expect("spawn sleep");
         sp.kill().await.expect("kill succeeds");
         let status = sp.wait().await.expect("wait after kill");
-        assert!(
-            !status.success(),
-            "killed process must not report success"
-        );
+        assert!(!status.success(), "killed process must not report success");
     }
 
     #[tokio::test]
@@ -1432,7 +1432,10 @@ mod tests {
         concat.extend_from_slice(&encode_frame(b2));
         let (parsed, consumed) = decode_frame(&concat).unwrap().unwrap();
         assert_eq!(parsed, b1);
-        assert_eq!(&concat[consumed..consumed + encode_frame(b2).len()], &encode_frame(b2)[..]);
+        assert_eq!(
+            &concat[consumed..consumed + encode_frame(b2).len()],
+            &encode_frame(b2)[..]
+        );
     }
 
     #[test]

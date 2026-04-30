@@ -1,19 +1,18 @@
-use pccx_core::pccx_format::{PccxFile, PccxHeader};
-use pccx_core::license::get_license_info as core_license_info;
-use pccx_core::trace::{NpuEvent, NpuTrace};
-use pccx_core::hw_model::HardwareModel;
-use pccx_core::roofline::{
-    analyze as analyze_roofline_fn,
-    analyze_hierarchical as analyze_roofline_hier_fn,
-    RooflineBand, RooflinePoint,
+use pccx_ai_copilot::{
+    compress_context, generate_uvm_sequence, get_available_extensions,
+    list_uvm_strategies as copilot_uvm_strategies, Extension,
 };
+use pccx_core::hw_model::HardwareModel;
+use pccx_core::license::get_license_info as core_license_info;
 use pccx_core::live_window::{LiveSample, LiveWindow};
 use pccx_core::mmap_reader::MmapTrace;
-use pccx_core::step_snapshot::{step_to_cycle as step_to_cycle_fn, RegisterSnapshot};
-use pccx_ai_copilot::{
-    Extension, compress_context, generate_uvm_sequence,
-    get_available_extensions, list_uvm_strategies as copilot_uvm_strategies,
+use pccx_core::pccx_format::{PccxFile, PccxHeader};
+use pccx_core::roofline::{
+    analyze as analyze_roofline_fn, analyze_hierarchical as analyze_roofline_hier_fn, RooflineBand,
+    RooflinePoint,
 };
+use pccx_core::step_snapshot::{step_to_cycle as step_to_cycle_fn, RegisterSnapshot};
+use pccx_core::trace::{NpuEvent, NpuTrace};
 use std::fs::File;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
@@ -39,11 +38,7 @@ struct AppState {
 /// Loads a .pccx file, validates its format, and caches the trace and flat buffer.
 /// Emits a `trace-loaded` event on success so the UI can re-fetch and refresh.
 #[tauri::command]
-fn load_pccx(
-    path: &str,
-    state: State<'_, AppState>,
-    app: AppHandle,
-) -> Result<PccxHeader, String> {
+fn load_pccx(path: &str, state: State<'_, AppState>, app: AppHandle) -> Result<PccxHeader, String> {
     let mut file = File::open(path).map_err(|e| format!("Cannot open '{}': {}", path, e))?;
     let pccx = PccxFile::read(&mut file).map_err(|e| e.to_string())?;
 
@@ -127,10 +122,12 @@ fn get_core_utilisation(state: State<'_, AppState>) -> Result<serde_json::Value,
 
     let arr: Vec<serde_json::Value> = utils
         .into_iter()
-        .map(|(core_id, util)| serde_json::json!({
-            "core_id": core_id,
-            "util_pct": (util * 100.0 * 10.0).round() / 10.0, // 1 decimal
-        }))
+        .map(|(core_id, util)| {
+            serde_json::json!({
+                "core_id": core_id,
+                "util_pct": (util * 100.0 * 10.0).round() / 10.0, // 1 decimal
+            })
+        })
         .collect();
 
     Ok(serde_json::json!({
@@ -176,9 +173,7 @@ fn analyze_roofline(state: State<'_, AppState>) -> Result<RooflinePoint, String>
 /// dashed ceiling + a trajectory segment so the user sees where the
 /// workload dwells across the pccx memory hierarchy.
 #[tauri::command]
-fn analyze_roofline_hierarchical(
-    state: State<'_, AppState>,
-) -> Result<Vec<RooflineBand>, String> {
+fn analyze_roofline_hierarchical(state: State<'_, AppState>) -> Result<Vec<RooflineBand>, String> {
     let trace_guard = state.trace.lock().unwrap();
     let trace = trace_guard.as_ref().ok_or("No trace loaded")?;
     let hw = HardwareModel::pccx_reference();
@@ -199,7 +194,7 @@ fn detect_bottlenecks(
     let trace = trace_guard.as_ref().ok_or("No trace loaded")?;
     let cfg = pccx_core::bottleneck::DetectorConfig {
         window_cycles: window_cycles.unwrap_or(256),
-        threshold:     threshold.unwrap_or(0.5),
+        threshold: threshold.unwrap_or(0.5),
     };
     Ok(pccx_core::bottleneck::detect(trace, &cfg))
 }
@@ -218,7 +213,7 @@ fn generate_markdown_report(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let trace_guard = state.trace.lock().unwrap();
-    let trace_opt   = trace_guard.as_ref();
+    let trace_opt = trace_guard.as_ref();
     let synth_opt = if !utilization_path.is_empty() && !timing_path.is_empty() {
         match pccx_core::synth_report::load_from_files(&utilization_path, &timing_path) {
             Ok(r) => Some(r),
@@ -261,9 +256,7 @@ fn load_synth_report(
 /// since no report is persistently cached in AppState.
 #[tauri::command]
 fn synth_heatmap(rows: u32, cols: u32) -> Result<String, String> {
-    use pccx_core::synth_report::{
-        generate_heatmap, SynthReport, UtilSummary, TimingSummary,
-    };
+    use pccx_core::synth_report::{generate_heatmap, SynthReport, TimingSummary, UtilSummary};
 
     // Mock report: ~60 % LUT, ~80 % DSP, ~55 % FF, ~40 % BRAM.
     // These are representative post-route numbers for the pccx v002 design.
@@ -272,19 +265,19 @@ fn synth_heatmap(rows: u32, cols: u32) -> Result<String, String> {
             top_module: "NPU_Top".into(),
             total_luts: 70_300,
             logic_luts: 62_000,
-            ffs:        129_000,
-            rams_36:    58,
-            rams_18:    0,
-            urams:      0,
-            dsps:       998,
+            ffs: 129_000,
+            rams_36: 58,
+            rams_18: 0,
+            urams: 0,
+            dsps: 998,
         },
         timing: TimingSummary {
-            wns_ns:            0.12,
-            tns_ns:            0.0,
+            wns_ns: 0.12,
+            tns_ns: 0.0,
             failing_endpoints: 0,
-            total_endpoints:   28_602,
-            is_timing_met:     true,
-            worst_clock:       "clk_pl_0".into(),
+            total_endpoints: 28_602,
+            is_timing_met: true,
+            worst_clock: "clk_pl_0".into(),
         },
         device: "xczu5ev-sfvc784-2-e".into(),
     };
@@ -299,9 +292,7 @@ fn synth_heatmap(rows: u32, cols: u32) -> Result<String, String> {
 /// panel, exposing per-clock WNS/TNS/period so the UI can render the
 /// critical-path row directly without re-parsing in JS.
 #[tauri::command]
-fn load_timing_report(
-    path: String,
-) -> Result<pccx_core::vivado_timing::TimingReport, String> {
+fn load_timing_report(path: String) -> Result<pccx_core::vivado_timing::TimingReport, String> {
     let txt = std::fs::read_to_string(&path)
         .map_err(|e| format!("Cannot read timing report '{}': {}", path, e))?;
     pccx_core::vivado_timing::parse_timing_report(&txt).map_err(|e| e.to_string())
@@ -367,7 +358,7 @@ fn parse_run_verification_stdout(
         });
     }
 
-    let met     = stdout.contains("All user specified timing constraints are met");
+    let met = stdout.contains("All user specified timing constraints are met");
     let not_met = stdout.contains("Timing constraints are not met");
     let synth_timing_met = if met {
         Some(true)
@@ -508,11 +499,9 @@ fn write_text_file(path: String, content: String) -> Result<(), String> {
 /// hits are summed across runs; the largest observed `goal` per bin
 /// is retained. Empty `runs` vector returns an empty merge.
 #[tauri::command]
-fn merge_coverage(
-    runs: Vec<String>,
-) -> Result<pccx_core::coverage::MergedCoverage, String> {
+fn merge_coverage(runs: Vec<String>) -> Result<pccx_core::coverage::MergedCoverage, String> {
     let paths: Vec<std::path::PathBuf> = runs.iter().map(std::path::PathBuf::from).collect();
-    let refs:  Vec<&std::path::Path>   = paths.iter().map(|p| p.as_path()).collect();
+    let refs: Vec<&std::path::Path> = paths.iter().map(|p| p.as_path()).collect();
     pccx_core::coverage::merge_jsonl(&refs).map_err(|e| e.to_string())
 }
 
@@ -522,11 +511,8 @@ fn merge_coverage(
 /// stream; the UI then per-signal binary-searches the events for
 /// O(log n) value-at-tick lookups.
 #[tauri::command]
-fn parse_vcd_file(
-    path: String,
-) -> Result<pccx_core::vcd::WaveformDump, String> {
-    pccx_core::vcd::parse_vcd_file(std::path::Path::new(&path))
-        .map_err(|e| e.to_string())
+fn parse_vcd_file(path: String) -> Result<pccx_core::vcd::WaveformDump, String> {
+    pccx_core::vcd::parse_vcd_file(std::path::Path::new(&path)).map_err(|e| e.to_string())
 }
 
 /// Writes the currently-cached trace as an IEEE 1364-2005 §18 VCD
@@ -535,7 +521,9 @@ fn parse_vcd_file(
 #[tauri::command]
 fn export_vcd(output_path: String, state: State<'_, AppState>) -> Result<String, String> {
     let trace_guard = state.trace.lock().unwrap();
-    let trace = trace_guard.as_ref().ok_or("No trace loaded — open a .pccx first")?;
+    let trace = trace_guard
+        .as_ref()
+        .ok_or("No trace loaded — open a .pccx first")?;
     let path = std::path::Path::new(&output_path);
     pccx_core::vcd_writer::write_vcd(trace, path)
         .map_err(|e| format!("vcd_writer failed: {}", e))?;
@@ -547,7 +535,9 @@ fn export_vcd(output_path: String, state: State<'_, AppState>) -> Result<String,
 #[tauri::command]
 fn export_chrome_trace(output_path: String, state: State<'_, AppState>) -> Result<String, String> {
     let trace_guard = state.trace.lock().unwrap();
-    let trace = trace_guard.as_ref().ok_or("No trace loaded — open a .pccx first")?;
+    let trace = trace_guard
+        .as_ref()
+        .ok_or("No trace loaded — open a .pccx first")?;
     let path = std::path::Path::new(&output_path);
     pccx_core::chrome_trace::write_chrome_trace(trace, path)
         .map_err(|e| format!("chrome_trace writer failed: {}", e))?;
@@ -559,9 +549,7 @@ fn export_chrome_trace(output_path: String, state: State<'_, AppState>) -> Resul
 /// instruction.  The UI's ISA-Dashboard table renders each row
 /// directly — no literal arrays remain in the tsx.
 #[tauri::command]
-fn validate_isa_trace(
-    path: String,
-) -> Result<Vec<pccx_core::isa_replay::IsaResult>, String> {
+fn validate_isa_trace(path: String) -> Result<Vec<pccx_core::isa_replay::IsaResult>, String> {
     pccx_core::isa_replay::parse_commit_log_file(std::path::Path::new(&path))
         .map_err(|e| format!("Cannot read ISA commit log '{}': {}", path, e))
 }
@@ -573,9 +561,7 @@ fn validate_isa_trace(
 /// carries zero `API_CALL` events we surface an empty Vec and the
 /// UI's empty-state branch runs (Yuan OSDI 2014 loud-fallback).
 #[tauri::command]
-fn list_api_calls(
-    state: State<'_, AppState>,
-) -> Result<Vec<pccx_core::api_ring::ApiCall>, String> {
+fn list_api_calls(state: State<'_, AppState>) -> Result<Vec<pccx_core::api_ring::ApiCall>, String> {
     let trace_guard = state.trace.lock().unwrap();
     let Some(trace) = trace_guard.as_ref() else {
         // No trace cached — match `VerificationSuite.tsx:449` empty state.
@@ -612,10 +598,7 @@ fn fetch_live_window(
 /// instead of an error so the UI always has a stable shape to render
 /// (Yuan OSDI 2014 loud-fallback convention, same as fetch_live_window).
 #[tauri::command]
-fn step_to_cycle(
-    cycle: u64,
-    state: State<'_, AppState>,
-) -> Result<RegisterSnapshot, String> {
+fn step_to_cycle(cycle: u64, state: State<'_, AppState>) -> Result<RegisterSnapshot, String> {
     let trace_guard = state.trace.lock().unwrap();
     Ok(step_to_cycle_fn(trace_guard.as_ref(), cycle))
 }
@@ -632,8 +615,8 @@ fn list_pccx_traces(repo_path: String) -> Result<Vec<TraceEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    let read = std::fs::read_dir(work_path)
-        .map_err(|e| format!("Cannot list {}: {}", work_root, e))?;
+    let read =
+        std::fs::read_dir(work_path).map_err(|e| format!("Cannot list {}: {}", work_root, e))?;
     for dir in read.flatten() {
         if !dir.file_type().map(|t| t.is_dir()).unwrap_or(false) {
             // Legacy traces may sit directly under work/ — include them too.
@@ -656,7 +639,9 @@ fn list_pccx_traces(repo_path: String) -> Result<Vec<TraceEntry>, String> {
             continue;
         }
         let tb_dir = dir.path();
-        let Ok(inner) = std::fs::read_dir(&tb_dir) else { continue };
+        let Ok(inner) = std::fs::read_dir(&tb_dir) else {
+            continue;
+        };
         for file in inner.flatten() {
             let p = file.path();
             if p.extension().and_then(|s| s.to_str()) == Some("pccx") {
@@ -705,23 +690,21 @@ All user specified timing constraints are met.
 
     #[test]
     fn test_parse_three_passes_plus_fail_timing() {
-        let (tbs, met, status) =
-            parse_run_verification_stdout(FIXTURE_PASS, "/nonexistent/repo");
+        let (tbs, met, status) = parse_run_verification_stdout(FIXTURE_PASS, "/nonexistent/repo");
         assert_eq!(tbs.len(), 3);
-        assert_eq!(tbs[0].name,   "tb_GEMM_dsp_packer_sign_recovery");
+        assert_eq!(tbs[0].name, "tb_GEMM_dsp_packer_sign_recovery");
         assert_eq!(tbs[0].verdict, "PASS");
-        assert_eq!(tbs[0].cycles,  1024);
+        assert_eq!(tbs[0].cycles, 1024);
         assert_eq!(met, Some(false), "'not met' footer should be detected");
         assert!(status.contains("not met"));
     }
 
     #[test]
     fn test_parse_mixed_pass_fail_pass_timing() {
-        let (tbs, met, status) =
-            parse_run_verification_stdout(FIXTURE_FAIL, "/nonexistent/repo");
+        let (tbs, met, status) = parse_run_verification_stdout(FIXTURE_FAIL, "/nonexistent/repo");
         assert_eq!(tbs.len(), 2);
         assert_eq!(tbs[0].verdict, "FAIL");
-        assert_eq!(tbs[0].cycles,  3);
+        assert_eq!(tbs[0].cycles, 3);
         assert_eq!(tbs[1].verdict, "PASS");
         assert_eq!(met, Some(true));
         assert!(status.contains("are met"));
@@ -755,10 +738,13 @@ All user specified timing constraints are met.
 fn generate_report(format: String, state: State<'_, AppState>) -> Result<String, String> {
     let fmt = match format.to_lowercase().as_str() {
         "markdown" | "md" => pccx_reports::ReportFormat::Markdown,
-        "html"             => pccx_reports::ReportFormat::Html,
-        other => return Err(format!(
-            "Unknown report format '{}' — use 'markdown' or 'html'", other
-        )),
+        "html" => pccx_reports::ReportFormat::Html,
+        other => {
+            return Err(format!(
+                "Unknown report format '{}' — use 'markdown' or 'html'",
+                other
+            ))
+        }
     };
 
     let trace_guard = state.trace.lock().unwrap();
@@ -785,16 +771,16 @@ fn generate_report(format: String, state: State<'_, AppState>) -> Result<String,
 #[serde(tag = "type", rename_all = "snake_case")]
 enum SectionInput {
     Summary { title: String, body: String },
-    Custom  { title: String, content: String },
+    Custom { title: String, content: String },
 }
 
 impl From<SectionInput> for pccx_reports::Section {
     fn from(si: SectionInput) -> Self {
         match si {
-            SectionInput::Summary { title, body } =>
-                pccx_reports::Section::Summary { title, body },
-            SectionInput::Custom { title, content } =>
-                pccx_reports::Section::Custom { title, content },
+            SectionInput::Summary { title, body } => pccx_reports::Section::Summary { title, body },
+            SectionInput::Custom { title, content } => {
+                pccx_reports::Section::Custom { title, content }
+            }
         }
     }
 }
@@ -810,10 +796,13 @@ fn generate_report_custom(
 ) -> Result<String, String> {
     let fmt = match format.to_lowercase().as_str() {
         "markdown" | "md" => pccx_reports::ReportFormat::Markdown,
-        "html"             => pccx_reports::ReportFormat::Html,
-        other => return Err(format!(
-            "Unknown report format '{}' — use 'markdown' or 'html'", other
-        )),
+        "html" => pccx_reports::ReportFormat::Html,
+        other => {
+            return Err(format!(
+                "Unknown report format '{}' — use 'markdown' or 'html'",
+                other
+            ))
+        }
     };
 
     let mut builder = pccx_reports::Report::builder(&title);
@@ -835,7 +824,10 @@ fn sv_completions() -> Vec<serde_json::Value> {
     use pccx_lsp::sv_provider::SvKeywordProvider;
     use pccx_lsp::CompletionProvider;
     let provider = SvKeywordProvider::new();
-    let pos = pccx_lsp::SourcePos { line: 0, character: 0 };
+    let pos = pccx_lsp::SourcePos {
+        line: 0,
+        character: 0,
+    };
     let completions = provider
         .complete(pccx_lsp::Language::SystemVerilog, "", pos, "")
         .unwrap_or_default();
@@ -925,10 +917,7 @@ fn lsp_complete(
 /// file load and after a debounced edit. Monaco renders results via
 /// `editor.setModelMarkers`.
 #[tauri::command]
-fn lsp_diagnostics(
-    uri: String,
-    source: String,
-) -> Result<Vec<serde_json::Value>, String> {
+fn lsp_diagnostics(uri: String, source: String) -> Result<Vec<serde_json::Value>, String> {
     use pccx_lsp::sv_diagnostics::SvDiagnosticsProvider;
     use pccx_lsp::DiagnosticsProvider;
     let provider = SvDiagnosticsProvider::new();
@@ -941,10 +930,10 @@ fn lsp_diagnostics(
             // Map LSP severity (1=Error..4=Hint) to Monaco MarkerSeverity
             // (8=Error, 4=Warning, 2=Info, 1=Hint).
             let monaco_severity = match d.severity {
-                pccx_lsp::DiagnosticSeverity::Error       => 8,
-                pccx_lsp::DiagnosticSeverity::Warning     => 4,
+                pccx_lsp::DiagnosticSeverity::Error => 8,
+                pccx_lsp::DiagnosticSeverity::Warning => 4,
                 pccx_lsp::DiagnosticSeverity::Information => 2,
-                pccx_lsp::DiagnosticSeverity::Hint        => 1,
+                pccx_lsp::DiagnosticSeverity::Hint => 1,
             };
             serde_json::json!({
                 "startLineNumber": d.range.start.line + 1,
@@ -961,8 +950,8 @@ fn lsp_diagnostics(
 
 #[tauri::command]
 fn parse_sv_file(path: String) -> Result<serde_json::Value, String> {
-    let source = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Cannot read '{}': {}", path, e))?;
+    let source =
+        std::fs::read_to_string(&path).map_err(|e| format!("Cannot read '{}': {}", path, e))?;
     let result = pccx_authoring::sv_parser::parse_sv(&source, &path);
     serde_json::to_value(&result).map_err(|e| e.to_string())
 }
@@ -972,7 +961,9 @@ fn parse_sv_file(path: String) -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn generate_block_diagram(sv_source: String, file_path: String) -> Result<String, String> {
     let result = pccx_authoring::sv_parser::parse_sv(&sv_source, &file_path);
-    Ok(pccx_authoring::block_diagram::generate_mermaid(&result.modules))
+    Ok(pccx_authoring::block_diagram::generate_mermaid(
+        &result.modules,
+    ))
 }
 
 /// Metadata for one extracted FSM, sent back over IPC.
@@ -987,18 +978,25 @@ struct FsmDiagramResult {
 
 /// Parses SV source and returns one FsmDiagramResult per extracted FSM.
 #[tauri::command]
-fn generate_fsm_diagram(sv_source: String, file_path: String) -> Result<Vec<FsmDiagramResult>, String> {
+fn generate_fsm_diagram(
+    sv_source: String,
+    file_path: String,
+) -> Result<Vec<FsmDiagramResult>, String> {
     let result = pccx_authoring::sv_parser::parse_sv(&sv_source, &file_path);
-    let diagrams = result.fsms.iter().map(|fsm| {
-        let mermaid = pccx_authoring::fsm_diagram::generate_mermaid_fsm(fsm);
-        FsmDiagramResult {
-            name: fsm.name.clone(),
-            mermaid,
-            states_count: fsm.states.len() as u32,
-            transitions_count: fsm.transitions.len() as u32,
-            dead_states: fsm.dead_states.clone(),
-        }
-    }).collect();
+    let diagrams = result
+        .fsms
+        .iter()
+        .map(|fsm| {
+            let mermaid = pccx_authoring::fsm_diagram::generate_mermaid_fsm(fsm);
+            FsmDiagramResult {
+                name: fsm.name.clone(),
+                mermaid,
+                states_count: fsm.states.len() as u32,
+                transitions_count: fsm.transitions.len() as u32,
+                dead_states: fsm.dead_states.clone(),
+            }
+        })
+        .collect();
     Ok(diagrams)
 }
 
@@ -1007,16 +1005,20 @@ fn generate_fsm_diagram(sv_source: String, file_path: String) -> Result<Vec<FsmD
 #[tauri::command]
 fn generate_module_detail(sv_source: String, module_name: String) -> Result<String, String> {
     let result = pccx_authoring::sv_parser::parse_sv(&sv_source, "");
-    let module = result.modules.iter()
+    let module = result
+        .modules
+        .iter()
         .find(|m| m.name == module_name)
         .ok_or_else(|| format!("Module '{}' not found in source", module_name))?;
-    Ok(pccx_authoring::block_diagram::generate_module_detail(module))
+    Ok(pccx_authoring::block_diagram::generate_module_detail(
+        module,
+    ))
 }
 
 #[tauri::command]
 fn generate_sv_docs(path: String) -> Result<String, String> {
-    let source = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Cannot read '{}': {}", path, e))?;
+    let source =
+        std::fs::read_to_string(&path).map_err(|e| format!("Cannot read '{}': {}", path, e))?;
     let result = pccx_authoring::sv_parser::parse_sv(&source, &path);
     Ok(pccx_authoring::sv_parser::generate_module_docs(&result))
 }
@@ -1060,12 +1062,12 @@ fn verify_golden_diff(
 ) -> Result<pccx_verification::golden_diff::GoldenDiffReport, String> {
     use pccx_core::pccx_format::PccxFile;
     use pccx_core::trace::NpuTrace;
-    use pccx_verification::golden_diff::{parse_reference_jsonl_at_path, diff};
+    use pccx_verification::golden_diff::{diff, parse_reference_jsonl_at_path};
     use std::path::Path;
 
     // Load and parse the reference profile.
-    let reference = parse_reference_jsonl_at_path(Path::new(&expected_path))
-        .map_err(|e| e.to_string())?;
+    let reference =
+        parse_reference_jsonl_at_path(Path::new(&expected_path)).map_err(|e| e.to_string())?;
 
     // Load and decode the actual trace from the .pccx file.
     let mut file = std::fs::File::open(&actual_path)
@@ -1083,9 +1085,7 @@ fn verify_golden_diff(
 /// not pass. Passing the report across IPC a second time (rather than
 /// re-running the diff) avoids a redundant file-read round-trip.
 #[tauri::command]
-fn verify_report(
-    report: pccx_verification::golden_diff::GoldenDiffReport,
-) -> String {
+fn verify_report(report: pccx_verification::golden_diff::GoldenDiffReport) -> String {
     use pccx_verification::golden_diff::GoldenDiffReport;
 
     fn render(r: &GoldenDiffReport) -> String {
@@ -1106,8 +1106,10 @@ fn verify_report(
             out.push_str("All steps within tolerance.\n");
         } else {
             out.push_str("## Failing steps\n\n");
-            out.push_str("| step | metric | observed | expected | tol % | pass |\n\
-                          |---:|---|---:|---:|---:|:---:|\n");
+            out.push_str(
+                "| step | metric | observed | expected | tol % | pass |\n\
+                          |---:|---|---:|---:|---:|:---:|\n",
+            );
             for step in &failed {
                 for m in step.metrics.iter().filter(|m| !m.pass) {
                     out.push_str(&format!(
@@ -1146,12 +1148,8 @@ struct MmapViewportResponse {
 /// Stores the `MmapTrace` handle in AppState for subsequent viewport
 /// and tile queries. Returns header metadata and event count.
 #[tauri::command]
-fn mmap_open_trace(
-    path: &str,
-    state: State<'_, AppState>,
-) -> Result<MmapTraceInfo, String> {
-    let mt = MmapTrace::open(path)
-        .map_err(|e| format!("Cannot mmap '{}': {}", path, e))?;
+fn mmap_open_trace(path: &str, state: State<'_, AppState>) -> Result<MmapTraceInfo, String> {
+    let mt = MmapTrace::open(path).map_err(|e| format!("Cannot mmap '{}': {}", path, e))?;
     let info = MmapTraceInfo {
         event_count: mt.event_count(),
         header: mt.header().clone(),
@@ -1172,19 +1170,22 @@ fn mmap_viewport(
     state: State<'_, AppState>,
 ) -> Result<MmapViewportResponse, String> {
     let guard = state.mmap_trace.lock().unwrap();
-    let mt = guard.as_ref()
+    let mt = guard
+        .as_ref()
         .ok_or("No mmap trace loaded — call mmap_open_trace first")?;
     let events = mt.viewport(start_cycle, end_cycle);
-    Ok(MmapViewportResponse { events, generation_id })
+    Ok(MmapViewportResponse {
+        events,
+        generation_id,
+    })
 }
 
 /// Returns the total event count of the memory-mapped trace.
 #[tauri::command]
-fn mmap_event_count(
-    state: State<'_, AppState>,
-) -> Result<usize, String> {
+fn mmap_event_count(state: State<'_, AppState>) -> Result<usize, String> {
     let guard = state.mmap_trace.lock().unwrap();
-    let mt = guard.as_ref()
+    let mt = guard
+        .as_ref()
         .ok_or("No mmap trace loaded — call mmap_open_trace first")?;
     Ok(mt.event_count())
 }
@@ -1193,15 +1194,13 @@ fn mmap_event_count(
 /// TypedArray transfer. `offset` and `count` are byte positions
 /// relative to the payload start.
 #[tauri::command]
-fn mmap_tile(
-    offset: usize,
-    count: usize,
-    state: State<'_, AppState>,
-) -> Result<Vec<u8>, String> {
+fn mmap_tile(offset: usize, count: usize, state: State<'_, AppState>) -> Result<Vec<u8>, String> {
     let guard = state.mmap_trace.lock().unwrap();
-    let mt = guard.as_ref()
+    let mt = guard
+        .as_ref()
         .ok_or("No mmap trace loaded — call mmap_open_trace first")?;
-    let slice = mt.tile(offset, count)
+    let slice = mt
+        .tile(offset, count)
         .ok_or("Requested tile range exceeds payload bounds")?;
     Ok(slice.to_vec())
 }

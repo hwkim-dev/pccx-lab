@@ -68,22 +68,29 @@ mod tests {
 
     fn make_fsm(
         name: &str,
-        state_names: &[(&str, bool, bool)],  // (name, is_initial, is_dead)
+        state_names: &[(&str, bool, bool)], // (name, is_initial, is_dead)
         transitions: &[(&str, &str, Option<&str>)],
     ) -> SvFsm {
-        let states = state_names.iter().map(|(n, init, dead)| FsmState {
-            name: n.to_string(),
-            is_initial: *init,
-            is_dead: *dead,
-        }).collect();
+        let states = state_names
+            .iter()
+            .map(|(n, init, dead)| FsmState {
+                name: n.to_string(),
+                is_initial: *init,
+                is_dead: *dead,
+            })
+            .collect();
 
-        let trans = transitions.iter().map(|(from, to, cond)| FsmTransition {
-            from: from.to_string(),
-            to: to.to_string(),
-            condition: cond.map(|s| s.to_string()),
-        }).collect();
+        let trans = transitions
+            .iter()
+            .map(|(from, to, cond)| FsmTransition {
+                from: from.to_string(),
+                to: to.to_string(),
+                condition: cond.map(|s| s.to_string()),
+            })
+            .collect();
 
-        let dead_states = state_names.iter()
+        let dead_states = state_names
+            .iter()
             .filter(|(_, _, dead)| *dead)
             .map(|(n, _, _)| n.to_string())
             .collect();
@@ -100,11 +107,7 @@ mod tests {
 
     #[test]
     fn header_is_statediagram_v2() {
-        let fsm = make_fsm(
-            "state",
-            &[("IDLE", true, false)],
-            &[],
-        );
+        let fsm = make_fsm("state", &[("IDLE", true, false)], &[]);
         let out = generate_mermaid_fsm(&fsm);
         assert!(out.starts_with("stateDiagram-v2\n"));
     }
@@ -119,7 +122,11 @@ mod tests {
             &[("IDLE", "RUN", None)],
         );
         let out = generate_mermaid_fsm(&fsm);
-        assert!(out.contains("[*] --> IDLE"), "missing initial arrow in:\n{}", out);
+        assert!(
+            out.contains("[*] --> IDLE"),
+            "missing initial arrow in:\n{}",
+            out
+        );
     }
 
     // ── (c) Transition without condition ────────────────────────────
@@ -132,8 +139,15 @@ mod tests {
             &[("A", "B", None)],
         );
         let out = generate_mermaid_fsm(&fsm);
-        assert!(out.contains("A --> B\n"), "expected unconditional edge in:\n{}", out);
-        assert!(!out.contains("A --> B :"), "should not have colon for unconditional");
+        assert!(
+            out.contains("A --> B\n"),
+            "expected unconditional edge in:\n{}",
+            out
+        );
+        assert!(
+            !out.contains("A --> B :"),
+            "should not have colon for unconditional"
+        );
     }
 
     // ── (d) Transition with condition ────────────────────────────────
@@ -148,7 +162,8 @@ mod tests {
         let out = generate_mermaid_fsm(&fsm);
         assert!(
             out.contains("IDLE --> ACTIVE : i_start"),
-            "expected conditional edge in:\n{}", out
+            "expected conditional edge in:\n{}",
+            out
         );
     }
 
@@ -163,14 +178,19 @@ mod tests {
                 ("S1", false, false),
                 ("S_DEAD", false, true),
             ],
-            &[
-                ("S0", "S1", None),
-                ("S1", "S0", None),
-            ],
+            &[("S0", "S1", None), ("S1", "S0", None)],
         );
         let out = generate_mermaid_fsm(&fsm);
-        assert!(out.contains("classDef dead"), "missing classDef in:\n{}", out);
-        assert!(out.contains("class S_DEAD dead"), "missing class assignment in:\n{}", out);
+        assert!(
+            out.contains("classDef dead"),
+            "missing classDef in:\n{}",
+            out
+        );
+        assert!(
+            out.contains("class S_DEAD dead"),
+            "missing class assignment in:\n{}",
+            out
+        );
     }
 
     // ── (f) No dead state — no classDef emitted ──────────────────────
@@ -183,7 +203,11 @@ mod tests {
             &[("A", "B", None), ("B", "A", None)],
         );
         let out = generate_mermaid_fsm(&fsm);
-        assert!(!out.contains("classDef"), "unexpected classDef in:\n{}", out);
+        assert!(
+            !out.contains("classDef"),
+            "unexpected classDef in:\n{}",
+            out
+        );
     }
 
     // ── (g) End-to-end: parse_sv -> generate_mermaid_fsm ────────────

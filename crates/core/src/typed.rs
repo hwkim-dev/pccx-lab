@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -8,8 +8,12 @@ pub struct CycleCount(pub u64);
 
 impl CycleCount {
     pub const ZERO: Self = Self(0);
-    pub fn new(n: u64) -> Self { Self(n) }
-    pub fn get(self) -> u64 { self.0 }
+    pub fn new(n: u64) -> Self {
+        Self(n)
+    }
+    pub fn get(self) -> u64 {
+        self.0
+    }
     pub fn checked_add(self, rhs: Self) -> Option<Self> {
         self.0.checked_add(rhs.0).map(Self)
     }
@@ -29,38 +33,54 @@ impl fmt::Display for CycleCount {
 
 impl Add for CycleCount {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self { Self(self.0.wrapping_add(rhs.0)) }
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0.wrapping_add(rhs.0))
+    }
 }
 
 impl Sub for CycleCount {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self { Self(self.0.wrapping_sub(rhs.0)) }
+    fn sub(self, rhs: Self) -> Self {
+        Self(self.0.wrapping_sub(rhs.0))
+    }
 }
 
 impl AddAssign for CycleCount {
-    fn add_assign(&mut self, rhs: Self) { self.0 = self.0.wrapping_add(rhs.0); }
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 = self.0.wrapping_add(rhs.0);
+    }
 }
 
 impl SubAssign for CycleCount {
-    fn sub_assign(&mut self, rhs: Self) { self.0 = self.0.wrapping_sub(rhs.0); }
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 = self.0.wrapping_sub(rhs.0);
+    }
 }
 
 impl Mul<u64> for CycleCount {
     type Output = Self;
-    fn mul(self, rhs: u64) -> Self { Self(self.0.wrapping_mul(rhs)) }
+    fn mul(self, rhs: u64) -> Self {
+        Self(self.0.wrapping_mul(rhs))
+    }
 }
 
 impl Div<u64> for CycleCount {
     type Output = Self;
-    fn div(self, rhs: u64) -> Self { Self(self.0 / rhs) }
+    fn div(self, rhs: u64) -> Self {
+        Self(self.0 / rhs)
+    }
 }
 
 impl From<u64> for CycleCount {
-    fn from(n: u64) -> Self { Self(n) }
+    fn from(n: u64) -> Self {
+        Self(n)
+    }
 }
 
 impl From<CycleCount> for u64 {
-    fn from(c: CycleCount) -> Self { c.0 }
+    fn from(c: CycleCount) -> Self {
+        c.0
+    }
 }
 
 impl CycleCount {
@@ -75,8 +95,12 @@ impl CycleCount {
 pub struct CoreId(pub u32);
 
 impl CoreId {
-    pub fn new(id: u32) -> Self { Self(id) }
-    pub fn get(self) -> u32 { self.0 }
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+    pub fn get(self) -> u32 {
+        self.0
+    }
 }
 
 impl fmt::Display for CoreId {
@@ -86,11 +110,15 @@ impl fmt::Display for CoreId {
 }
 
 impl From<u32> for CoreId {
-    fn from(id: u32) -> Self { Self(id) }
+    fn from(id: u32) -> Self {
+        Self(id)
+    }
 }
 
 impl From<CoreId> for u32 {
-    fn from(c: CoreId) -> Self { c.0 }
+    fn from(c: CoreId) -> Self {
+        c.0
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -98,8 +126,12 @@ impl From<CoreId> for u32 {
 pub struct EventTypeId(pub u32);
 
 impl EventTypeId {
-    pub fn new(id: u32) -> Self { Self(id) }
-    pub fn get(self) -> u32 { self.0 }
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+    pub fn get(self) -> u32 {
+        self.0
+    }
 }
 
 impl fmt::Display for EventTypeId {
@@ -109,11 +141,15 @@ impl fmt::Display for EventTypeId {
 }
 
 impl From<u32> for EventTypeId {
-    fn from(id: u32) -> Self { Self(id) }
+    fn from(id: u32) -> Self {
+        Self(id)
+    }
 }
 
 impl From<EventTypeId> for u32 {
-    fn from(e: EventTypeId) -> Self { e.0 }
+    fn from(e: EventTypeId) -> Self {
+        e.0
+    }
 }
 
 /// Memory address newtype with checked arithmetic for safe offset ops.
@@ -122,8 +158,12 @@ impl From<EventTypeId> for u32 {
 pub struct MemAddr(pub u64);
 
 impl MemAddr {
-    pub fn new(addr: u64) -> Self { Self(addr) }
-    pub fn get(self) -> u64 { self.0 }
+    pub fn new(addr: u64) -> Self {
+        Self(addr)
+    }
+    pub fn get(self) -> u64 {
+        self.0
+    }
     /// Offset from a base address (saturating — never wraps).
     pub fn offset_from(self, base: Self) -> u64 {
         self.0.saturating_sub(base.0)
@@ -146,8 +186,12 @@ impl fmt::Display for MemAddr {
 pub struct TraceId(pub u64);
 
 impl TraceId {
-    pub fn new(id: u64) -> Self { Self(id) }
-    pub fn get(self) -> u64 { self.0 }
+    pub fn new(id: u64) -> Self {
+        Self(id)
+    }
+    pub fn get(self) -> u64 {
+        self.0
+    }
 }
 
 impl fmt::Display for TraceId {
@@ -233,7 +277,10 @@ mod tests {
     #[test]
     fn saturating_add_clamps_at_max() {
         let a = CycleCount::new(u64::MAX);
-        assert_eq!(a.saturating_add(CycleCount::new(1)), CycleCount::new(u64::MAX));
+        assert_eq!(
+            a.saturating_add(CycleCount::new(1)),
+            CycleCount::new(u64::MAX)
+        );
     }
 
     #[test]
@@ -302,10 +349,7 @@ mod tests {
 
     #[test]
     fn display_mem_addr_hex() {
-        assert_eq!(
-            format!("{}", MemAddr::new(0x1000)),
-            "0x0000000000001000"
-        );
+        assert_eq!(format!("{}", MemAddr::new(0x1000)), "0x0000000000001000");
     }
 
     // ── ZERO constant ────────────────────────────────────────────────

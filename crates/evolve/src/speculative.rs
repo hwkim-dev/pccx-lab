@@ -31,32 +31,52 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecError {
     /// A branch references a parent index that exceeds `branches.len()`.
-    ParentOutOfRange { branch_idx: usize, parent_idx: usize },
+    ParentOutOfRange {
+        branch_idx: usize,
+        parent_idx: usize,
+    },
     /// A branch's parent index is not strictly less than its own index
     /// (violates BFS ordering invariant).
-    ParentAfterChild { branch_idx: usize, parent_idx: usize },
+    ParentAfterChild {
+        branch_idx: usize,
+        parent_idx: usize,
+    },
     /// A non-root branch has `depth == 0`, or the root has `depth != 0`.
-    DepthMismatch { branch_idx: usize, depth: u32, expected_min: u32 },
+    DepthMismatch {
+        branch_idx: usize,
+        depth: u32,
+        expected_min: u32,
+    },
 }
 
 impl fmt::Display for SpecError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SpecError::ParentOutOfRange { branch_idx, parent_idx } => {
+            SpecError::ParentOutOfRange {
+                branch_idx,
+                parent_idx,
+            } => {
                 write!(
                     f,
                     "branch {} references parent {} which is out of range",
                     branch_idx, parent_idx,
                 )
             }
-            SpecError::ParentAfterChild { branch_idx, parent_idx } => {
+            SpecError::ParentAfterChild {
+                branch_idx,
+                parent_idx,
+            } => {
                 write!(
                     f,
                     "branch {} has parent {} which violates BFS order (parent >= child)",
                     branch_idx, parent_idx,
                 )
             }
-            SpecError::DepthMismatch { branch_idx, depth, expected_min } => {
+            SpecError::DepthMismatch {
+                branch_idx,
+                depth,
+                expected_min,
+            } => {
                 write!(
                     f,
                     "branch {} has depth {} but expected >= {}",
@@ -270,7 +290,7 @@ impl SpeculativeVerifier {
         for i in 0..n {
             let self_accepted = accepted.get(i).copied().unwrap_or(false);
             let parent_ok = match mask.branches[i].parent_idx {
-                None => true,  // root has no ancestor constraint
+                None => true, // root has no ancestor constraint
                 Some(pidx) => effectively_accepted[pidx],
             };
             effectively_accepted[i] = self_accepted && parent_ok;
@@ -326,7 +346,7 @@ pub fn longest_matching_prefix<T: PartialEq>(candidate: &[T], reference: &[T]) -
 pub struct AcceptStep {
     /// Number of tokens the draft proposed (= tree width x depth for
     /// tree-style, = K for chain-style EAGLE).
-    pub drafted:  u32,
+    pub drafted: u32,
     /// Prefix length the target accepted this step.  `accepted <=
     /// drafted` always.
     pub accepted: u32,
@@ -335,14 +355,19 @@ pub struct AcceptStep {
 impl AcceptStep {
     #[inline]
     pub fn new(drafted: u32, accepted: u32) -> Self {
-        Self { drafted, accepted: accepted.min(drafted) }
+        Self {
+            drafted,
+            accepted: accepted.min(drafted),
+        }
     }
 
     /// Ratio in [0, 1] — 1.0 means the target kept every drafted
     /// token this step.
     #[inline]
     pub fn accept_rate(&self) -> f64 {
-        if self.drafted == 0 { 0.0 } else {
+        if self.drafted == 0 {
+            0.0
+        } else {
             self.accepted as f64 / self.drafted as f64
         }
     }
@@ -360,13 +385,13 @@ impl AcceptStep {
 /// Aggregated acceptance across a decode run.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AcceptRate {
-    pub steps:        u32,
-    pub total_drafted:  u64,
+    pub steps: u32,
+    pub total_drafted: u64,
     pub total_accepted: u64,
     /// P50 / P95 of per-step accept length — captures the "catas-
     /// trophic miss" distribution EAGLE-Pangu calls out.
-    pub p50_accept:   u32,
-    pub p95_accept:   u32,
+    pub p50_accept: u32,
+    pub p95_accept: u32,
     pub mean_speedup: f64,
 }
 
@@ -383,17 +408,16 @@ impl AcceptRate {
         accepted.sort_unstable();
         let p50 = accepted[accepted.len() / 2];
         let p95 = accepted[((accepted.len() as f64 * 0.95) as usize).min(accepted.len() - 1)];
-        let total_drafted:  u64 = steps.iter().map(|s| s.drafted  as u64).sum();
+        let total_drafted: u64 = steps.iter().map(|s| s.drafted as u64).sum();
         let total_accepted: u64 = steps.iter().map(|s| s.accepted as u64).sum();
-        let mean_speedup = steps.iter()
-            .map(|s| s.speedup_contribution())
-            .sum::<f64>() / steps.len() as f64;
+        let mean_speedup =
+            steps.iter().map(|s| s.speedup_contribution()).sum::<f64>() / steps.len() as f64;
         Self {
-            steps:          steps.len() as u32,
+            steps: steps.len() as u32,
             total_drafted,
             total_accepted,
-            p50_accept:     p50,
-            p95_accept:     p95,
+            p50_accept: p50,
+            p95_accept: p95,
             mean_speedup,
         }
     }
@@ -401,7 +425,9 @@ impl AcceptRate {
     /// Overall accepted / drafted ratio across the run.
     #[inline]
     pub fn overall_rate(&self) -> f64 {
-        if self.total_drafted == 0 { 0.0 } else {
+        if self.total_drafted == 0 {
+            0.0
+        } else {
             self.total_accepted as f64 / self.total_drafted as f64
         }
     }
@@ -422,14 +448,14 @@ mod tests {
 
     #[test]
     fn longest_prefix_is_bounded_by_shorter() {
-        assert_eq!(longest_matching_prefix(&[1u32, 2, 3, 4], &[1, 2]),       2);
-        assert_eq!(longest_matching_prefix::<u32>(&[], &[1, 2]),             0);
+        assert_eq!(longest_matching_prefix(&[1u32, 2, 3, 4], &[1, 2]), 2);
+        assert_eq!(longest_matching_prefix::<u32>(&[], &[1, 2]), 0);
     }
 
     #[test]
     fn longest_prefix_stops_at_first_mismatch() {
-        assert_eq!(longest_matching_prefix(&[1u32, 2, 9], &[1, 2, 3, 4]),    2);
-        assert_eq!(longest_matching_prefix(&[0u32, 0, 0], &[1, 0, 0]),       0);
+        assert_eq!(longest_matching_prefix(&[1u32, 2, 9], &[1, 2, 3, 4]), 2);
+        assert_eq!(longest_matching_prefix(&[0u32, 0, 0], &[1, 0, 0]), 0);
     }
 
     #[test]
@@ -443,13 +469,13 @@ mod tests {
     fn accept_step_handles_zero_draft() {
         let s = AcceptStep::new(0, 0);
         assert_eq!(s.accept_rate(), 0.0);
-        assert_eq!(s.speedup_contribution(), 1.0);  // always at least 1 (the greedy token).
+        assert_eq!(s.speedup_contribution(), 1.0); // always at least 1 (the greedy token).
     }
 
     #[test]
     fn accept_rate_summary_reports_percentiles() {
         let steps: Vec<AcceptStep> = (0..100)
-            .map(|i| AcceptStep::new(4, (i / 20) as u32))  // 0..5 per 20 steps
+            .map(|i| AcceptStep::new(4, (i / 20) as u32)) // 0..5 per 20 steps
             .collect();
         let agg = AcceptRate::summarise(&steps);
         assert_eq!(agg.steps, 100);
@@ -475,12 +501,19 @@ mod tests {
         // A stream where 27 % of steps accept one extra token and the
         // rest accept none reproduces the same mean_speedup.
         let mut steps: Vec<AcceptStep> = Vec::new();
-        for _ in 0..27 { steps.push(AcceptStep::new(1, 1)); }
-        for _ in 0..73 { steps.push(AcceptStep::new(1, 0)); }
+        for _ in 0..27 {
+            steps.push(AcceptStep::new(1, 1));
+        }
+        for _ in 0..73 {
+            steps.push(AcceptStep::new(1, 0));
+        }
         let agg = AcceptRate::summarise(&steps);
         // Expect mean_speedup ~= 1 + 0.27 = 1.27.
-        assert!((agg.mean_speedup - 1.27).abs() < 1e-9,
-                "got mean_speedup={}", agg.mean_speedup);
+        assert!(
+            (agg.mean_speedup - 1.27).abs() < 1e-9,
+            "got mean_speedup={}",
+            agg.mean_speedup
+        );
     }
 
     // ── TreeMask construction tests ─────────────────────────────────────
@@ -565,7 +598,13 @@ mod tests {
         // Corrupt branch 1 to reference a nonexistent parent.
         mask.branches[1].parent_idx = Some(999);
         let err = assert_no_undefined_index(&mask).unwrap_err();
-        assert!(matches!(err, SpecError::ParentOutOfRange { branch_idx: 1, parent_idx: 999 }));
+        assert!(matches!(
+            err,
+            SpecError::ParentOutOfRange {
+                branch_idx: 1,
+                parent_idx: 999
+            }
+        ));
     }
 
     #[test]
@@ -574,7 +613,13 @@ mod tests {
         // Corrupt: make branch 1's parent point to branch 2 (forward ref).
         mask.branches[1].parent_idx = Some(2);
         let err = assert_no_undefined_index(&mask).unwrap_err();
-        assert!(matches!(err, SpecError::ParentAfterChild { branch_idx: 1, parent_idx: 2 }));
+        assert!(matches!(
+            err,
+            SpecError::ParentAfterChild {
+                branch_idx: 1,
+                parent_idx: 2
+            }
+        ));
     }
 
     #[test]
@@ -583,14 +628,21 @@ mod tests {
         // Corrupt: set child depth to 0.
         mask.branches[1].depth = 0;
         let err = assert_no_undefined_index(&mask).unwrap_err();
-        assert!(matches!(err, SpecError::DepthMismatch { branch_idx: 1, depth: 0, .. }));
+        assert!(matches!(
+            err,
+            SpecError::DepthMismatch {
+                branch_idx: 1,
+                depth: 0,
+                ..
+            }
+        ));
     }
 
     // ── SpeculativeVerifier tests ───────────────────────────────────────
 
     #[test]
     fn verify_all_accepted_commits_everything() {
-        let mask = TreeMask::new(3, 2);  // 7 nodes
+        let mask = TreeMask::new(3, 2); // 7 nodes
         let accepted = vec![true; 7];
         let result = SpeculativeVerifier::verify_and_commit(&mask, &accepted);
 
@@ -602,9 +654,9 @@ mod tests {
 
     #[test]
     fn verify_root_rejected_discards_everything() {
-        let mask = TreeMask::new(3, 2);  // 7 nodes
+        let mask = TreeMask::new(3, 2); // 7 nodes
         let mut accepted = vec![true; 7];
-        accepted[0] = false;  // reject root
+        accepted[0] = false; // reject root
         let result = SpeculativeVerifier::verify_and_commit(&mask, &accepted);
 
         assert!(result.committed_tokens.is_empty());
@@ -645,8 +697,8 @@ mod tests {
 
     #[test]
     fn verify_short_accepted_slice_treats_missing_as_rejected() {
-        let mask = TreeMask::new(3, 2);  // 7 nodes
-        // Only provide acceptance for first 3 nodes.
+        let mask = TreeMask::new(3, 2); // 7 nodes
+                                        // Only provide acceptance for first 3 nodes.
         let accepted = vec![true, true, true];
         let result = SpeculativeVerifier::verify_and_commit(&mask, &accepted);
 
