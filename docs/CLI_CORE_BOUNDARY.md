@@ -26,8 +26,8 @@ This means:
 
 | Consumer | Integration path | Status |
 |---|---|---|
-| `systemverilog-ide` | `pccx-lab analyze <file>` → diagnostics envelope | planned |
-| `pccx-llm-launcher` | `pccx-lab status` → run-status envelope | planned |
+| `systemverilog-ide` | `pccx-lab analyze <file>` → diagnostics envelope | active (early-scaffold) |
+| `pccx-llm-launcher` | `pccx-lab status` → run-status envelope | early-scaffold |
 | VS Code extension | same CLI boundary; no separate IPC | planned |
 | JetBrains / other IDE bridge | same CLI boundary | planned |
 | MCP interface | controlled MCP tool server wrapping CLI boundary | planned |
@@ -116,6 +116,44 @@ is not exposed.
 - `fixtures/ok_module.sv` — valid module, exit 0
 - `fixtures/missing_endmodule.sv` — triggers `PCCX-SCAFFOLD-003`, exit 1
 - `fixtures/empty.sv` — triggers `PCCX-SHAPE-001`, exit 1
+
+## status command (early scaffold)
+
+```
+pccx-lab status [--format json]
+```
+
+**Status:** early scaffold — host-only, dry-run. No real KV260 probing.
+No real inference. Intended for `pccx-llm-launcher` integration testing.
+
+**What it emits:**
+
+A JSON run-status envelope with the following top-level fields:
+
+| Field | Value | Notes |
+|---|---|---|
+| `envelope` | `"0"` | envelope format version |
+| `tool` | `"pccx-lab"` | always |
+| `version` | from `CARGO_PKG_VERSION` | e.g. `"0.1.0"` |
+| `mode` | `"host-dry-run"` | no real hardware |
+| `device.kv260` | `"not-probed"` | KV260 path pending bring-up |
+| `inference.status` | `"unavailable"` | deferred until timing-closed bitstream |
+| `diagnostics_integration.status` | `"active"` | `analyze` boundary wired |
+| `launcher_handoff.status` | `"early-scaffold"` | `status` boundary wired |
+| `evidence_required` | array of strings | what must land before status changes |
+| `pccx_lab_bin` | `"pccx-lab"` | binary name |
+| `_note` | string | pre-stability marker; stripped by consumers |
+
+**What it does NOT do:**
+
+- No KV260 device probing.
+- No real inference status.
+- No xsim run status (xsim handoff is planned).
+- No GUI dependency.
+
+**Exit code:** always 0. Envelope is a static host-dry-run report.
+
+**Example output:** [`docs/examples/run-status.example.json`](examples/run-status.example.json)
 
 ## Near-term contracts (planned)
 
