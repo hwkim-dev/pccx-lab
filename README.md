@@ -9,7 +9,7 @@ Pre-RTL bottleneck detection, UVM co-simulation, and LLM-driven testbench genera
 
 ## Project status
 
-**Public alpha** — first tagged release `v0.1.0-alpha` is in draft. Core
+**Public alpha** — `v0.1.0-alpha` is published as a prerelease. Core
 crates and the Tauri shell are in active development; APIs and `.pccx`
 schema may shift before `v0.2.0`. Feedback and issues are welcome.
 

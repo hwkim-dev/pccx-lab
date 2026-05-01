@@ -11,11 +11,11 @@ under each crate root and document library-level surface changes (see
 
 ## [Unreleased]
 
-## v0.1.0-alpha
+## v0.1.0-alpha — 2026-05-01
 
 First public preview of the pccx-lab pre-RTL bottleneck profiler,
 Rust + Tauri GUI, and CX live playground under the `pccxai`
-organization. Mirrors the release draft at
+organization. Mirrors the release notes at
 [`docs/releases/v0.1.0-alpha.md`](docs/releases/v0.1.0-alpha.md).
 
 ### Highlights
