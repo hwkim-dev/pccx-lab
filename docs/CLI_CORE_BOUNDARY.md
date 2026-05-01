@@ -222,3 +222,9 @@ Avoid these phrases — they are not accurate for this project at this stage:
 - "stable plugin ABI" is not stable today; use "unstable, pre-v0.3" instead.
 - "timing-closed" is not yet achieved; use "timing closure pending verified bring-up".
 - "KV260 inference works" is not yet verified; use "KV260 path pending verified bring-up".
+
+---
+
+*See also*:
+[AI-assisted engineering discipline](https://github.com/pccxai/pccxai/blob/main/docs/AI_ASSISTED_ENGINEERING.md) —
+the org-level reference for how AI workers interact with these boundaries.
