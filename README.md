@@ -17,8 +17,11 @@ schema may shift before `v0.2.0`. Feedback and issues are welcome.
 | --- | --- |
 | Documentation | <https://pccxai.github.io/pccx/en/lab/> |
 | Releases | <https://github.com/pccxai/pccx-lab/releases> |
+| `v0.1.0-alpha` notes | [docs/releases/v0.1.0-alpha.md](docs/releases/v0.1.0-alpha.md) |
 | Roadmap (project board) | <https://github.com/orgs/pccxai/projects/1> |
 | Contributing | <https://github.com/pccxai/.github/blob/main/CONTRIBUTING.md> |
+| How to cite | [CITATION.cff](CITATION.cff) |
+| Tooling status | `rust-check` + `frontend-check` required on `main`; `cargo fmt --check` enforced |
 | Discussions | <https://github.com/pccxai/pccx-lab/discussions> |
 | Good first issues | <https://github.com/pccxai/pccx-lab/labels/good%20first%20issue> |
 
