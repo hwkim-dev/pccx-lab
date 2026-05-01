@@ -36,15 +36,20 @@ This means:
 
 ## In-tree boundary artifacts
 
-Two in-tree artifacts already anchor the future boundary shape:
+Three in-tree artifacts anchor the boundary shape:
+
+- **`crates/core/src/bin/pccx_lab.rs`** — `pccx-lab analyze` command
+  (early scaffold). File-shape checks only. Emits a diagnostics
+  envelope to stdout. No full semantic parser. No stable ABI.
+  Binary lives in `crates/core` as a low-churn scaffold; will be
+  promoted to a dedicated `crates/cli/` crate when the boundary
+  matures. See [analyze command](#analyze-command-early-scaffold) below.
 
 - **`crates/lsp/src/sv_diagnostics.rs`** — internal SV diagnostics
-  provider. When the `pccx-lab analyze` CLI path is wired up, its
-  output will be serialised to the diagnostics envelope defined by
-  [`pccxai/systemverilog-ide`'s `schema/diagnostics-v0.json`][sv-schema].
-  The envelope fields (`envelope`, `tool`, `source`, `diagnostics[]`)
-  are the controlled surface; internal `SvDiagnosticsProvider`
-  mechanics are not exposed.
+  provider used by the LSP layer. Its richer convention-aware checks
+  (port prefix, stub detection) are intentionally not exposed through
+  the `analyze` command yet; that wiring is planned for a future
+  milestone when the CLI/core boundary stabilises.
 
 - **`crates/remote/openapi.yaml`** — Phase 3 daemon scaffold. The
   `/v1/traces`, `/v1/sessions`, and `/v1/reports/{id}` paths sketch
@@ -52,6 +57,65 @@ Two in-tree artifacts already anchor the future boundary shape:
   yet; the file documents the intended surface.
 
 [sv-schema]: https://github.com/pccxai/systemverilog-ide/blob/main/schema/diagnostics-v0.json
+
+## analyze command (early scaffold)
+
+```
+pccx-lab analyze <path> [--format json]
+```
+
+**Status:** early scaffold — pre-stable output. Intended for
+`systemverilog-ide` integration testing. Real analysis will grow
+iteratively behind this CLI/core boundary.
+
+**What it does (file-shape checks only):**
+
+| Check | Code | Severity |
+|---|---|---|
+| File missing or unreadable | `PCCX-IO-001` | error |
+| File content is empty | `PCCX-SHAPE-001` | error |
+| No `module` declaration found | `PCCX-SHAPE-002` | error |
+| `module` present but `endmodule` missing | `PCCX-SCAFFOLD-003` | error |
+
+**What it does NOT do:**
+
+- No full SystemVerilog semantic parsing.
+- No port-prefix convention checks (those live in `crates/lsp`).
+- No GUI dependency.
+- No Vivado, xsim, or hardware requirement.
+
+**Output shape** matches the envelope in
+[`docs/examples/diagnostics-envelope.example.json`](examples/diagnostics-envelope.example.json)
+and is close to `pccxai/systemverilog-ide schema/diagnostics-v0.json`.
+Divergence from that schema will be resolved once cross-repo
+coordination is complete; the `_note` field signals pre-stability.
+
+**Exit codes:**
+
+| Code | Meaning |
+|---|---|
+| 0 | No error-severity diagnostics |
+| 1 | At least one error-severity diagnostic |
+| 2 | I/O failure (file missing/unreadable); envelope still emitted |
+
+**systemverilog-ide handoff path:**
+
+`systemverilog-ide` will discover the binary via:
+1. `PCCX_LAB_BIN` environment variable (absolute path).
+2. `pccx-lab` on `$PATH`.
+3. Hard error — no silent fallback.
+
+Once the binary is installed and `PCCX_LAB_BIN` or `PATH` is set,
+`systemverilog-ide` can call `pccx-lab analyze <file>` and parse the
+JSON envelope directly. The boundary contract (stdout JSON, exit codes,
+envelope fields) is the controlled surface; internal implementation
+is not exposed.
+
+**Fixtures for integration testing:**
+
+- `fixtures/ok_module.sv` — valid module, exit 0
+- `fixtures/missing_endmodule.sv` — triggers `PCCX-SCAFFOLD-003`, exit 1
+- `fixtures/empty.sv` — triggers `PCCX-SHAPE-001`, exit 1
 
 ## Near-term contracts (planned)
 

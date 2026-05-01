@@ -40,6 +40,16 @@ check_file "$REPO_ROOT/docs/examples/diagnostics-envelope.example.json"
 check_file "$REPO_ROOT/docs/examples/run-status.example.json"
 
 echo
+INFO "analyze command source presence"
+check_file "$REPO_ROOT/crates/core/src/bin/pccx_lab.rs"
+
+echo
+INFO "fixture presence"
+check_file "$REPO_ROOT/fixtures/ok_module.sv"
+check_file "$REPO_ROOT/fixtures/missing_endmodule.sv"
+check_file "$REPO_ROOT/fixtures/empty.sv"
+
+echo
 INFO "JSON validity"
 for f in "$REPO_ROOT/docs/examples/"*.example.json; do
     [ -f "$f" ] || continue

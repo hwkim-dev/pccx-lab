@@ -22,6 +22,20 @@ toml = "1.1.2"
 # Memory-mapped I/O for large trace files (100 MB+).
 memmap2 = "0.9"
 
+# Central pccx-lab CLI entry point (scaffold, lives here to avoid a
+# separate crate; can be promoted to crates/cli/ later).
+[[bin]]
+name = "pccx-lab"
+path = "src/bin/pccx_lab.rs"
+
+[[bin]]
+name = "pccx-from-xsim-log"
+path = "src/bin/from_xsim_log.rs"
+
+[[bin]]
+name = "generator"
+path = "src/bin/generator.rs"
+
 [dev-dependencies]
 # pccx-core itself (via path) is used in integration tests
 # No extra test-only deps needed — the workspace provides everything
