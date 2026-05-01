@@ -12,10 +12,7 @@ url: "https://pccxai.github.io/pccx/en/lab/"
 authors:
   - family-names: Kim
     given-names: Hyunwoo
-    # TODO(hkimw): set orcid once registered
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
-    # TODO(hkimw): fill in affiliation
-    # affiliation: ""
+    affiliation: "Independent researcher"
 references:
   - type: software
     title: "pccx — open FPGA-oriented LLM inference accelerator"
