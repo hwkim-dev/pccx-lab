@@ -66,11 +66,20 @@ boundary. There is no private back channel into lab internals. See
   for a theme-neutral presentation layer.
 - `pccx-lab analyze <file> --format json` returns file-shape diagnostics
   through the reusable CLI/core boundary.
+- `pccx-lab diagnostics-handoff validate --file <path> --format json`
+  validates a launcher diagnostics handoff JSON file as a read-only
+  future-consumer boundary.
 
 The GUI is a CLI-backed GUI surface, not a separate logic island. Theme
 work is experimental. No stable plugin ABI is promised. No MCP runtime,
 provider runtime, launcher runtime, or editor runtime integration is
 implemented by this foundation.
+
+The diagnostics handoff validator does not execute pccx-llm-launcher,
+load plugins, call providers, touch hardware, upload telemetry, write
+files, or start GUI workflows. It reads a local JSON document and emits a
+deterministic summary. See
+[docs/DIAGNOSTICS_HANDOFF_CONSUMER.md](docs/DIAGNOSTICS_HANDOFF_CONSUMER.md).
 
 ## Part of the pccx ecosystem
 - [pccx (docs)](https://github.com/pccxai/pccx) — NPU architecture reference
