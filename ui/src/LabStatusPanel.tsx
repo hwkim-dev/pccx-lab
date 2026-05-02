@@ -106,6 +106,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function LabStatusPanel() {
   const theme = useTheme();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setState({ kind: "loading" });
@@ -169,6 +170,9 @@ export function LabStatusPanel() {
       workflowResults,
       workflowRunner,
     } = state;
+    const selectedDescriptor =
+      workflowDescriptors.descriptors.find((descriptor) => descriptor.workflowId === selectedWorkflowId) ??
+      workflowDescriptors.descriptors[0];
 
     return (
       <>
@@ -226,15 +230,82 @@ export function LabStatusPanel() {
         </Section>
 
         <Section title="Workflow Descriptors">
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {workflowDescriptors.descriptors.slice(0, 5).map((descriptor) => (
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              gridTemplateColumns: "minmax(0, 1fr)",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {workflowDescriptors.descriptors.slice(0, 8).map((descriptor) => {
+                const selected = descriptor.workflowId === selectedDescriptor?.workflowId;
+                return (
+                  <button
+                    key={descriptor.workflowId}
+                    onClick={() => setSelectedWorkflowId(descriptor.workflowId)}
+                    type="button"
+                    title={descriptor.workflowId}
+                    style={{
+                      alignItems: "center",
+                      background: selected ? theme.bgPanel : "transparent",
+                      border: `0.5px solid ${selected ? theme.accent : theme.borderSubtle}`,
+                      borderRadius: theme.radiusSm,
+                      color: theme.text,
+                      cursor: "pointer",
+                      display: "grid",
+                      gap: 7,
+                      gridTemplateColumns: "minmax(0, 1fr) auto",
+                      minHeight: 34,
+                      padding: "5px 7px",
+                      textAlign: "left",
+                      width: "100%",
+                    }}
+                  >
+                    <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {descriptor.label}
+                      </span>
+                      <span
+                        style={{
+                          color: theme.textFaint,
+                          fontFamily: theme.fontMono,
+                          fontSize: 10,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {descriptor.category} / {descriptor.availabilityState}
+                      </span>
+                    </span>
+                    <StatusBadge value={descriptor.executionState} />
+                  </button>
+                );
+              })}
+              {workflowDescriptors.descriptors.length > 8 && (
+                <span style={{ color: theme.textFaint, fontFamily: theme.fontMono, fontSize: 10 }}>
+                  +{workflowDescriptors.descriptors.length - 8} descriptors
+                </span>
+              )}
+            </div>
+
+            {selectedDescriptor && (
               <div
-                key={descriptor.workflowId}
                 style={{
-                  borderBottom: `0.5px solid ${theme.borderSubtle}`,
+                  border: `0.5px solid ${theme.borderSubtle}`,
+                  borderRadius: theme.radiusSm,
                   display: "grid",
-                  gap: 4,
-                  paddingBottom: 7,
+                  gap: 7,
+                  padding: 8,
                 }}
               >
                 <div
@@ -246,7 +317,7 @@ export function LabStatusPanel() {
                   }}
                 >
                   <span
-                    title={descriptor.workflowId}
+                    title={selectedDescriptor.workflowId}
                     style={{
                       color: theme.text,
                       minWidth: 0,
@@ -255,32 +326,34 @@ export function LabStatusPanel() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {descriptor.label}
+                    {selectedDescriptor.label}
                   </span>
-                  <StatusBadge value={descriptor.executionState} />
-                </div>
-                <div
-                  style={{
-                    color: theme.textFaint,
-                    fontFamily: theme.fontMono,
-                    fontSize: 10,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                  title={`${descriptor.category} / ${descriptor.availabilityState}`}
-                >
-                  {descriptor.category} / {descriptor.availabilityState}
+                  <StatusBadge value={selectedDescriptor.availabilityState} />
                 </div>
                 <span style={{ color: theme.textMuted, lineHeight: 1.45 }}>
-                  {descriptor.description}
+                  {selectedDescriptor.description}
                 </span>
+                <FieldRow label="category" value={selectedDescriptor.category} />
+                <FieldRow label="execution" value={selectedDescriptor.executionState} />
+                <FieldRow label="evidence" value={selectedDescriptor.evidenceState} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {selectedDescriptor.futureConsumers.slice(0, 4).map((consumer) => (
+                    <span
+                      key={consumer}
+                      style={{
+                        border: `0.5px solid ${theme.borderSubtle}`,
+                        borderRadius: theme.radiusSm,
+                        color: theme.textMuted,
+                        fontFamily: theme.fontMono,
+                        fontSize: 10,
+                        padding: "2px 6px",
+                      }}
+                    >
+                      {consumer}
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
-            {workflowDescriptors.descriptors.length > 5 && (
-              <span style={{ color: theme.textFaint, fontFamily: theme.fontMono, fontSize: 10 }}>
-                +{workflowDescriptors.descriptors.length - 5} descriptors
-              </span>
             )}
           </div>
         </Section>
@@ -462,7 +535,7 @@ export function LabStatusPanel() {
         </Section>
       </>
     );
-  }, [state, theme]);
+  }, [selectedWorkflowId, state, theme]);
 
   return (
     <div
