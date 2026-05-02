@@ -95,12 +95,29 @@ fn public_boundary_docs_do_not_contain_private_paths_or_secrets() {
 #[test]
 fn gui_status_panel_consumes_core_status_without_runtime_side_effects() {
     let panel = read_repo_file("ui/src/LabStatusPanel.tsx");
-    assert!(panel.contains("invoke<LabStatus>(\"lab_status\")"));
-    assert!(panel.contains("invoke<ThemeTokenContract>(\"theme_contract\")"));
-    assert!(panel.contains("invoke<WorkflowDescriptorSet>(\"workflow_descriptors\")"));
-    assert!(panel.contains("invoke<WorkflowProposalSet>(\"workflow_proposals\")"));
-    assert!(panel.contains("invoke<WorkflowResultSummarySet>(\"workflow_result_summaries\")"));
-    assert!(panel.contains("invoke<WorkflowRunnerStatus>(\"workflow_runner_status\")"));
+    let allowed_invokes = [
+        "invoke<LabStatus>(\"lab_status\")",
+        "invoke<ThemeTokenContract>(\"theme_contract\")",
+        "invoke<WorkflowDescriptorSet>(\"workflow_descriptors\")",
+        "invoke<WorkflowProposalSet>(\"workflow_proposals\")",
+        "invoke<WorkflowResultSummarySet>(\"workflow_result_summaries\")",
+        "invoke<WorkflowRunnerStatus>(\"workflow_runner_status\")",
+    ];
+    assert_eq!(
+        panel.matches("invoke<").count(),
+        allowed_invokes.len(),
+        "GUI status panel must only invoke read-only boundary commands"
+    );
+    assert!(
+        !panel.contains("invoke(\""),
+        "GUI status panel must not add untyped IPC calls"
+    );
+    for call in allowed_invokes {
+        assert!(
+            panel.contains(call),
+            "missing expected read-only IPC call: {call}"
+        );
+    }
 
     for phrase in [
         "run_verification",
@@ -122,10 +139,15 @@ fn gui_status_panel_consumes_core_status_without_runtime_side_effects() {
 fn gui_workflow_descriptors_are_display_only_core_data() {
     let panel = read_repo_file("ui/src/LabStatusPanel.tsx");
     assert!(panel.contains("workflowDescriptors.descriptors"));
+    assert!(panel.contains("selectedWorkflowId"));
+    assert!(panel.contains("setSelectedWorkflowId"));
     assert!(panel.contains("descriptor.label"));
     assert!(panel.contains("descriptor.category"));
     assert!(panel.contains("descriptor.availabilityState"));
     assert!(panel.contains("descriptor.executionState"));
+    assert!(panel.contains("selectedDescriptor.description"));
+    assert!(panel.contains("selectedDescriptor.evidenceState"));
+    assert!(panel.contains("selectedDescriptor.futureConsumers"));
 
     for phrase in [
         "pccx-lab workflows --format json",
