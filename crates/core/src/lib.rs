@@ -10,6 +10,7 @@ pub mod bottleneck;
 pub mod chrome_trace;
 pub mod coverage;
 pub mod cycle_estimator;
+pub mod diagnostics_handoff;
 pub mod hw_model;
 pub mod isa_replay;
 pub mod license;
@@ -40,6 +41,12 @@ pub use coverage::{
     MergedCoverage,
 };
 pub use cycle_estimator::{CycleEstimator, TileOperation};
+pub use diagnostics_handoff::{
+    diagnostics_handoff_error_json_pretty, diagnostics_handoff_summary_json_pretty,
+    validate_diagnostics_handoff_json, DescriptorRefs, DiagnosticsHandoffError,
+    DiagnosticsHandoffSummary, ReadOnlyFlags, HANDOFF_VALIDATION_SCHEMA_VERSION,
+    LAUNCHER_HANDOFF_SCHEMA_VERSION,
+};
 pub use hw_model::{AxiBusConfig, BramConfig, HardwareModel, MacArrayConfig};
 pub use license::{get_license_info, run_high_speed_simulation};
 pub use live_window::{LiveSample, LiveWindow};

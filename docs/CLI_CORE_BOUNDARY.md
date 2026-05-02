@@ -21,6 +21,7 @@ separate workflow logic island.
 | `pccx-lab theme --format json` | experimental | Minimal semantic theme-token contract. |
 | `pccx-lab workflows --format json` | available | Descriptor-only workflow catalog from `pccx-core`. |
 | `pccx-lab analyze <file> --format json` | early scaffold | File-shape diagnostics only. |
+| `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -150,6 +151,38 @@ Fixtures for integration testing:
 - `fixtures/ok_module.sv`
 - `fixtures/missing_endmodule.sv`
 - `fixtures/empty.sv`
+
+## diagnostics-handoff command
+
+```
+pccx-lab diagnostics-handoff validate --file <path> [--format json]
+```
+
+`diagnostics-handoff validate` reads a local launcher diagnostics
+handoff JSON file and emits a deterministic validation summary. It is a
+future-consumer boundary for pccx-llm-launcher data, not an execution
+bridge.
+
+The validator checks:
+
+- required handoff fields
+- diagnostic severity and category values
+- launcher/model/runtime descriptor references
+- JSON file, stdout JSON, and read-only local artifact transport sketches
+- no telemetry, no automatic upload, and no write-back flags
+- no runtime execution, hardware access, provider calls, network calls,
+  MCP, LSP, or marketplace flow flags
+- absence of private path, secret, model weight path, and unsupported
+  claim markers
+
+The command does not execute pccx-llm-launcher, load plugins, probe
+hardware, call providers, upload telemetry, write files, or start GUI
+logic. It also avoids echoing the supplied file path in the JSON summary.
+
+The checked example is
+[`docs/examples/launcher-diagnostics-handoff.example.json`](examples/launcher-diagnostics-handoff.example.json).
+Fixture sync with pccx-llm-launcher is manual while this boundary remains
+pre-compatibility.
 
 ## GUI foundation
 

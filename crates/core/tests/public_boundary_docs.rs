@@ -18,6 +18,8 @@ fn public_boundary_text() -> String {
     [
         "README.md",
         "docs/CLI_CORE_BOUNDARY.md",
+        "docs/DIAGNOSTICS_HANDOFF_CONSUMER.md",
+        "docs/examples/launcher-diagnostics-handoff.example.json",
         "docs/examples/run-status.example.json",
         "docs/examples/theme-tokens.example.json",
         "docs/examples/workflow-descriptors.example.json",

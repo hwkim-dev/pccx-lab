@@ -15,6 +15,10 @@
 ///   workflows [--format json]
 ///       Emit descriptor-only workflow metadata used by CLI and GUI consumers.
 ///
+///   diagnostics-handoff validate --file <path> [--format json]
+///       Validate a launcher diagnostics handoff JSON file and emit a
+///       read-only summary. Does not execute launcher or pccx-lab flows.
+///
 ///       See docs/CLI_CORE_BOUNDARY.md and docs/examples/run-status.example.json.
 ///
 /// Exit codes
@@ -136,6 +140,7 @@ fn usage() -> ! {
     eprintln!("  status [--format json]            emit lab-status contract");
     eprintln!("  theme [--format json]             emit theme-token contract");
     eprintln!("  workflows [--format json]         emit workflow descriptors");
+    eprintln!("  diagnostics-handoff validate --file <path> [--format json]");
     process::exit(2);
 }
 
@@ -161,6 +166,68 @@ fn validate_json_format(args: &[String]) {
         eprintln!("error: unexpected argument `{}`", args[2]);
         process::exit(2);
     }
+}
+
+fn diagnostics_handoff_usage() -> ! {
+    eprintln!("usage: pccx-lab diagnostics-handoff validate --file <path> [--format json]");
+    process::exit(2);
+}
+
+fn diagnostics_handoff_error(message: &str, exit_code: i32) -> ! {
+    eprintln!(
+        "{}",
+        pccx_core::diagnostics_handoff_error_json_pretty(message)
+    );
+    process::exit(exit_code);
+}
+
+fn handle_diagnostics_handoff(args: &[String]) -> ! {
+    if args.first().map(String::as_str) != Some("validate") {
+        diagnostics_handoff_usage();
+    }
+
+    let mut file: Option<&str> = None;
+    let mut format = "json";
+    let mut index = 1usize;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--file" => {
+                index += 1;
+                file = args.get(index).map(String::as_str);
+                if file.is_none() {
+                    diagnostics_handoff_usage();
+                }
+            }
+            "--format" => {
+                index += 1;
+                format = args
+                    .get(index)
+                    .map(String::as_str)
+                    .unwrap_or_else(|| diagnostics_handoff_usage());
+            }
+            _ => diagnostics_handoff_usage(),
+        }
+        index += 1;
+    }
+
+    if format != "json" {
+        diagnostics_handoff_error("unsupported format; only json is supported", 2);
+    }
+
+    let Some(path) = file else {
+        diagnostics_handoff_usage();
+    };
+
+    let text = std::fs::read_to_string(path)
+        .unwrap_or_else(|_| diagnostics_handoff_error("cannot read diagnostics handoff file", 2));
+    let summary = pccx_core::validate_diagnostics_handoff_json(&text)
+        .unwrap_or_else(|err| diagnostics_handoff_error(&err.to_string(), 1));
+    let json = pccx_core::diagnostics_handoff_summary_json_pretty(&summary).unwrap_or_else(|_| {
+        pccx_core::diagnostics_handoff_error_json_pretty("cannot render validation summary")
+    });
+    println!("{json}");
+    process::exit(0);
 }
 
 fn main() {
@@ -209,6 +276,7 @@ fn main() {
             println!("{json}");
             process::exit(0);
         }
+        "diagnostics-handoff" => handle_diagnostics_handoff(&args[1..]),
         "--help" | "-h" | "help" => {
             eprintln!("pccx-lab — NPU profiler CLI boundary");
             eprintln!();
@@ -217,6 +285,7 @@ fn main() {
             eprintln!("  status [--format json]            emit lab-status contract");
             eprintln!("  theme [--format json]             emit theme-token contract");
             eprintln!("  workflows [--format json]         emit workflow descriptors");
+            eprintln!("  diagnostics-handoff validate --file <path> [--format json]");
             eprintln!();
             eprintln!("exit codes: 0 clean  1 diagnostics found  2 I/O error");
             process::exit(0);
