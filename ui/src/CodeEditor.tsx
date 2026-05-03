@@ -455,9 +455,9 @@ export function CodeEditor() {
              <button onClick={() => setAiBoxOpen(false)} style={{ color: theme.textMuted }}><X size={14} /></button>
            </div>
            <div className="p-2 flex gap-2">
-             <input autoFocus value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAiGenerate()} disabled={isGenerating} placeholder="E.g., Generate a randomized AXI burst sequence..." className="flex-1 bg-transparent px-2 py-1 outline-none" style={{ fontSize: 12, color: theme.text }} />
+             <input autoFocus value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAiGenerate()} disabled={isGenerating} placeholder="E.g., Draft a randomized AXI burst sequence..." className="flex-1 bg-transparent px-2 py-1 outline-none" style={{ fontSize: 12, color: theme.text }} />
              <button onClick={handleAiGenerate} disabled={isGenerating || !aiPrompt} className="px-3 rounded py-1" style={{ fontSize: 11, background: kwColor, color: "#fff", opacity: isGenerating ? 0.5 : 1 }}>
-               {isGenerating ? "Generating..." : "Generate"}
+               {isGenerating ? "Drafting..." : "Draft"}
              </button>
            </div>
         </div>

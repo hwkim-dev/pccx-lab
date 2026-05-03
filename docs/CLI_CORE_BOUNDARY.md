@@ -37,6 +37,22 @@ IDE or launcher runtime integration is implemented by this foundation.
 For command snippets and consumer handoff notes, see
 [`docs/CLI_BOUNDARY_EXAMPLES.md`](CLI_BOUNDARY_EXAMPLES.md).
 
+## Local workflow assistant boundary
+
+The Workflow Assistant is a local-only planning and draft-helper surface.
+It may summarize bounded trace context, propose next steps, or request
+existing GUI/Tauri helper actions that are backed by Rust core
+boundaries. It must not add API keys, provider selectors, provider URLs,
+browser network calls, or external assistant runtimes.
+
+Assistant wording should stay in proposal, draft, helper, and planning
+terms. The GUI must remain a thin surface over CLI/core or Tauri IPC
+contracts; any future MCP, launcher, editor, plugin, or provider flow
+needs a separately reviewed controlled boundary before implementation.
+
+`npm run test:static` in `ui/` guards this boundary for GUI-visible
+source and copy.
+
 ## status command
 
 ```

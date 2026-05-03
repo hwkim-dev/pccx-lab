@@ -469,7 +469,7 @@ Generated sequence code is inserted directly into the SV Editor at the cursor po
 
 ### Provider Boundary
 
-The documented CLI/core workflow boundary does not call external providers, send traces over the network, or require provider credentials. Any future provider-backed assistant must consume the same bounded summaries as the GUI and stay behind an explicit configuration and approval boundary.
+The documented CLI/core workflow boundary does not call external providers, send traces over the network, or require provider credentials. Any future external assistant work must consume the same bounded summaries as the GUI and stay behind an explicit configuration and approval boundary.
 
 ---
 

@@ -77,7 +77,7 @@ const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.debug":        { en: "Debug Mode",        ko: "디버그 모드" },
 
   // Panels
-  "panel.aiCopilot":      { en: "Workflow Assistant", ko: "워크플로우 도우미" },
+  "panel.workflowAssistant": { en: "Workflow Assistant", ko: "워크플로우 도우미" },
   "panel.telemetry":      { en: "LIVE TELEMETRY",    ko: "실시간 모니터" },
   "panel.logs":           { en: "Logs",              ko: "로그" },
   "panel.console":        { en: "Console",           ko: "콘솔" },
@@ -97,7 +97,7 @@ const STRINGS: Record<string, Record<Lang, string>> = {
 
   // Misc
   "btn.send":             { en: "Send",              ko: "전송" },
-  "placeholder.ask":      { en: "Ask anything…",     ko: "질문 입력…" },
+  "placeholder.ask":      { en: "Ask about local trace context...", ko: "로컬 트레이스 컨텍스트 질문..." },
 
   // Workflow assistant chat - system / error messages.
   // Any runtime error message the assistant appends must go through t()
@@ -108,17 +108,17 @@ const STRINGS: Record<string, Record<Lang, string>> = {
   "copilot.ipcError":     { en: "IPC error",         ko: "IPC 오류" },
   "copilot.httpError":    { en: "Provider calls are disabled", ko: "프로바이더 호출은 비활성화됨" },
   "copilot.apiError":     { en: "Provider response unavailable", ko: "프로바이더 응답 사용 불가" },
-  "copilot.uvmFailed":    { en: "UVM generation failed", ko: "UVM 생성 실패" },
+  "copilot.uvmFailed":    { en: "UVM draft failed", ko: "UVM 초안 실패" },
   "copilot.error":        { en: "Error",             ko: "오류" },
   "copilot.context":      { en: "Context",           ko: "컨텍스트" },
   "copilot.none":         { en: "none",              ko: "없음" },
-  "copilot.hintApiKey":   { en: "(Local-only helper; external provider calls are disabled)", ko: "(로컬 전용 도우미; 외부 프로바이더 호출은 비활성화되어 있습니다)" },
+  "copilot.localOnlyHint": { en: "(Local-only helper; external provider calls are disabled)", ko: "(로컬 전용 도우미; 외부 프로바이더 호출은 비활성화되어 있습니다)" },
   "copilot.localOnly":    { en: "Local-only planning. External provider calls are disabled.", ko: "로컬 전용 계획 보조입니다. 외부 프로바이더 호출은 비활성화되어 있습니다." },
-  "copilot.hintExamples": { en: "Try asking:\n• \"bottleneck analysis\"\n• \"generate UVM testbench\"\n• \"build report\"\n• \"roofline analysis\"",
-                            ko: "질문 예시:\n• \"병목 분석\"\n• \"UVM testbench 생성\"\n• \"보고서 생성\"\n• \"roofline 분석\"" },
+  "copilot.hintExamples": { en: "Try asking:\n• \"bottleneck analysis\"\n• \"draft UVM sequence\"\n• \"build report\"\n• \"roofline analysis\"",
+                            ko: "질문 예시:\n• \"병목 분석\"\n• \"UVM 시퀀스 초안\"\n• \"보고서 생성\"\n• \"roofline 분석\"" },
   "copilot.bottleneck":   { en: "Analysis: AXI bus contention is the primary bottleneck. With 32 cores doing simultaneous DMA, each core sees 0.5 B/cycle.\n\n→ Raise L2 prefetch depth or stagger core groups.",
                             ko: "분석: AXI 버스 경합이 주요 병목. 32코어 동시 DMA 시 코어당 0.5 B/cycle.\n\n→ L2 프리페치 깊이 증가 또는 코어 그룹 스태거링 권장" },
-  "copilot.uvmIntro":     { en: "UVM sequence",      ko: "UVM 시퀀스" },
+  "copilot.uvmIntro":     { en: "UVM draft sequence", ko: "UVM 시퀀스 초안" },
   "copilot.uvmHint":      { en: "→ editable in the SV Editor tab", ko: "→ SV Editor 탭에서 편집 가능" },
   "copilot.reportHint":   { en: "In the Report tab you can pick sections and generate a PDF.\n• Executive Summary\n• Hardware Config\n• Utilisation Heatmap\n• Bottleneck Analysis\n• Roofline Model",
                             ko: "Report 탭에서 섹션 선택 후 PDF를 생성할 수 있습니다.\n• Executive Summary\n• Hardware Config\n• Utilisation Heatmap\n• Bottleneck Analysis\n• Roofline Model" },

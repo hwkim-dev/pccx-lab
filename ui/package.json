@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test:static": "node scripts/local-assistant-guard.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"

@@ -440,7 +440,7 @@ function AppInner() {
       }
       case "file.exit": win.close(); break;
       case "help.about":
-        addMsg("system", "pccx-lab v0.4.0 -- NPU Architecture Profiler\nLicense: Apache 2.0\nModules: core / ui / ai_copilot / uvm_bridge");
+        addMsg("system", "pccx-lab v0.4.0 -- NPU Architecture Profiler\nLicense: Apache 2.0\nModules: core / ui / workflow helper / uvm_bridge");
         break;
       case "help.shortcuts": shortcutHelp.setOpen(true); break;
       default: addMsg("system", `[${action}] -- Coming soon`);
@@ -482,7 +482,7 @@ function AppInner() {
       } else {
         reply = `${t("copilot.context")}: ${ctx || t("copilot.none")}\n\n${t("copilot.hintExamples")}`;
       }
-      addMsg("ai", `${reply}\n${t("copilot.hintApiKey")}`);
+      addMsg("ai", `${reply}\n${t("copilot.localOnlyHint")}`);
     } catch (e) { addMsg("ai", `${t("copilot.error")}: ${e}`); }
     finally { setCopilotBusy(false); }
   };
@@ -509,7 +509,7 @@ function AppInner() {
   const renderCopilotContent = () => (
     <div className="w-full h-full flex flex-col min-w-0 min-h-0">
       <div className="flex flex-col px-3 pb-2 pt-2 gap-1 shrink-0" style={{ borderBottom: `0.5px solid ${theme.borderSubtle}` }}>
-        <span style={{ fontSize: 11, color: theme.text, fontWeight: 600 }}>{t("panel.aiCopilot")}</span>
+        <span style={{ fontSize: 11, color: theme.text, fontWeight: 600 }}>{t("panel.workflowAssistant")}</span>
         <span style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.4 }}>{t("copilot.localOnly")}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5 min-h-0">

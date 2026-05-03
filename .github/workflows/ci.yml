@@ -88,5 +88,11 @@ jobs:
       - name: npm ci
         run: npm ci
 
+      - name: npm run test:static
+        run: npm run test:static
+
+      - name: npm run typecheck
+        run: npm run typecheck
+
       - name: npm run build
         run: npm run build
