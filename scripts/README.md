@@ -11,6 +11,7 @@ to the point where `npm run tauri dev` works.
 | `run_dev.sh`                   | Launch the Tauri dev window with cargo+nvm pre-sourced.         |
 | `doctor.sh`                    | Read-only environment diagnostic.  Prints versions + fixes.     |
 | `pccx-lab-boundary-smoke.sh`   | Verify CLI/core boundary artifacts exist and JSON examples are valid. |
+| `validate-local.sh`            | Run the local PR-readiness gate: Rust, frontend, static guards, and boundary smoke. |
 
 ## Typical flows
 
@@ -31,6 +32,18 @@ bash scripts/doctor.sh
 
 ```bash
 bash scripts/setup_env.sh install
+```
+
+**Full local validation before a PR:**
+
+```bash
+bash scripts/validate-local.sh
+```
+
+For an already-bootstrapped frontend loop, skip the clean npm reinstall:
+
+```bash
+PCCX_SKIP_NPM_CI=1 bash scripts/validate-local.sh
 ```
 
 ## For AI agents
