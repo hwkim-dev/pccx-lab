@@ -240,6 +240,106 @@ fn mcp_read_only_tool_plan_example_keeps_descriptor_only_safety_boundary() {
 }
 
 #[test]
+fn mcp_permission_model_example_keeps_permission_boundary_non_executing() {
+    let value: serde_json::Value = parse_example("mcp-permission-model.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP permission model must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.mcp-permission-model.v0");
+    assert_eq!(root["modelState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let approval = root["approvalPolicy"]
+        .as_object()
+        .expect("approval policy must be an object");
+    assert_eq!(approval["userApprovalRequiredForPathInput"], true);
+    assert_eq!(approval["userApprovalRequiredForWriteAction"], true);
+    assert_eq!(approval["userApprovalRequiredForArtifactOutput"], true);
+    assert_eq!(approval["rawShellCommandsAllowed"], false);
+    assert_eq!(approval["silentFallbackAllowed"], false);
+    assert_eq!(approval["backgroundMutationAllowed"], false);
+
+    let profiles = root["permissionProfiles"]
+        .as_array()
+        .expect("permission profiles must be an array");
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "read_only_no_input"
+            && profile["requiresUserApproval"] == false
+            && profile["auditRequired"] == true
+    }));
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "read_only_approved_local_file"
+            && profile["requiresUserApproval"] == true
+            && profile["auditRequired"] == true
+    }));
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "write_action_pending_review"
+            && profile["profileState"] == "deferred"
+            && profile["allowedCommandKinds"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+    }));
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "arbitrary-shell-command",
+        "public-push",
+        "release-or-tag",
+        "repository-write-back",
+        "artifact-write",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let audit = root["auditPolicy"]
+        .as_object()
+        .expect("audit policy must be an object");
+    assert_eq!(audit["auditRequiredForAllowedProfiles"], true);
+    assert_eq!(audit["redactionRequired"], true);
+    assert_eq!(audit["pathEchoAllowed"], false);
+    assert_eq!(audit["stdoutCaptureAllowed"], false);
+    assert_eq!(audit["stderrCaptureAllowed"], false);
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["mcpServerImplemented"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}
+
+#[test]
 fn mcp_audit_event_example_keeps_redacted_read_only_boundary() {
     let value: serde_json::Value = parse_example("mcp-audit-event.example.json");
     let root = value

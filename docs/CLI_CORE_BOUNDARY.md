@@ -27,6 +27,7 @@ separate workflow logic island.
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
 | `docs/examples/mcp-read-only-tool-plan.example.json` | planned boundary map | Checked future MCP/tool adapter plan over fixed CLI/core commands; no runtime is implemented. |
+| `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
@@ -60,6 +61,7 @@ aligned.
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 
@@ -420,6 +422,35 @@ explicit approval, command arguments stay structured, and blocked actions
 include public push, release/tag control, hidden background changes,
 arbitrary shell commands, provider calls, network calls, hardware probes,
 runtime launch, model load, and telemetry upload.
+
+## MCP permission model boundary
+
+[`docs/examples/mcp-permission-model.example.json`](examples/mcp-permission-model.example.json)
+defines the checked permission-profile shape for a future MCP/tool
+adapter. It is descriptor-only and does not add a permission runtime,
+MCP server, MCP client, command executor, repository write path, or GUI
+automation path.
+
+The fixture separates three permission profiles:
+
+- `read_only_no_input` for fixed CLI/core status and descriptor commands
+  that require no user path input.
+- `read_only_approved_local_file` for read-only validators that require
+  explicit user approval for a local input reference.
+- `write_action_pending_review` for report generation, repository
+  mutation, and other write-capable actions that remain deferred until a
+  separate reviewed boundary exists.
+
+The default decision for write actions is blocked. Raw shell commands,
+silent fallback, background mutation, public push, release/tag control,
+artifact writes, provider calls, network calls, hardware probes, KV260
+access, FPGA repo access, runtime launch, model load, and telemetry
+upload are explicitly blocked in this model.
+
+The audit policy is still a planned shape. It requires future allowed
+profiles to produce redacted audit metadata, but this fixture does not
+create an audit log file, capture stdout or stderr, echo private paths,
+or execute any command.
 
 ## MCP audit event boundary
 

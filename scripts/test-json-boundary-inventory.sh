@@ -126,6 +126,7 @@ run_case \
     "[lab-status] inventory ok" \
     "[launcher-diagnostics-handoff] inventory ok" \
     "[mcp-read-only-tool-plan] inventory ok" \
+    "[mcp-permission-model] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[plugin-boundary-plan] inventory ok"
 

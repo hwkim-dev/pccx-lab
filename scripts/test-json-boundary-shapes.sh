@@ -118,6 +118,7 @@ run_case \
     "[lab-status] shape ok" \
     "[launcher-diagnostics-handoff] shape ok" \
     "[mcp-read-only-tool-plan] shape ok" \
+    "[mcp-permission-model] shape ok" \
     "[mcp-audit-event] shape ok" \
     "[plugin-boundary-plan] shape ok"
 
@@ -192,6 +193,14 @@ run_case \
     "docs/examples/launcher-device-session-status.example.json" \
     "[launcher-device-session-status]" \
     "missing required field $.safetyFlags"
+
+run_case \
+    "mcp permission profiles missing" \
+    "$(stage_fixture mcp-permission-profiles-missing)" \
+    fail \
+    "docs/examples/mcp-permission-model.example.json" \
+    "[mcp-permission-model]" \
+    "missing required field $.permissionProfiles"
 
 if [ "$FAILURES" -eq 0 ]; then
     INFO "JSON boundary shape fixture tests passed"

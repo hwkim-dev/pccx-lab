@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "pccx.lab.mcp-permission-model.v0",
+  "tool": "pccx-lab",
+  "modelId": "mcp-cli-core-permission-boundary",
+  "modelState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "approvalPolicy": {
+    "state": "planned",
+    "userApprovalRequiredForPathInput": true,
+    "userApprovalRequiredForWriteAction": true,
+    "userApprovalRequiredForArtifactOutput": true,
+    "rawShellCommandsAllowed": false,
+    "silentFallbackAllowed": false,
+    "backgroundMutationAllowed": false
+  },
+  "actionClasses": [],
+  "blockedActions": [
+    "arbitrary-shell-command"
+  ],
+  "auditPolicy": {
+    "state": "planned",
+    "eventSchema": "pccx.lab.mcp-audit-event.v0",
+    "auditRequiredForAllowedProfiles": true,
+    "redactionRequired": true,
+    "pathEchoAllowed": false,
+    "stdoutCaptureAllowed": false,
+    "stderrCaptureAllowed": false
+  },
+  "safetyFlags": {
+    "dataOnly": true,
+    "descriptorOnly": true,
+    "readOnly": true,
+    "mcpRuntimeImplemented": false,
+    "mcpServerImplemented": false,
+    "commandExecution": false,
+    "shellExecution": false,
+    "runtimeExecution": false,
+    "networkCalls": false,
+    "providerCalls": false,
+    "hardwareAccess": false,
+    "kv260Access": false,
+    "fpgaRepoAccess": false,
+    "modelExecution": false,
+    "modelWeightsIncluded": false,
+    "privatePathsIncluded": false,
+    "secretsIncluded": false,
+    "tokensIncluded": false,
+    "telemetry": false,
+    "writeBack": false,
+    "writesArtifacts": false,
+    "publicPush": false,
+    "releaseOrTag": false,
+    "stableApiAbiClaim": false
+  },
+  "limitations": [
+    "Negative fixture missing permissionProfiles."
+  ],
+  "issueRefs": [
+    "pccxai/pccx-lab#22"
+  ]
+}
