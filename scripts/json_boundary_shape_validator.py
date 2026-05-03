@@ -1559,6 +1559,191 @@ def validate_plugin_boundary_plan(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_dry_run_flow(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-dry-run-flow.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "flowId",
+            "flowState",
+            "pluginRuntimeState",
+            "loaderState",
+            "defaultMode",
+            "hostMode",
+            "automationPath",
+        ],
+    )
+    if root["flowState"] != "dry_run_contract":
+        raise ShapeError("unexpected value at $.flowState: expected dry_run_contract")
+    if root["pluginRuntimeState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.pluginRuntimeState: expected not_implemented")
+    if root["loaderState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.loaderState: expected not_implemented")
+    if root["defaultMode"] != "disabled":
+        raise ShapeError("unexpected value at $.defaultMode: expected disabled")
+    if root["hostMode"] != "cli_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_first_gui_second")
+
+    refs = require_object_array(
+        require_field(root, "$", "entryBoundaryRefs"),
+        "$.entryBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(
+            ref,
+            "$.entryBoundaryRefs[]",
+            ["refId", "schemaVersion", "examplePath", "state"],
+        )
+
+    sample = expect_object(require_field(root, "$", "samplePluginRef"), "$.samplePluginRef")
+    require_string_fields(sample, "$.samplePluginRef", ["pluginId", "manifestState", "entryKind"])
+    require_bool_fields(
+        sample,
+        "$.samplePluginRef",
+        ["codeLoaded", "packageInstalled", "dynamicLibrariesLoaded"],
+    )
+    for field in ["codeLoaded", "packageInstalled", "dynamicLibrariesLoaded"]:
+        if sample[field] is not False:
+            raise ShapeError(f"unexpected value at $.samplePluginRef.{field}: expected false")
+
+    steps = require_object_array(
+        require_field(root, "$", "flowSteps"),
+        "$.flowSteps",
+        min_items=1,
+    )
+    seen_orders = set()
+    for step in steps:
+        path = "$.flowSteps[]"
+        require_string_fields(
+            step,
+            path,
+            [
+                "stepId",
+                "toolId",
+                "commandKind",
+                "inputReferenceKind",
+                "expectedOutputBoundary",
+                "reportContribution",
+                "sideEffectPolicy",
+                "auditEvent",
+            ],
+        )
+        order = expect_integer(require_field(step, path, "order"), child(path, "order"))
+        if order in seen_orders:
+            raise ShapeError(f"duplicate value at {child(path, 'order')}: {order}")
+        seen_orders.add(order)
+        if expect_bool(require_field(step, path, "approvalRequired"), child(path, "approvalRequired")) is not True:
+            raise ShapeError("unexpected value at $.flowSteps[].approvalRequired: expected true")
+        require_string_array(
+            require_field(step, path, "fixedArgsPreview"),
+            child(path, "fixedArgsPreview"),
+            min_items=1,
+        )
+        require_bool_fields(step, path, ["artifactWrite", "repositoryMutation"])
+        for field in ["artifactWrite", "repositoryMutation"]:
+            if step[field] is not False:
+                raise ShapeError(f"unexpected value at $.flowSteps[].{field}: expected false")
+
+    output = expect_object(require_field(root, "$", "outputPrototype"), "$.outputPrototype")
+    require_string_fields(output, "$.outputPrototype", ["outputState", "outputFormat", "outputPolicy"])
+    if output["outputState"] != "summary_only_fixture":
+        raise ShapeError("unexpected value at $.outputPrototype.outputState: expected summary_only_fixture")
+    require_bool_fields(
+        output,
+        "$.outputPrototype",
+        [
+            "trackedFileMutation",
+            "artifactWrite",
+            "pathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "privatePathsIncluded",
+        ],
+    )
+    for field in [
+        "trackedFileMutation",
+        "artifactWrite",
+        "pathEchoAllowed",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogIncluded",
+        "privatePathsIncluded",
+    ]:
+        if output[field] is not False:
+            raise ShapeError(f"unexpected value at $.outputPrototype.{field}: expected false")
+
+    validation = expect_object(require_field(root, "$", "validationPolicy"), "$.validationPolicy")
+    require_string_fields(validation, "$.validationPolicy", ["state", "noMutationCheck", "reviewRule"])
+    true_validation_flags = ["localInputRequiresApproval", "manifestApprovalRequired"]
+    false_validation_flags = [
+        "commandExecutionByFixture",
+        "trackedFileMutationAllowed",
+        "artifactWriteAllowed",
+        "pluginCodeLoadAllowed",
+    ]
+    require_bool_fields(
+        validation,
+        "$.validationPolicy",
+        true_validation_flags + false_validation_flags,
+    )
+    for flag in true_validation_flags:
+        if validation[flag] is not True:
+            raise ShapeError(f"unexpected value at $.validationPolicy.{flag}: expected true")
+    for flag in false_validation_flags:
+        if validation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.validationPolicy.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "blockedActions"), "$.blockedActions", min_items=1)
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "dryRunOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "sandboxImplemented",
+        "permissionExecutorImplemented",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -1575,6 +1760,7 @@ SPECS = [
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
+    BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
 ]
 
 

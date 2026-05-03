@@ -31,6 +31,7 @@ separate workflow logic island.
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
+| `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
@@ -67,6 +68,7 @@ aligned.
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
 
 ## Current cross-repo direction
@@ -519,6 +521,28 @@ The host API plan keeps plugin-facing data behind existing CLI/core
 contracts: lab status, workflow descriptors, diagnostics envelopes, and
 workflow result summaries. The GUI may render manifest and capability
 metadata only after CLI/core contracts exist. No stable plugin ABI is promised.
+
+## plugin dry-run flow boundary
+
+[`docs/examples/plugin-dry-run-flow.example.json`](examples/plugin-dry-run-flow.example.json)
+defines a checked dry-run contract for a future plugin flow over
+approved summaries. It links the plugin boundary plan and permission
+model, then lists the planned fixed-argument previews for manifest
+review, capability review, diagnostics summary, and report-panel preview.
+
+The output prototype is summary-only. It does not include private paths,
+full stdout, full stderr, raw logs, secrets, tokens, model paths, or
+generated artifacts. The validation policy requires future flow checks to
+prove tracked files remain unchanged and to require approval before
+local manifest, diagnostics, or workflow-result inputs are referenced.
+
+This fixture is not a plugin loader, runtime, sandbox, permission
+executor, command executor, or report writer. It does not load plugin
+code, install packages, load dynamic libraries, execute commands, write
+artifacts, mutate repositories, call providers, use the network, touch
+hardware, access KV260, access FPGA repos, launch runtime code, load
+models, upload telemetry, push publicly, control releases/tags, or
+write reports. No stable plugin ABI is promised.
 
 ## plugin permission model boundary
 

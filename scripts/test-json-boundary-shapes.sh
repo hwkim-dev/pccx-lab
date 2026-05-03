@@ -122,7 +122,8 @@ run_case \
     "[mcp-permission-model] shape ok" \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
-    "[plugin-boundary-plan] shape ok"
+    "[plugin-boundary-plan] shape ok" \
+    "[plugin-dry-run-flow] shape ok"
 
 run_case \
     "missing status schema version" \

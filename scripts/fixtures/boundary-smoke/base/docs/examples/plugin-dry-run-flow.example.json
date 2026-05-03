@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "pccx.lab.plugin-dry-run-flow.v0",
+  "tool": "pccx-lab",
+  "flowId": "plugin-cli-core-dry-run-flow",
+  "flowState": "dry_run_contract",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "defaultMode": "disabled",
+  "hostMode": "cli_first_gui_second",
+  "automationPath": "cli-core-first-gui-independent",
+  "entryBoundaryRefs": [
+    {
+      "refId": "plugin_boundary_plan",
+      "schemaVersion": "pccx.lab.plugin-boundary-plan.v0",
+      "examplePath": "docs/examples/plugin-boundary-plan.example.json",
+      "state": "available_as_data"
+    }
+  ],
+  "samplePluginRef": {
+    "pluginId": "example.diagnostics.summary",
+    "manifestState": "example_manifest_only",
+    "entryKind": "manifest_only",
+    "codeLoaded": false,
+    "packageInstalled": false,
+    "dynamicLibrariesLoaded": false
+  },
+  "flowSteps": [
+    {
+      "stepId": "review_manifest",
+      "order": 1,
+      "toolId": "plugin.manifest.review",
+      "commandKind": "planned-cli-fixed-args",
+      "fixedArgsPreview": [
+        "plugin-manifest",
+        "validate",
+        "--file",
+        "<approved-manifest-json>",
+        "--format",
+        "json"
+      ],
+      "approvalRequired": true,
+      "inputReferenceKind": "approved-plugin-manifest-json",
+      "expectedOutputBoundary": "pccx.lab.plugin.validation-summary.v0",
+      "reportContribution": "bounded manifest validation summary",
+      "sideEffectPolicy": "read-only manifest validation preview",
+      "auditEvent": "plugin-dry-run.manifest.review",
+      "artifactWrite": false,
+      "repositoryMutation": false
+    }
+  ],
+  "outputPrototype": {
+    "outputState": "summary_only_fixture",
+    "outputFormat": "bounded_json_summary",
+    "outputPolicy": "Future output is assembled from bounded approved summaries only.",
+    "trackedFileMutation": false,
+    "artifactWrite": false,
+    "pathEchoAllowed": false,
+    "stdoutIncluded": false,
+    "stderrIncluded": false,
+    "rawLogIncluded": false,
+    "privatePathsIncluded": false
+  },
+  "validationPolicy": {
+    "state": "planned",
+    "commandExecutionByFixture": false,
+    "trackedFileMutationAllowed": false,
+    "artifactWriteAllowed": false,
+    "pluginCodeLoadAllowed": false,
+    "localInputRequiresApproval": true,
+    "manifestApprovalRequired": true,
+    "noMutationCheck": "Future smoke should verify tracked files are unchanged before and after a dry-run plugin flow.",
+    "reviewRule": "Future output must remain summary-only and exclude private paths, full stdout, full stderr, secrets, tokens, model paths, and generated artifacts."
+  },
+  "blockedActions": [
+    "dynamic-code-load",
+    "untrusted-execution",
+    "plugin-package-install",
+    "marketplace-flow",
+    "arbitrary-shell-command",
+    "artifact-write",
+    "repository-write-back"
+  ],
+  "safetyFlags": {
+    "dataOnly": true,
+    "descriptorOnly": true,
+    "readOnly": true,
+    "dryRunOnly": true,
+    "pluginRuntimeImplemented": false,
+    "pluginLoaderImplemented": false,
+    "pluginCodeLoaded": false,
+    "dynamicLibrariesLoaded": false,
+    "sandboxImplemented": false,
+    "permissionExecutorImplemented": false,
+    "stablePluginAbiPromised": false,
+    "marketplaceFlow": false,
+    "packageDistribution": false,
+    "commandExecution": false,
+    "shellExecution": false,
+    "runtimeExecution": false,
+    "networkCalls": false,
+    "providerCalls": false,
+    "launcherExecution": false,
+    "editorExecution": false,
+    "hardwareAccess": false,
+    "kv260Access": false,
+    "fpgaRepoAccess": false,
+    "modelExecution": false,
+    "privatePathsIncluded": false,
+    "secretsIncluded": false,
+    "tokensIncluded": false,
+    "telemetry": false,
+    "writeBack": false,
+    "writesArtifacts": false,
+    "publicPush": false,
+    "releaseOrTag": false
+  },
+  "limitations": [
+    "This fixture is only a boundary-smoke copy of the plugin dry-run flow example.",
+    "No plugin loader, runtime, command execution, artifact write, or repository mutation is implemented."
+  ],
+  "issueRefs": [
+    "pccxai/pccx-lab#21"
+  ]
+}

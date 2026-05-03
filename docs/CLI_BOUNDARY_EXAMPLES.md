@@ -250,6 +250,40 @@ any plugin loader. It does not load plugin code, execute untrusted code,
 define a package distribution flow, or grant approval to write files or
 mutate repositories.
 
+## Plugin Dry-Run Flow
+
+Full fixture:
+[`plugin-dry-run-flow.example.json`](examples/plugin-dry-run-flow.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-dry-run-flow.v0",
+  "flowState": "dry_run_contract",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "samplePluginRef": {
+    "entryKind": "manifest_only",
+    "codeLoaded": false
+  },
+  "outputPrototype": {
+    "outputState": "summary_only_fixture",
+    "artifactWrite": false
+  },
+  "safetyFlags": {
+    "dryRunOnly": true,
+    "pluginLoaderImplemented": false,
+    "commandExecution": false
+  }
+}
+```
+
+Use this fixture to review how future approved plugin manifest,
+capability, diagnostics, and report-panel summaries can compose into a
+bounded dry-run flow. It does not load plugin code, install packages,
+execute commands, implement a sandbox, write reports, mutate
+repositories, call providers, use the network, touch hardware, or
+control releases/tags. No stable plugin ABI is promised.
+
 ## Plugin Permission Model
 
 Full fixture:

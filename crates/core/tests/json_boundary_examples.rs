@@ -554,6 +554,124 @@ fn plugin_boundary_plan_example_keeps_manifest_only_safety_boundary() {
 }
 
 #[test]
+fn plugin_dry_run_flow_example_keeps_loader_disabled_boundary() {
+    let value: serde_json::Value = parse_example("plugin-dry-run-flow.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin dry-run flow must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-dry-run-flow.v0");
+    assert_eq!(root["flowState"], "dry_run_contract");
+    assert_eq!(root["pluginRuntimeState"], "not_implemented");
+    assert_eq!(root["loaderState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+    assert_eq!(root["hostMode"], "cli_first_gui_second");
+
+    let sample = root["samplePluginRef"]
+        .as_object()
+        .expect("sample plugin ref must be an object");
+    assert_eq!(sample["manifestState"], "example_manifest_only");
+    assert_eq!(sample["entryKind"], "manifest_only");
+    assert_eq!(sample["codeLoaded"], false);
+    assert_eq!(sample["packageInstalled"], false);
+    assert_eq!(sample["dynamicLibrariesLoaded"], false);
+
+    let steps = root["flowSteps"]
+        .as_array()
+        .expect("flow steps must be an array");
+    assert!(
+        steps.len() >= 4,
+        "plugin dry-run flow should cover manifest, capability, diagnostics, and report-panel review"
+    );
+    for step in steps {
+        assert_eq!(step["approvalRequired"], true);
+        assert!(step["fixedArgsPreview"].as_array().is_some());
+        assert_eq!(step["artifactWrite"], false);
+        assert_eq!(step["repositoryMutation"], false);
+    }
+
+    let output = root["outputPrototype"]
+        .as_object()
+        .expect("output prototype must be an object");
+    assert_eq!(output["outputState"], "summary_only_fixture");
+    assert_eq!(output["trackedFileMutation"], false);
+    assert_eq!(output["artifactWrite"], false);
+    assert_eq!(output["pathEchoAllowed"], false);
+    assert_eq!(output["stdoutIncluded"], false);
+    assert_eq!(output["stderrIncluded"], false);
+    assert_eq!(output["rawLogIncluded"], false);
+    assert_eq!(output["privatePathsIncluded"], false);
+
+    let validation = root["validationPolicy"]
+        .as_object()
+        .expect("validation policy must be an object");
+    assert_eq!(validation["commandExecutionByFixture"], false);
+    assert_eq!(validation["trackedFileMutationAllowed"], false);
+    assert_eq!(validation["artifactWriteAllowed"], false);
+    assert_eq!(validation["pluginCodeLoadAllowed"], false);
+    assert_eq!(validation["localInputRequiresApproval"], true);
+    assert_eq!(validation["manifestApprovalRequired"], true);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "arbitrary-shell-command",
+        "repository-write-back",
+        "artifact-write",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["dryRunOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["sandboxImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}
+
+#[test]
 fn plugin_permission_model_example_keeps_permission_boundary_non_executing() {
     let value: serde_json::Value = parse_example("plugin-permission-model.example.json");
     let root = value
