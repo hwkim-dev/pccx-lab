@@ -178,6 +178,43 @@ planning. It does not implement an MCP runtime and does not grant
 approval to execute writes, shell commands, provider calls, hardware
 access, launcher/editor bridges, release/tag control, or public pushes.
 
+## MCP Read-Only Analysis Flow
+
+Full fixture:
+[`mcp-read-only-analysis-flow.example.json`](examples/mcp-read-only-analysis-flow.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-read-only-analysis-flow.v0",
+  "flowState": "dry_run_contract",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "flowSteps": [
+    {
+      "toolId": "lab.status.read",
+      "fixedArgsPreview": [
+        "status",
+        "--format",
+        "json"
+      ],
+      "approvalRequired": false,
+      "sideEffectPolicy": "read-only metadata"
+    }
+  ],
+  "reportPrototype": {
+    "reportState": "summary_only_fixture",
+    "trackedFileMutation": false,
+    "artifactWrite": false
+  }
+}
+```
+
+Use this fixture to review how a future read-only tool adapter can
+compose existing CLI/core summaries into a bounded report. It does not
+start an MCP runtime, execute commands, read local files, write reports,
+mutate repositories, call providers, use the network, touch hardware, or
+control release/tag actions.
+
 ## Plugin Boundary Plan
 
 Full fixture:

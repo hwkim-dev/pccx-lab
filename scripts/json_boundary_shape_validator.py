@@ -683,6 +683,180 @@ def validate_mcp_read_only_tool_plan(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_read_only_analysis_flow(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-read-only-analysis-flow.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "flowId",
+            "flowState",
+            "adapterState",
+            "defaultMode",
+            "automationPath",
+        ],
+    )
+    if root["flowState"] != "dry_run_contract":
+        raise ShapeError("unexpected value at $.flowState: expected dry_run_contract")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+
+    refs = require_object_array(
+        require_field(root, "$", "entryBoundaryRefs"),
+        "$.entryBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(
+            ref,
+            "$.entryBoundaryRefs[]",
+            ["refId", "schemaVersion", "examplePath", "state"],
+        )
+
+    steps = require_object_array(
+        require_field(root, "$", "flowSteps"),
+        "$.flowSteps",
+        min_items=1,
+    )
+    seen_orders = set()
+    for step in steps:
+        path = "$.flowSteps[]"
+        require_string_fields(
+            step,
+            path,
+            [
+                "stepId",
+                "toolId",
+                "commandKind",
+                "inputReferenceKind",
+                "expectedOutputBoundary",
+                "reportContribution",
+                "sideEffectPolicy",
+                "auditEvent",
+            ],
+        )
+        order = expect_integer(require_field(step, path, "order"), child(path, "order"))
+        if order in seen_orders:
+            raise ShapeError(f"duplicate value at {child(path, 'order')}: {order}")
+        seen_orders.add(order)
+        if expect_bool(require_field(step, path, "approvalRequired"), child(path, "approvalRequired")) is not False:
+            raise ShapeError("unexpected value at $.flowSteps[].approvalRequired: expected false")
+        require_string_array(
+            require_field(step, path, "fixedArgsPreview"),
+            child(path, "fixedArgsPreview"),
+            min_items=1,
+        )
+
+    report = expect_object(
+        require_field(root, "$", "reportPrototype"),
+        "$.reportPrototype",
+    )
+    require_string_fields(
+        report,
+        "$.reportPrototype",
+        ["reportState", "reportFormat", "outputPolicy"],
+    )
+    if report["reportState"] != "summary_only_fixture":
+        raise ShapeError(
+            "unexpected value at $.reportPrototype.reportState: expected summary_only_fixture"
+        )
+    require_bool_fields(
+        report,
+        "$.reportPrototype",
+        [
+            "trackedFileMutation",
+            "artifactWrite",
+            "pathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "privatePathsIncluded",
+        ],
+    )
+    for field in [
+        "trackedFileMutation",
+        "artifactWrite",
+        "pathEchoAllowed",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogIncluded",
+        "privatePathsIncluded",
+    ]:
+        if report[field] is not False:
+            raise ShapeError(f"unexpected value at $.reportPrototype.{field}: expected false")
+
+    validation = expect_object(
+        require_field(root, "$", "validationPolicy"),
+        "$.validationPolicy",
+    )
+    require_string_fields(validation, "$.validationPolicy", ["state", "noMutationCheck", "reportReview"])
+    true_validation_flags = ["approvedInputRequiredForPathSteps"]
+    false_validation_flags = [
+        "commandExecutionByFixture",
+        "trackedFileMutationAllowed",
+        "artifactWriteAllowed",
+    ]
+    require_bool_fields(
+        validation,
+        "$.validationPolicy",
+        true_validation_flags + false_validation_flags,
+    )
+    for flag in true_validation_flags:
+        if validation[flag] is not True:
+            raise ShapeError(f"unexpected value at $.validationPolicy.{flag}: expected true")
+    for flag in false_validation_flags:
+        if validation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.validationPolicy.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "blockedActions"), "$.blockedActions", min_items=1)
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "flowPrototypeOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_permission_model(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-permission-model.v0")
@@ -1396,6 +1570,7 @@ SPECS = [
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
+    BoundarySpec("mcp-read-only-analysis-flow", "docs/examples/mcp-read-only-analysis-flow.example.json", validate_mcp_read_only_analysis_flow),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),

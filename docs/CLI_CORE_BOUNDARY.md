@@ -27,6 +27,7 @@ separate workflow logic island.
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
 | `docs/examples/mcp-read-only-tool-plan.example.json` | planned boundary map | Checked future MCP/tool adapter plan over fixed CLI/core commands; no runtime is implemented. |
+| `docs/examples/mcp-read-only-analysis-flow.example.json` | planned flow contract | Checked dry-run analysis-flow contract over existing CLI/core summaries; no runtime or command executor is implemented. |
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
@@ -62,6 +63,7 @@ aligned.
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-read-only-analysis-flow` | `docs/examples/mcp-read-only-analysis-flow.example.json` | Reader only; planned dry-run read-only analysis-flow contract over existing CLI/core summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
@@ -424,6 +426,28 @@ explicit approval, command arguments stay structured, and blocked actions
 include public push, release/tag control, hidden background changes,
 arbitrary shell commands, provider calls, network calls, hardware probes,
 runtime launch, model load, and telemetry upload.
+
+## MCP read-only analysis flow
+
+[`docs/examples/mcp-read-only-analysis-flow.example.json`](examples/mcp-read-only-analysis-flow.example.json)
+defines a checked dry-run flow contract that composes the existing
+CLI/core summary commands into a future read-only analysis report path.
+It links the read-only tool plan, permission model, and audit-event
+shape, then lists the fixed command previews a future adapter may use
+for status, workflow descriptors, workflow proposals, and workflow
+result summaries.
+
+The report prototype is summary-only. It does not include private paths,
+full stdout, full stderr, raw logs, secrets, tokens, model paths, or
+generated artifacts. The validation policy requires a future smoke check
+to prove tracked files remain unchanged before and after any read-only
+flow.
+
+This fixture is not an MCP runtime, server, client, command executor, or
+report writer. It does not execute commands, read local file inputs,
+write artifacts, mutate repositories, call providers, use the network,
+touch hardware, access KV260, access FPGA repos, launch runtime code,
+load models, upload telemetry, push publicly, or control releases/tags.
 
 ## MCP permission model boundary
 
