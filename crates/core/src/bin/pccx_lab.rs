@@ -29,6 +29,10 @@
 ///       Validate a launcher diagnostics handoff JSON file and emit a
 ///       read-only summary. Does not execute launcher or pccx-lab flows.
 ///
+///   device-session-status validate --file <path> [--format json]
+///       Validate a launcher device/session status JSON file and emit a
+///       read-only summary. Does not execute launcher, pccx-lab, or hardware flows.
+///
 ///       See docs/CLI_CORE_BOUNDARY.md and docs/examples/run-status.example.json.
 ///
 /// Exit codes
@@ -158,6 +162,7 @@ fn usage() -> ! {
     eprintln!("  run-approved-workflow <proposal-id> [--format json]");
     eprintln!("                                      blocked by default; fixed allowlist only");
     eprintln!("  diagnostics-handoff validate --file <path> [--format json]");
+    eprintln!("  device-session-status validate --file <path> [--format json]");
     process::exit(2);
 }
 
@@ -196,6 +201,70 @@ fn diagnostics_handoff_error(message: &str, exit_code: i32) -> ! {
         pccx_core::diagnostics_handoff_error_json_pretty(message)
     );
     process::exit(exit_code);
+}
+
+fn device_session_status_usage() -> ! {
+    eprintln!("usage: pccx-lab device-session-status validate --file <path> [--format json]");
+    process::exit(2);
+}
+
+fn device_session_status_error(message: &str, exit_code: i32) -> ! {
+    eprintln!(
+        "{}",
+        pccx_core::device_session_status_error_json_pretty(message)
+    );
+    process::exit(exit_code);
+}
+
+fn handle_device_session_status(args: &[String]) -> ! {
+    if args.first().map(String::as_str) != Some("validate") {
+        device_session_status_usage();
+    }
+
+    let mut file: Option<&str> = None;
+    let mut format = "json";
+    let mut index = 1usize;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--file" => {
+                index += 1;
+                file = args.get(index).map(String::as_str);
+                if file.is_none() {
+                    device_session_status_usage();
+                }
+            }
+            "--format" => {
+                index += 1;
+                format = args
+                    .get(index)
+                    .map(String::as_str)
+                    .unwrap_or_else(|| device_session_status_usage());
+            }
+            _ => device_session_status_usage(),
+        }
+        index += 1;
+    }
+
+    if format != "json" {
+        device_session_status_error("unsupported format; only json is supported", 2);
+    }
+
+    let Some(path) = file else {
+        device_session_status_usage();
+    };
+
+    let text = std::fs::read_to_string(path).unwrap_or_else(|_| {
+        device_session_status_error("cannot read device/session status file", 2)
+    });
+    let summary = pccx_core::validate_device_session_status_json(&text)
+        .unwrap_or_else(|err| device_session_status_error(&err.to_string(), 1));
+    let json =
+        pccx_core::device_session_status_summary_json_pretty(&summary).unwrap_or_else(|_| {
+            pccx_core::device_session_status_error_json_pretty("cannot render validation summary")
+        });
+    println!("{json}");
+    process::exit(0);
 }
 
 fn handle_diagnostics_handoff(args: &[String]) -> ! {
@@ -486,6 +555,7 @@ fn main() {
         }
         "run-approved-workflow" => handle_run_approved_workflow(&args[1..]),
         "diagnostics-handoff" => handle_diagnostics_handoff(&args[1..]),
+        "device-session-status" => handle_device_session_status(&args[1..]),
         "--help" | "-h" | "help" => {
             eprintln!("pccx-lab — NPU profiler CLI boundary");
             eprintln!();
@@ -501,6 +571,7 @@ fn main() {
                 "                                      blocked by default; fixed allowlist only"
             );
             eprintln!("  diagnostics-handoff validate --file <path> [--format json]");
+            eprintln!("  device-session-status validate --file <path> [--format json]");
             eprintln!();
             eprintln!("exit codes: 0 clean  1 diagnostics found  2 I/O error");
             process::exit(0);

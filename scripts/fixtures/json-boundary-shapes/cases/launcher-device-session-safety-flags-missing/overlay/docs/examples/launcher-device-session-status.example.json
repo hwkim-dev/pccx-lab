@@ -1,0 +1,74 @@
+{
+  "authenticationState": "not_configured",
+  "connectionLaunchFlow": [
+    {
+      "launcherAction": "Render deterministic local status rows.",
+      "order": 1,
+      "sideEffectPolicy": "local_render_only",
+      "stage": "status_panel",
+      "state": "placeholder",
+      "statusPanelUpdate": "Show connection, model load, session, diagnostics, and readiness rows.",
+      "stepId": "open_status_panel",
+      "userAction": "Open the launcher status panel."
+    }
+  ],
+  "connectionState": "not_configured",
+  "diagnosticsState": "available_as_placeholder",
+  "discoveryPaths": [
+    {
+      "pathId": "usb_serial_hint",
+      "state": "planned",
+      "suggestedUserAction": "Connect the KV260 carrier-board USB path and rerun the status panel check.",
+      "summary": "Read-only USB and serial enumeration can provide a local device hint.",
+      "transport": "usb_serial"
+    }
+  ],
+  "discoveryState": "not_started",
+  "errorTaxonomy": [
+    {
+      "claimBoundary": "No runtime or performance claim follows from discovery status.",
+      "errorId": "kv260_device_not_detected",
+      "severity": "blocked",
+      "stage": "discovery",
+      "state": "planned",
+      "suggestedRemediation": "Check power, cabling, and the selected discovery path, then rerun a read-only status refresh.",
+      "userMessage": "No KV260 target is visible to the configured discovery path."
+    }
+  ],
+  "fixtureVersion": "device-session-status.gemma3n-e4b-kv260.2026-05-03",
+  "issueRefs": [
+    "pccxai/pccx-lab#50"
+  ],
+  "lastUpdatedSource": "pccx_launcher_issues_2_10_boundary_2026-05-03",
+  "limitations": [
+    "Data-only status panel fixture; no runtime is executed."
+  ],
+  "logStreamState": "not_started",
+  "modelLoadState": "not_loaded",
+  "pccxLabDiagnostics": {
+    "automaticUpload": false,
+    "executesPccxLab": false,
+    "lowerBoundary": "pccx-lab CLI/core",
+    "mode": "read_only_handoff",
+    "state": "planned",
+    "writeBack": false
+  },
+  "readinessState": "blocked",
+  "runtimeState": "planned",
+  "schemaVersion": "pccx.deviceSessionStatus.v0",
+  "sessionState": "inactive",
+  "statusAnswer": "device_session_status_placeholder_blocked",
+  "statusId": "device_session_status_gemma3n_e4b_kv260_placeholder",
+  "statusPanel": [
+    {
+      "label": "device connection",
+      "nextAction": "Run a read-only status check after a target is explicitly configured.",
+      "rowId": "device_connection",
+      "state": "not_configured",
+      "summary": "No KV260 target connection is configured by this fixture."
+    }
+  ],
+  "targetBoard": "xilinx_kria_kv260",
+  "targetDevice": "kv260",
+  "targetModel": "gemma3n-e4b"
+}

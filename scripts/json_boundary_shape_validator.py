@@ -418,6 +418,147 @@ def validate_launcher_handoff(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs")
 
 
+def validate_launcher_device_session_status(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.deviceSessionStatus.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "statusId",
+            "fixtureVersion",
+            "lastUpdatedSource",
+            "targetDevice",
+            "targetBoard",
+            "targetModel",
+            "statusAnswer",
+            "connectionState",
+            "discoveryState",
+            "authenticationState",
+            "runtimeState",
+            "modelLoadState",
+            "sessionState",
+            "logStreamState",
+            "diagnosticsState",
+            "readinessState",
+        ],
+    )
+
+    status_panel = require_object_array(
+        require_field(root, "$", "statusPanel"), "$.statusPanel", min_items=1
+    )
+    for row in status_panel:
+        require_string_fields(
+            row,
+            "$.statusPanel[]",
+            ["rowId", "label", "state", "summary", "nextAction"],
+        )
+
+    discovery_paths = require_object_array(
+        require_field(root, "$", "discoveryPaths"), "$.discoveryPaths", min_items=1
+    )
+    for path in discovery_paths:
+        require_string_fields(
+            path,
+            "$.discoveryPaths[]",
+            ["pathId", "transport", "state", "summary", "suggestedUserAction"],
+        )
+
+    flow_steps = require_object_array(
+        require_field(root, "$", "connectionLaunchFlow"),
+        "$.connectionLaunchFlow",
+        min_items=1,
+    )
+    for step in flow_steps:
+        expect_integer(require_field(step, "$.connectionLaunchFlow[]", "order"), "$.connectionLaunchFlow[].order")
+        require_string_fields(
+            step,
+            "$.connectionLaunchFlow[]",
+            [
+                "stepId",
+                "stage",
+                "state",
+                "userAction",
+                "launcherAction",
+                "statusPanelUpdate",
+                "sideEffectPolicy",
+            ],
+        )
+
+    errors = require_object_array(
+        require_field(root, "$", "errorTaxonomy"), "$.errorTaxonomy", min_items=1
+    )
+    for error in errors:
+        require_string_fields(
+            error,
+            "$.errorTaxonomy[]",
+            [
+                "errorId",
+                "stage",
+                "severity",
+                "state",
+                "userMessage",
+                "suggestedRemediation",
+                "claimBoundary",
+            ],
+        )
+
+    diagnostics = expect_object(
+        require_field(root, "$", "pccxLabDiagnostics"), "$.pccxLabDiagnostics"
+    )
+    require_string_fields(
+        diagnostics,
+        "$.pccxLabDiagnostics",
+        ["state", "mode", "lowerBoundary"],
+    )
+    require_bool_fields(
+        diagnostics,
+        "$.pccxLabDiagnostics",
+        ["automaticUpload", "executesPccxLab", "writeBack"],
+    )
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    require_bool_fields(
+        safety,
+        "$.safetyFlags",
+        [
+            "authenticationAttempt",
+            "automaticUpload",
+            "dataOnly",
+            "deterministic",
+            "executesPccxLab",
+            "executesSystemverilogIde",
+            "firmwareFlashing",
+            "generatedBlobsIncluded",
+            "hardwareDumpsIncluded",
+            "kv260Access",
+            "modelExecution",
+            "modelLoaded",
+            "modelWeightPathsIncluded",
+            "networkCalls",
+            "networkScan",
+            "opensSerialPort",
+            "packageInstallation",
+            "privatePathsIncluded",
+            "providerCalls",
+            "readOnly",
+            "runtimeExecution",
+            "secretsIncluded",
+            "serialWrites",
+            "sshExecution",
+            "stableApiAbiClaim",
+            "telemetry",
+            "tokensIncluded",
+            "touchesHardware",
+            "writeBack",
+            "writesArtifacts",
+        ],
+    )
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs")
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -427,6 +568,7 @@ SPECS = [
     BoundarySpec("workflow-results", "docs/examples/workflow-results.example.json", validate_workflow_results),
     BoundarySpec("workflow-runner-result", "docs/examples/workflow-runner-blocked.example.json", validate_workflow_runner_result),
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
+    BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
 ]
 
 

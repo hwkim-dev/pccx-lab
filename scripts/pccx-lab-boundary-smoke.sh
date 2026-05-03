@@ -75,6 +75,7 @@ INFO "  workflow-proposals    (proposal-only workflow previews)"
 INFO "  workflow-results      (summary-only result metadata)"
 INFO "  workflow-runner       (disabled-by-default allowlisted pilot)"
 INFO "  launcher-diagnostics-handoff (read-only launcher handoff reader)"
+INFO "  launcher-device-session-status (read-only launcher status reader)"
 INFO "  trace-discovery       (headless CI path)"
 INFO "  xsim-log-handoff      (pccx-FPGA verification loop)"
 
@@ -89,6 +90,7 @@ check_file "$REPO_ROOT/docs/examples/workflow-proposals.example.json"
 check_file "$REPO_ROOT/docs/examples/workflow-results.example.json"
 check_file "$REPO_ROOT/docs/examples/workflow-runner-blocked.example.json"
 check_file "$REPO_ROOT/docs/examples/launcher-diagnostics-handoff.example.json"
+check_file "$REPO_ROOT/docs/examples/launcher-device-session-status.example.json"
 
 echo
 INFO "CLI command source presence"
@@ -99,6 +101,7 @@ check_file "$REPO_ROOT/crates/core/src/workflows.rs"
 check_file "$REPO_ROOT/crates/core/src/proposals.rs"
 check_file "$REPO_ROOT/crates/core/src/results.rs"
 check_file "$REPO_ROOT/crates/core/src/runner.rs"
+check_file "$REPO_ROOT/crates/core/src/device_session_status.rs"
 
 echo
 INFO "fixture presence"

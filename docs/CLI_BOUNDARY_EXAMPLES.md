@@ -170,5 +170,35 @@ this summary contract.
   boundary exists.
 - Treat diagnostics handoff data as summaries, not as launcher runtime
   control.
+- Treat launcher device/session status as local status data, not as
+  proof that the target, runtime, model load, or log stream exists.
 - Keep future tool adapters descriptor-only until their safety boundary
   is reviewed.
+
+## Launcher Device/Session Status
+
+```bash
+pccx-lab device-session-status validate --file <path> --format json
+```
+
+Full fixture:
+[`launcher-device-session-status.example.json`](examples/launcher-device-session-status.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.deviceSessionStatus.v0",
+  "targetDevice": "kv260",
+  "connectionState": "not_configured",
+  "modelLoadState": "not_loaded",
+  "sessionState": "inactive",
+  "diagnosticsState": "available_as_placeholder",
+  "readinessState": "blocked"
+}
+```
+
+Use this for future evidence/status panels that need to show launcher
+device, model, session, diagnostics, and readiness state from a local
+artifact. The pccx-lab reader validates the shape and emits a bounded
+summary. It does not execute launcher commands, probe hardware, open
+serial ports, scan networks, authenticate, start runtime code, stream
+logs, upload telemetry, or write files.

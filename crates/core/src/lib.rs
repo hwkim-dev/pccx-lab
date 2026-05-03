@@ -10,6 +10,7 @@ pub mod bottleneck;
 pub mod chrome_trace;
 pub mod coverage;
 pub mod cycle_estimator;
+pub mod device_session_status;
 pub mod diagnostics_handoff;
 pub mod hw_model;
 pub mod isa_replay;
@@ -44,6 +45,12 @@ pub use coverage::{
     MergedCoverage,
 };
 pub use cycle_estimator::{CycleEstimator, TileOperation};
+pub use device_session_status::{
+    device_session_status_error_json_pretty, device_session_status_summary_json_pretty,
+    validate_device_session_status_json, DeviceSessionReadOnlyFlags, DeviceSessionStatusError,
+    DeviceSessionStatusSummary, DEVICE_SESSION_STATUS_VALIDATION_SCHEMA_VERSION,
+    LAUNCHER_DEVICE_SESSION_STATUS_SCHEMA_VERSION,
+};
 pub use diagnostics_handoff::{
     diagnostics_handoff_error_json_pretty, diagnostics_handoff_summary_json_pretty,
     validate_diagnostics_handoff_json, DescriptorRefs, DiagnosticsHandoffError,

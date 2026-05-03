@@ -173,3 +173,28 @@ fn launcher_handoff_example_validates_through_core_reader() {
     assert!(summary.read_only_flags.no_launcher_execution);
     assert!(summary.read_only_flags.no_pccx_lab_execution);
 }
+
+#[test]
+fn launcher_device_session_status_example_validates_through_core_reader() {
+    let text = read_example("launcher-device-session-status.example.json");
+    let summary = pccx_core::validate_device_session_status_json(&text)
+        .expect("launcher device/session status example must validate");
+
+    assert_eq!(
+        summary.schema_version,
+        pccx_core::DEVICE_SESSION_STATUS_VALIDATION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        summary.status_schema_version,
+        pccx_core::LAUNCHER_DEVICE_SESSION_STATUS_SCHEMA_VERSION
+    );
+    assert!(summary.valid);
+    assert_eq!(summary.target_device, "kv260");
+    assert_eq!(
+        summary.status_panel_rows["device_connection"],
+        "not_configured"
+    );
+    assert_eq!(summary.status_panel_rows["runtime_readiness"], "blocked");
+    assert!(summary.read_only_flags.no_runtime_execution);
+    assert!(summary.read_only_flags.no_pccx_lab_execution);
+}

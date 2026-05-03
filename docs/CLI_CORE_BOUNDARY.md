@@ -25,6 +25,7 @@ separate workflow logic island.
 | `pccx-lab run-approved-workflow <proposal-id> --format json` | disabled-by-default pilot | Fixed allowlisted runner pilot; blocked unless explicitly enabled. |
 | `pccx-lab analyze <file> --format json` | early scaffold | File-shape diagnostics only. |
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
+| `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -54,6 +55,7 @@ aligned.
 | `workflow-results` | `docs/examples/workflow-results.example.json` | `pccx-lab workflow-results --format json`; `pccx_core::results::workflow_result_summaries` | Shape validator, inventory test, Rust deserialize test |
 | `workflow-runner-result` | `docs/examples/workflow-runner-blocked.example.json` | `pccx-lab run-approved-workflow <proposal-id> --format json`; `pccx_core::runner::blocked_workflow_result` | Shape validator, inventory test, Rust deserialize test |
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
+| `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 
 ## Current cross-repo direction
 
@@ -347,6 +349,45 @@ The checked example is
 [`docs/examples/launcher-diagnostics-handoff.example.json`](examples/launcher-diagnostics-handoff.example.json).
 Fixture sync with pccx-llm-launcher is manual while this boundary remains
 pre-compatibility.
+
+## device-session-status command
+
+```
+pccx-lab device-session-status validate --file <path> [--format json]
+```
+
+`device-session-status validate` reads a local launcher device/session
+status JSON document and emits a bounded JSON validation summary. The
+summary does not echo the input path, so private local artifact paths
+are not copied into output.
+
+The command validates:
+
+- device connection, model load, session, diagnostics, and readiness
+  status-panel rows
+- planned discovery paths
+- ordered connection and launch flow steps
+- error taxonomy entries with user remediation and claim boundaries
+- read-only, no-hardware, no-serial, no-network, no-authentication, and
+  no-runtime safety flags
+
+It exits:
+
+| Code | Meaning |
+|---|---|
+| 0 | Valid launcher device/session status JSON |
+| 1 | Invalid JSON shape or unsafe status content |
+| 2 | CLI usage or read error |
+
+The checked example is
+[`docs/examples/launcher-device-session-status.example.json`](examples/launcher-device-session-status.example.json).
+
+This boundary does not execute pccx-llm-launcher, invoke pccx-lab
+workflows, open serial ports, scan networks, attempt authentication,
+probe KV260 hardware, load model assets, start runtime code, stream
+logs, upload telemetry, or write artifacts. Future GUI, launcher, or
+evidence workflows may render the summary as status data, but validation
+logic should remain in pccx-core or an explicit CLI/core boundary.
 
 ## GUI foundation
 

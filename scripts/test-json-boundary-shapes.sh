@@ -182,6 +182,14 @@ run_case \
     "[launcher-diagnostics-handoff]" \
     "missing required field $.safetyFlags"
 
+run_case \
+    "device session safety flags missing" \
+    "$(stage_fixture launcher-device-session-safety-flags-missing)" \
+    fail \
+    "docs/examples/launcher-device-session-status.example.json" \
+    "[launcher-device-session-status]" \
+    "missing required field $.safetyFlags"
+
 if [ "$FAILURES" -eq 0 ]; then
     INFO "JSON boundary shape fixture tests passed"
     exit 0

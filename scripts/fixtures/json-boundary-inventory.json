@@ -136,6 +136,23 @@
         "testName": "launcher_handoff_example_validates_through_core_reader"
       },
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#diagnostics-handoff-command"
+    },
+    {
+      "boundaryKind": "launcher-device-session-status",
+      "examplePath": "docs/examples/launcher-device-session-status.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "crates/core/src/device_session_status.rs::validate_device_session_status_json",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "launcher-device-session-status",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "launcher_device_session_status_example_validates_through_core_reader"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#device-session-status-command"
     }
   ]
 }
