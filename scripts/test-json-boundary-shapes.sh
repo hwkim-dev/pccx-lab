@@ -120,6 +120,7 @@ run_case \
     "[mcp-read-only-tool-plan] shape ok" \
     "[mcp-permission-model] shape ok" \
     "[mcp-audit-event] shape ok" \
+    "[plugin-permission-model] shape ok" \
     "[plugin-boundary-plan] shape ok"
 
 run_case \
@@ -200,6 +201,14 @@ run_case \
     fail \
     "docs/examples/mcp-permission-model.example.json" \
     "[mcp-permission-model]" \
+    "missing required field $.permissionProfiles"
+
+run_case \
+    "plugin permission profiles missing" \
+    "$(stage_fixture plugin-permission-profiles-missing)" \
+    fail \
+    "docs/examples/plugin-permission-model.example.json" \
+    "[plugin-permission-model]" \
     "missing required field $.permissionProfiles"
 
 if [ "$FAILURES" -eq 0 ]; then

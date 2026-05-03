@@ -208,10 +208,43 @@ Full fixture:
 }
 ```
 
-Use this fixture for manifest, host API, permission, and security-model
-alignment before implementing any plugin loader. It does not load plugin
-code, execute untrusted code, define a package distribution flow, or
-grant approval to write files or mutate repositories.
+Use this fixture for manifest and host API alignment before implementing
+any plugin loader. It does not load plugin code, execute untrusted code,
+define a package distribution flow, or grant approval to write files or
+mutate repositories.
+
+## Plugin Permission Model
+
+Full fixture:
+[`plugin-permission-model.example.json`](examples/plugin-permission-model.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-permission-model.v0",
+  "modelState": "descriptor_only",
+  "pluginRuntimeState": "not_implemented",
+  "defaultMode": "disabled",
+  "sandboxPolicy": {
+    "sandboxRequiredBeforeExecution": true,
+    "networkDisabledByDefault": true,
+    "filesystemWriteDisabledByDefault": true,
+    "untrustedExecutionAllowed": false
+  },
+  "safetyFlags": {
+    "descriptorOnly": true,
+    "readOnly": true,
+    "pluginRuntimeImplemented": false,
+    "sandboxImplemented": false,
+    "shellExecution": false,
+    "writeBack": false
+  }
+}
+```
+
+Use this fixture for permission-profile and sandbox-requirement planning.
+It does not implement a plugin runtime, sandbox, permission executor,
+dynamic code loading, package distribution, provider/network calls,
+hardware access, artifact writes, release/tag control, or public pushes.
 
 ## Workflow Results
 

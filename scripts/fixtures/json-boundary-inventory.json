@@ -221,6 +221,23 @@
         "testName": "plugin_boundary_plan_example_keeps_manifest_only_safety_boundary"
       },
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-boundary-plan"
+    },
+    {
+      "boundaryKind": "plugin-permission-model",
+      "examplePath": "docs/examples/plugin-permission-model.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-permission-model-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-permission-model",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_permission_model_example_keeps_permission_boundary_non_executing"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-permission-model-boundary"
     }
   ]
 }

@@ -80,6 +80,7 @@ INFO "  mcp-read-only-tool-plan (future tool boundary map)"
 INFO "  mcp-permission-model (future tool permission map)"
 INFO "  mcp-audit-event (future redacted audit event shape)"
 INFO "  plugin-boundary-plan (future plugin boundary map)"
+INFO "  plugin-permission-model (future plugin permission map)"
 INFO "  trace-discovery       (headless CI path)"
 INFO "  xsim-log-handoff      (pccx-FPGA verification loop)"
 
@@ -99,6 +100,7 @@ check_file "$REPO_ROOT/docs/examples/mcp-read-only-tool-plan.example.json"
 check_file "$REPO_ROOT/docs/examples/mcp-permission-model.example.json"
 check_file "$REPO_ROOT/docs/examples/mcp-audit-event.example.json"
 check_file "$REPO_ROOT/docs/examples/plugin-boundary-plan.example.json"
+check_file "$REPO_ROOT/docs/examples/plugin-permission-model.example.json"
 
 echo
 INFO "CLI command source presence"

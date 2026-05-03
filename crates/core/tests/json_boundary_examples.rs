@@ -454,3 +454,134 @@ fn plugin_boundary_plan_example_keeps_manifest_only_safety_boundary() {
     assert_eq!(safety["publicPush"], false);
     assert_eq!(safety["releaseOrTag"], false);
 }
+
+#[test]
+fn plugin_permission_model_example_keeps_permission_boundary_non_executing() {
+    let value: serde_json::Value = parse_example("plugin-permission-model.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin permission model must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-permission-model.v0");
+    assert_eq!(root["modelState"], "descriptor_only");
+    assert_eq!(root["pluginRuntimeState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+
+    let approval = root["approvalPolicy"]
+        .as_object()
+        .expect("approval policy must be an object");
+    assert_eq!(approval["manifestApprovalRequired"], true);
+    assert_eq!(approval["localInputApprovalRequired"], true);
+    assert_eq!(approval["capabilityEscalationRequiresReview"], true);
+    assert_eq!(approval["artifactOutputRequiresReview"], true);
+    assert_eq!(approval["rawShellCommandsAllowed"], false);
+    assert_eq!(approval["silentFallbackAllowed"], false);
+    assert_eq!(approval["backgroundMutationAllowed"], false);
+    assert_eq!(approval["unreviewedCapabilityAllowed"], false);
+
+    let sandbox = root["sandboxPolicy"]
+        .as_object()
+        .expect("sandbox policy must be an object");
+    assert_eq!(sandbox["sandboxRequiredBeforeExecution"], true);
+    assert_eq!(sandbox["processIsolationRequired"], true);
+    assert_eq!(sandbox["networkDisabledByDefault"], true);
+    assert_eq!(sandbox["filesystemWriteDisabledByDefault"], true);
+    assert_eq!(sandbox["dynamicLibraryLoadAllowed"], false);
+    assert_eq!(sandbox["untrustedExecutionAllowed"], false);
+
+    let profiles = root["permissionProfiles"]
+        .as_array()
+        .expect("permission profiles must be an array");
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "manifest_review_read_only"
+            && profile["requiresUserApproval"] == true
+            && profile["auditRequired"] == true
+    }));
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "diagnostics_summary_read_only"
+            && profile["profileState"] == "planned"
+            && profile["auditRequired"] == true
+    }));
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "trace_import_pending_review"
+            && profile["profileState"] == "deferred"
+            && profile["allowedCapabilityIds"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+    }));
+    assert!(profiles.iter().any(|profile| {
+        profile["profileId"] == "write_action_pending_review"
+            && profile["profileState"] == "deferred"
+            && profile["allowedOutputContracts"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+    }));
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "arbitrary-shell-command",
+        "repository-write-back",
+        "artifact-write",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let audit = root["auditPolicy"]
+        .as_object()
+        .expect("audit policy must be an object");
+    assert_eq!(audit["auditRequiredForAllowedProfiles"], true);
+    assert_eq!(audit["redactionRequired"], true);
+    assert_eq!(audit["privatePathEchoAllowed"], false);
+    assert_eq!(audit["stdoutCaptureAllowed"], false);
+    assert_eq!(audit["stderrCaptureAllowed"], false);
+    assert_eq!(audit["artifactPathEchoAllowed"], false);
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["untrustedExecutionAllowed"], false);
+    assert_eq!(safety["sandboxImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}

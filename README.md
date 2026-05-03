@@ -84,6 +84,10 @@ boundary. There is no private back channel into lab internals. See
 - `docs/examples/plugin-boundary-plan.example.json` records the plugin
   manifest and host API planning boundary; it is not a plugin loader or
   package distribution flow.
+- `docs/examples/plugin-permission-model.example.json` records the
+  descriptor-only permission profiles, sandbox requirements, and approval
+  gates for future plugin capabilities; it is not a plugin runtime,
+  sandbox, or permission executor.
 - `pccx-lab run-approved-workflow <proposal-id> --format json` returns
   a blocked result by default; the pilot only runs fixed allowlisted
   pccx-lab commands when explicitly enabled for local validation.

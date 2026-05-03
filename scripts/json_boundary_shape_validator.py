@@ -955,6 +955,236 @@ def validate_mcp_audit_event(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_permission_model(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-permission-model.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "modelId",
+            "modelState",
+            "pluginRuntimeState",
+            "defaultMode",
+            "manifestSource",
+        ],
+    )
+    if root["modelState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.modelState: expected descriptor_only")
+    if root["pluginRuntimeState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.pluginRuntimeState: expected not_implemented")
+    if root["defaultMode"] != "disabled":
+        raise ShapeError("unexpected value at $.defaultMode: expected disabled")
+
+    approval = expect_object(require_field(root, "$", "approvalPolicy"), "$.approvalPolicy")
+    require_string_field(approval, "$.approvalPolicy", "state")
+    approval_true_flags = [
+        "manifestApprovalRequired",
+        "localInputApprovalRequired",
+        "capabilityEscalationRequiresReview",
+        "artifactOutputRequiresReview",
+    ]
+    approval_false_flags = [
+        "rawShellCommandsAllowed",
+        "silentFallbackAllowed",
+        "backgroundMutationAllowed",
+        "unreviewedCapabilityAllowed",
+    ]
+    require_bool_fields(approval, "$.approvalPolicy", approval_true_flags + approval_false_flags)
+    for flag in approval_true_flags:
+        if approval[flag] is not True:
+            raise ShapeError(f"unexpected value at $.approvalPolicy.{flag}: expected true")
+    for flag in approval_false_flags:
+        if approval[flag] is not False:
+            raise ShapeError(f"unexpected value at $.approvalPolicy.{flag}: expected false")
+
+    sandbox = expect_object(require_field(root, "$", "sandboxPolicy"), "$.sandboxPolicy")
+    require_string_field(sandbox, "$.sandboxPolicy", "state")
+    sandbox_true_flags = [
+        "sandboxRequiredBeforeExecution",
+        "processIsolationRequired",
+        "networkDisabledByDefault",
+        "filesystemWriteDisabledByDefault",
+    ]
+    sandbox_false_flags = [
+        "dynamicLibraryLoadAllowed",
+        "untrustedExecutionAllowed",
+        "privatePathEchoAllowed",
+        "stdoutCaptureAllowed",
+        "stderrCaptureAllowed",
+    ]
+    require_bool_fields(sandbox, "$.sandboxPolicy", sandbox_true_flags + sandbox_false_flags)
+    for flag in sandbox_true_flags:
+        if sandbox[flag] is not True:
+            raise ShapeError(f"unexpected value at $.sandboxPolicy.{flag}: expected true")
+    for flag in sandbox_false_flags:
+        if sandbox[flag] is not False:
+            raise ShapeError(f"unexpected value at $.sandboxPolicy.{flag}: expected false")
+
+    profiles = require_object_array(
+        require_field(root, "$", "permissionProfiles"),
+        "$.permissionProfiles",
+        min_items=1,
+    )
+    profile_ids = set()
+    for profile in profiles:
+        path = "$.permissionProfiles[]"
+        require_string_fields(
+            profile,
+            path,
+            [
+                "profileId",
+                "profileState",
+                "inputReferenceKind",
+                "outputPolicy",
+            ],
+        )
+        profile_id = profile["profileId"]
+        profile_ids.add(profile_id)
+        expect_bool(
+            require_field(profile, path, "requiresUserApproval"),
+            child(path, "requiresUserApproval"),
+        )
+        if expect_bool(require_field(profile, path, "auditRequired"), child(path, "auditRequired")) is not True:
+            raise ShapeError("unexpected value at $.permissionProfiles[].auditRequired: expected true")
+        require_string_array(
+            require_field(profile, path, "allowedCapabilityIds"),
+            child(path, "allowedCapabilityIds"),
+        )
+        require_string_array(
+            require_field(profile, path, "allowedInputContracts"),
+            child(path, "allowedInputContracts"),
+        )
+        require_string_array(
+            require_field(profile, path, "allowedOutputContracts"),
+            child(path, "allowedOutputContracts"),
+        )
+        require_string_array(require_field(profile, path, "examples"), child(path, "examples"), min_items=1)
+
+        if profile_id in ["trace_import_pending_review", "write_action_pending_review"]:
+            if profile["profileState"] != "deferred":
+                raise ShapeError(
+                    "unexpected value at $.permissionProfiles[].profileState: "
+                    f"{profile_id} must be deferred"
+                )
+            for field in ["allowedCapabilityIds", "allowedInputContracts", "allowedOutputContracts"]:
+                if profile[field] != []:
+                    raise ShapeError(
+                        "unexpected value at $.permissionProfiles[]."
+                        f"{field}: {profile_id} must not allow entries"
+                    )
+
+    gates = require_object_array(
+        require_field(root, "$", "capabilityGates"),
+        "$.capabilityGates",
+        min_items=1,
+    )
+    for gate in gates:
+        path = "$.capabilityGates[]"
+        require_string_fields(
+            gate,
+            path,
+            ["capabilityId", "permissionProfile", "defaultDecision", "sideEffectPolicy"],
+        )
+        if gate["permissionProfile"] not in profile_ids:
+            raise ShapeError(
+                "unexpected value at $.capabilityGates[].permissionProfile: "
+                f"unknown profile {gate['permissionProfile']}"
+            )
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "arbitrary-shell-command",
+        "repository-write-back",
+        "artifact-write",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    audit = expect_object(require_field(root, "$", "auditPolicy"), "$.auditPolicy")
+    require_string_fields(audit, "$.auditPolicy", ["state", "eventSchema"])
+    audit_true_flags = ["auditRequiredForAllowedProfiles", "redactionRequired"]
+    audit_false_flags = [
+        "privatePathEchoAllowed",
+        "stdoutCaptureAllowed",
+        "stderrCaptureAllowed",
+        "artifactPathEchoAllowed",
+    ]
+    require_bool_fields(audit, "$.auditPolicy", audit_true_flags + audit_false_flags)
+    for flag in audit_true_flags:
+        if audit[flag] is not True:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{flag}: expected true")
+    for flag in audit_false_flags:
+        if audit[flag] is not False:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{flag}: expected false")
+
+    external = expect_object(
+        require_field(root, "$", "externalIntegrationBoundary"),
+        "$.externalIntegrationBoundary",
+    )
+    require_string_fields(external, "$.externalIntegrationBoundary", ["state", "rule"])
+    require_string_array(
+        require_field(external, "$.externalIntegrationBoundary", "consumers"),
+        "$.externalIntegrationBoundary.consumers",
+        min_items=1,
+    )
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "untrustedExecutionAllowed",
+        "sandboxImplemented",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_boundary_plan(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-boundary-plan.v0")
@@ -1168,6 +1398,7 @@ SPECS = [
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
+    BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
 ]
 

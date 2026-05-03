@@ -30,6 +30,7 @@ separate workflow logic island.
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
+| `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -64,6 +65,7 @@ aligned.
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
 
 ## Current cross-repo direction
 
@@ -493,6 +495,38 @@ The host API plan keeps plugin-facing data behind existing CLI/core
 contracts: lab status, workflow descriptors, diagnostics envelopes, and
 workflow result summaries. The GUI may render manifest and capability
 metadata only after CLI/core contracts exist. No stable plugin ABI is promised.
+
+## plugin permission model boundary
+
+[`docs/examples/plugin-permission-model.example.json`](examples/plugin-permission-model.example.json)
+defines the checked permission-profile shape for future plugin
+capabilities. It is descriptor-only. It does not add a plugin runtime,
+plugin loader, sandbox implementation, permission executor, dynamic
+library loading, untrusted execution, package distribution flow, or
+marketplace flow.
+
+The fixture separates read-only profile planning from blocked or
+deferred capabilities:
+
+- `manifest_review_read_only` for approved manifest and capability
+  review without loading plugin code.
+- `diagnostics_summary_read_only` for an approved diagnostics envelope
+  producing bounded summary metadata.
+- `report_panel_metadata_read_only` for approved workflow result
+  summaries producing bounded panel metadata without writing artifacts.
+- `trace_import_pending_review` and `write_action_pending_review` for
+  capabilities that remain blocked until separate reviewed boundaries
+  exist.
+
+The sandbox policy is a requirement model, not an implementation. It
+requires future execution work to define process isolation, default
+network denial, default filesystem-write denial, redacted audit
+metadata, and explicit approval gates before any plugin code can run.
+Dynamic code loading, untrusted execution, shell commands, provider
+calls, network calls, hardware probes, KV260 access, FPGA repo access,
+runtime launch, model load, telemetry upload, public push,
+release/tag control, repository mutation, and artifact writes are
+blocked in this boundary.
 
 ## GUI foundation
 

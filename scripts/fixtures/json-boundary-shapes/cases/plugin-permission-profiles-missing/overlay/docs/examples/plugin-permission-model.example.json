@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "pccx.lab.plugin-permission-model.v0",
+  "tool": "pccx-lab",
+  "modelId": "plugin-cli-core-permission-boundary",
+  "modelState": "descriptor_only",
+  "pluginRuntimeState": "not_implemented",
+  "defaultMode": "disabled",
+  "manifestSource": "approved-plugin-manifest-json",
+  "approvalPolicy": {
+    "state": "planned",
+    "manifestApprovalRequired": true,
+    "localInputApprovalRequired": true,
+    "capabilityEscalationRequiresReview": true,
+    "artifactOutputRequiresReview": true,
+    "rawShellCommandsAllowed": false,
+    "silentFallbackAllowed": false,
+    "backgroundMutationAllowed": false,
+    "unreviewedCapabilityAllowed": false
+  },
+  "sandboxPolicy": {
+    "state": "planned",
+    "sandboxRequiredBeforeExecution": true,
+    "processIsolationRequired": true,
+    "networkDisabledByDefault": true,
+    "filesystemWriteDisabledByDefault": true,
+    "dynamicLibraryLoadAllowed": false,
+    "untrustedExecutionAllowed": false,
+    "privatePathEchoAllowed": false,
+    "stdoutCaptureAllowed": false,
+    "stderrCaptureAllowed": false
+  },
+  "limitations": [
+    "Negative fixture missing permissionProfiles."
+  ],
+  "issueRefs": [
+    "pccxai/pccx-lab#21"
+  ]
+}
