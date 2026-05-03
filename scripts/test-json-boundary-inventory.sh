@@ -129,6 +129,7 @@ run_case \
     "[mcp-permission-model] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
+    "[plugin-output-contract] inventory ok" \
     "[plugin-permission-model] inventory ok"
 
 missing_path_inventory="$(stage_inventory_fixture missing-example-path)"

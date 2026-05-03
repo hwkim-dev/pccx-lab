@@ -32,6 +32,7 @@ separate workflow logic island.
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
+| `docs/examples/plugin-output-contract.example.json` | planned output contract | Checked summary-only plugin output shape for diagnostic, report-panel, and report item previews; no plugin runtime or report writer is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
@@ -69,6 +70,7 @@ aligned.
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-output-contract` | `docs/examples/plugin-output-contract.example.json` | Reader only; planned summary-only plugin output shape for future diagnostic, report-panel, and report item previews | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
 
 ## Current cross-repo direction
@@ -543,6 +545,34 @@ artifacts, mutate repositories, call providers, use the network, touch
 hardware, access KV260, access FPGA repos, launch runtime code, load
 models, upload telemetry, push publicly, control releases/tags, or
 write reports. No stable plugin ABI is promised.
+
+## plugin output contract boundary
+
+[`docs/examples/plugin-output-contract.example.json`](examples/plugin-output-contract.example.json)
+defines the checked summary-only output shape for future plugin
+diagnostic, report-panel, and report item previews. It is descriptor-only
+metadata over approved input summaries, not an execution boundary.
+
+The fixture links approved diagnostics-envelope and workflow-result
+summary inputs to three bounded output kinds:
+
+- `diagnostic_summary_item` for diagnostics panel metadata.
+- `report_panel_metadata` for workflow-result panel rows.
+- `report_item` for in-memory report preview content.
+
+Every output contract keeps `summaryOnly: true` and blocks artifact
+writes, repository mutation, private path echoing, stdout, stderr, and
+raw logs. The sample output uses synthetic metadata and does not include
+private paths, generated artifacts, secrets, tokens, model paths, or
+hardware evidence.
+
+This fixture is not a plugin loader, runtime, sandbox, permission
+executor, command executor, report writer, or ABI promise. It does not
+load plugin code, install packages, load dynamic libraries, execute
+commands, write artifacts, mutate repositories, call providers, use the
+network, touch hardware, access KV260, access FPGA repos, launch runtime
+code, load models, upload telemetry, push publicly, or control
+releases/tags.
 
 ## plugin permission model boundary
 

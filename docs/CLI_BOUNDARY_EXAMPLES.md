@@ -20,7 +20,7 @@ wrappers backed by `pccx-core`.
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
 | Future MCP/tool consumer | Descriptor, proposal, and read-only tool-plan JSON | Consume descriptor-only contracts until a controlled adapter exists. |
-| Future plugin consumer | Plugin boundary-plan JSON | Treat manifest and capability data as planning metadata until a loader boundary exists. |
+| Future plugin consumer | Plugin boundary-plan and output-contract JSON | Treat manifest, capability, and output data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
 runtime is implemented by these examples.
@@ -284,6 +284,47 @@ execute commands, implement a sandbox, write reports, mutate
 repositories, call providers, use the network, touch hardware, or
 control releases/tags. No stable plugin ABI is promised.
 
+## Plugin Output Contract
+
+Full fixture:
+[`plugin-output-contract.example.json`](examples/plugin-output-contract.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-output-contract.v0",
+  "contractState": "descriptor_only",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "samplePluginRef": {
+    "entryKind": "manifest_only",
+    "codeLoaded": false
+  },
+  "outputContracts": [
+    {
+      "outputKind": "diagnostic_summary_item",
+      "summaryOnly": true,
+      "artifactWrite": false
+    },
+    {
+      "outputKind": "report_panel_metadata",
+      "summaryOnly": true,
+      "artifactWrite": false
+    }
+  ],
+  "outputPolicy": {
+    "summaryOnly": true,
+    "trackedFileMutationAllowed": false,
+    "artifactWriteAllowed": false
+  }
+}
+```
+
+Use this fixture to review the bounded diagnostic, report-panel, and
+report item output shape a future approved plugin flow may emit. It does
+not load plugin code, execute commands, write artifacts, mutate
+repositories, echo private paths, include full logs, or promise a stable
+plugin ABI.
+
 ## Plugin Permission Model
 
 Full fixture:
@@ -356,6 +397,8 @@ this summary contract.
   audit-plan alignment before implementing any adapter.
 - Use the plugin boundary-plan fixture for manifest and host API
   alignment before implementing any loader.
+- Use the plugin output-contract fixture for summary-only output shape
+  alignment before implementing any plugin runtime or report writer.
 
 ## Launcher Device/Session Status
 

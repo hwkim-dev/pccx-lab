@@ -123,7 +123,8 @@ run_case \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
     "[plugin-boundary-plan] shape ok" \
-    "[plugin-dry-run-flow] shape ok"
+    "[plugin-dry-run-flow] shape ok" \
+    "[plugin-output-contract] shape ok"
 
 run_case \
     "missing status schema version" \
