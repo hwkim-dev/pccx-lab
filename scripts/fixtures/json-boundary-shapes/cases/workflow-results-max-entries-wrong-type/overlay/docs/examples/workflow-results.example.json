@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "pccx.lab.workflow-results.v0",
+  "tool": "pccx-lab",
+  "maxEntries": "20",
+  "summaries": [],
+  "limitations": [
+    "Negative fixture for maxEntries type drift."
+  ]
+}

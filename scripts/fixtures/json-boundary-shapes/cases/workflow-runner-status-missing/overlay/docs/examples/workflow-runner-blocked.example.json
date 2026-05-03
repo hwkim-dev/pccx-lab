@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "pccx.lab.workflow-runner-result.v0",
+  "proposalId": "proposal-lab-status-contract",
+  "workflowId": "lab-status-contract",
+  "runnerEnabled": false,
+  "mode": "disabled",
+  "exitCode": null,
+  "durationMs": 0,
+  "stdoutLines": [],
+  "stderrLines": [],
+  "truncated": false,
+  "redactionApplied": false,
+  "safetyFlags": [
+    "allowlist-only"
+  ],
+  "limitations": [
+    "Negative fixture omits status."
+  ]
+}

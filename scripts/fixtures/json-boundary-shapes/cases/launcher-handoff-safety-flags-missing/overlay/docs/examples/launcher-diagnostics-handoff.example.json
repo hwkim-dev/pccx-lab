@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "pccx.diagnosticsHandoff.v0",
+  "handoffId": "negative_fixture_missing_safety_flags",
+  "handoffKind": "read_only_handoff",
+  "createdAt": "1970-01-01T00:00:00Z",
+  "sessionId": "placeholder_session",
+  "targetKind": "local-target-placeholder",
+  "producer": {
+    "id": "pccx-llm-launcher",
+    "role": "launcher_generated_summary",
+    "execution": "data_only"
+  },
+  "consumer": {
+    "id": "pccx-lab",
+    "role": "pccx_lab_future_consumer",
+    "boundary": "cli_core_future_consumer",
+    "state": "planned"
+  },
+  "launcherStatusRef": {
+    "schemaVersion": "pccx.launcherIdeStatus.v0",
+    "operationId": "pccxlab.diagnostics.handoff",
+    "referenceKind": "descriptor_ref_only",
+    "coupling": "data_reference_only"
+  },
+  "modelDescriptorRef": {
+    "schemaVersion": "pccx.modelDescriptor.v0",
+    "modelId": "model_placeholder",
+    "referenceKind": "descriptor_ref_only",
+    "fixture": "contracts/fixtures/model-runtime-descriptor.placeholder.json"
+  },
+  "runtimeDescriptorRef": {
+    "schemaVersion": "pccx.runtimeDescriptor.v0",
+    "runtimeId": "runtime_placeholder",
+    "referenceKind": "descriptor_ref_only",
+    "fixture": "contracts/fixtures/model-runtime-descriptor.placeholder.json"
+  },
+  "targetDevice": {
+    "id": "target_placeholder",
+    "label": "Local target placeholder",
+    "accessState": "no_hardware_access",
+    "configurationState": "not_configured"
+  },
+  "privacyFlags": {
+    "telemetryPolicy": "no_telemetry",
+    "uploadPolicy": "no_user_data_upload"
+  }
+}

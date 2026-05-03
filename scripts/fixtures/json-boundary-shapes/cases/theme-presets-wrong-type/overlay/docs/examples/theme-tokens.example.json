@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "pccx.lab.theme-tokens.v0",
+  "tokenSlots": [
+    "background"
+  ],
+  "presets": {
+    "name": "native-light"
+  },
+  "limitations": [
+    "Negative fixture for presets type drift."
+  ]
+}

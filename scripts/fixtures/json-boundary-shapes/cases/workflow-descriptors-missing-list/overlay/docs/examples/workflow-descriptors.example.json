@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "pccx.lab.workflow-descriptors.v0",
+  "tool": "pccx-lab",
+  "limitations": [
+    "Negative fixture for missing descriptor list."
+  ]
+}

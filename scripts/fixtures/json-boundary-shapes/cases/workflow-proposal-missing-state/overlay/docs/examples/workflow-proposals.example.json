@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "pccx.lab.workflow-proposals.v0",
+  "tool": "pccx-lab",
+  "proposals": [
+    {
+      "proposalId": "proposal-lab-status-contract",
+      "workflowId": "lab-status-contract",
+      "label": "Preview lab status contract read",
+      "approvalRequired": false,
+      "commandKind": "pccx-lab-cli-fixed-args",
+      "fixedArgsPreview": [
+        "status",
+        "--format",
+        "json"
+      ],
+      "inputSummary": "No runtime input; static host status metadata only.",
+      "outputPolicy": "Bounded status JSON with conservative evidence markers.",
+      "safetyFlags": [
+        "no-execution"
+      ],
+      "expectedArtifacts": [],
+      "limitations": [
+        "Negative fixture omits proposalState."
+      ]
+    }
+  ],
+  "limitations": [
+    "Negative fixture for nested proposal field drift."
+  ]
+}

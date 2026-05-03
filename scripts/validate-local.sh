@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 pccxai
 # scripts/validate-local.sh - run the review gate used for local PR readiness.
 # This is a thin command wrapper only; it does not replace CI and does not
 # install system packages.
@@ -37,6 +39,7 @@ run_in_ui npm run build
 
 run "$REPO_ROOT/scripts/pccx-lab-boundary-smoke.sh"
 run "$REPO_ROOT/scripts/test-boundary-smoke-fixtures.sh"
+run "$REPO_ROOT/scripts/test-json-boundary-shapes.sh"
 run cargo test -p pccx-core --test public_claim_guards
 
 printf '\n[validate] all local checks passed\n'

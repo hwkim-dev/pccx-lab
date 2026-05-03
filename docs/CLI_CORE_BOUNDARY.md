@@ -37,6 +37,18 @@ IDE or launcher runtime integration is implemented by this foundation.
 For command snippets and consumer handoff notes, see
 [`docs/CLI_BOUNDARY_EXAMPLES.md`](CLI_BOUNDARY_EXAMPLES.md).
 
+## Current cross-repo direction
+
+- `systemverilog-ide` should consume pccx-lab outputs as data through
+  CLI/core boundaries. Fragile GUI automation is outside this contract.
+- `pccx-llm-launcher` handoffs, descriptors, and result summaries should
+  stay contract/data oriented until checked evidence exists.
+- FPGA-side evidence should be validated later as evidence, log, or
+  manifest data only when available. This boundary does not access
+  hardware or sibling RTL repositories.
+- No launcher runtime, editor runtime, provider, MCP runtime, hardware
+  execution, or plugin compatibility commitment is claimed here.
+
 ## Local workflow assistant boundary
 
 The Workflow Assistant is a local-only planning and draft-helper surface.

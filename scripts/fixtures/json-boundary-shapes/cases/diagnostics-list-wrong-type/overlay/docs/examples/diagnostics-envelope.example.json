@@ -1,0 +1,9 @@
+{
+  "_note": "Negative fixture for diagnostics array drift.",
+  "envelope": "0",
+  "tool": "pccx-lab",
+  "source": "example.sv",
+  "diagnostics": {
+    "code": "PCCX-SHAPE-001"
+  }
+}
