@@ -1,0 +1,6 @@
+{
+  "description": "Remove one required inventory field.",
+  "delete": [
+    ["boundaries", 1, "producingCommand"]
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Change one boundary kind to a kind unknown to the shape validator.",
+  "set": [
+    {
+      "path": ["boundaries", 2, "boundaryKind"],
+      "value": "not-a-json-boundary"
+    },
+    {
+      "path": ["boundaries", 2, "shapeValidation", "kind"],
+      "value": "not-a-json-boundary"
+    }
+  ]
+}

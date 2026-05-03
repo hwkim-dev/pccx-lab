@@ -71,9 +71,11 @@ jobs:
           chmod +x scripts/pccx-lab-boundary-smoke.sh
           chmod +x scripts/test-boundary-smoke-fixtures.sh
           chmod +x scripts/test-json-boundary-shapes.sh
+          chmod +x scripts/test-json-boundary-inventory.sh
           ./scripts/pccx-lab-boundary-smoke.sh
           ./scripts/test-boundary-smoke-fixtures.sh
           ./scripts/test-json-boundary-shapes.sh
+          ./scripts/test-json-boundary-inventory.sh
 
   frontend-check:
     runs-on: ubuntu-latest

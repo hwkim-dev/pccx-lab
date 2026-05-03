@@ -37,6 +37,24 @@ IDE or launcher runtime integration is implemented by this foundation.
 For command snippets and consumer handoff notes, see
 [`docs/CLI_BOUNDARY_EXAMPLES.md`](CLI_BOUNDARY_EXAMPLES.md).
 
+## JSON example inventory
+
+The machine-readable inventory lives at
+[`scripts/fixtures/json-boundary-inventory.json`](../scripts/fixtures/json-boundary-inventory.json).
+It keeps the documented examples, shape checks, and Rust example tests
+aligned.
+
+| Boundary | Example | Producer/reader | Validation coverage |
+|---|---|---|---|
+| `diagnostics-envelope` | `docs/examples/diagnostics-envelope.example.json` | `pccx-lab analyze <path> --format json` | Shape validator, inventory test, Rust JSON-shape test |
+| `lab-status` | `docs/examples/run-status.example.json` | `pccx-lab status --format json`; `pccx_core::status::lab_status` | Shape validator, inventory test, Rust deserialize test |
+| `theme-tokens` | `docs/examples/theme-tokens.example.json` | `pccx-lab theme --format json`; `pccx_core::theme::theme_contract` | Shape validator, inventory test, Rust deserialize test |
+| `workflow-descriptors` | `docs/examples/workflow-descriptors.example.json` | `pccx-lab workflows --format json`; `pccx_core::workflows::workflow_descriptors` | Shape validator, inventory test, Rust deserialize test |
+| `workflow-proposals` | `docs/examples/workflow-proposals.example.json` | `pccx-lab workflow-proposals --format json`; `pccx_core::proposals::workflow_proposals` | Shape validator, inventory test, Rust deserialize test |
+| `workflow-results` | `docs/examples/workflow-results.example.json` | `pccx-lab workflow-results --format json`; `pccx_core::results::workflow_result_summaries` | Shape validator, inventory test, Rust deserialize test |
+| `workflow-runner-result` | `docs/examples/workflow-runner-blocked.example.json` | `pccx-lab run-approved-workflow <proposal-id> --format json`; `pccx_core::runner::blocked_workflow_result` | Shape validator, inventory test, Rust deserialize test |
+| `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
+
 ## Current cross-repo direction
 
 - `systemverilog-ide` should consume pccx-lab outputs as data through
@@ -48,6 +66,13 @@ For command snippets and consumer handoff notes, see
   hardware or sibling RTL repositories.
 - No launcher runtime, editor runtime, provider, MCP runtime, hardware
   execution, or plugin compatibility commitment is claimed here.
+
+Cross-repo requests should stay in GitHub issues, pull requests,
+discussions, or project comments. Prefer boundary request, contract
+alignment, evidence handoff, validation follow-up, or downstream
+consumer note wording. Do not use private worker or tool language as
+public coordination text, and do not expose or bypass staging repository
+state in public requests.
 
 ## Local workflow assistant boundary
 

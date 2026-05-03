@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "pccx.lab.jsonBoundaryInventory.v0",
+  "boundaries": [
+    {
+      "boundaryKind": "diagnostics-envelope",
+      "examplePath": "docs/examples/diagnostics-envelope.example.json",
+      "producingCommand": "pccx-lab analyze <path> --format json",
+      "coreGeneratorOrReader": "crates/core/src/bin/pccx_lab.rs::analyze / Envelope",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "diagnostics-envelope",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "diagnostics_envelope_example_keeps_expected_shape"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#analyze-command"
+    },
+    {
+      "boundaryKind": "lab-status",
+      "examplePath": "docs/examples/run-status.example.json",
+      "producingCommand": "pccx-lab status --format json",
+      "coreGeneratorOrReader": "crates/core/src/status.rs::lab_status",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "lab-status",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "status_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#status-command"
+    },
+    {
+      "boundaryKind": "theme-tokens",
+      "examplePath": "docs/examples/theme-tokens.example.json",
+      "producingCommand": "pccx-lab theme --format json",
+      "coreGeneratorOrReader": "crates/core/src/theme.rs::theme_contract",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "theme-tokens",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "theme_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#theme-command"
+    },
+    {
+      "boundaryKind": "workflow-descriptors",
+      "examplePath": "docs/examples/workflow-descriptors.example.json",
+      "producingCommand": "pccx-lab workflows --format json",
+      "coreGeneratorOrReader": "crates/core/src/workflows.rs::workflow_descriptors",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "workflow-descriptors",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "workflow_descriptor_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#workflows-command"
+    },
+    {
+      "boundaryKind": "workflow-proposals",
+      "examplePath": "docs/examples/workflow-proposals.example.json",
+      "producingCommand": "pccx-lab workflow-proposals --format json",
+      "coreGeneratorOrReader": "crates/core/src/proposals.rs::workflow_proposals",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "workflow-proposals",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "workflow_proposal_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#workflow-proposals-command"
+    },
+    {
+      "boundaryKind": "workflow-results",
+      "examplePath": "docs/examples/workflow-results.example.json",
+      "producingCommand": "pccx-lab workflow-results --format json",
+      "coreGeneratorOrReader": "crates/core/src/results.rs::workflow_result_summaries",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "workflow-results",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "workflow_results_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#workflow-results-command"
+    },
+    {
+      "boundaryKind": "workflow-runner-result",
+      "examplePath": "docs/examples/workflow-runner-blocked.example.json",
+      "producingCommand": "pccx-lab run-approved-workflow <proposal-id> --format json",
+      "coreGeneratorOrReader": "crates/core/src/runner.rs::blocked_workflow_result",
+      "readerOnly": false,
+      "shapeValidation": {
+        "kind": "workflow-runner-result",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "workflow_runner_example_deserializes_into_core_contract"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#run-approved-workflow-command"
+    },
+    {
+      "boundaryKind": "launcher-diagnostics-handoff",
+      "examplePath": "docs/examples/launcher-diagnostics-handoff.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "crates/core/src/diagnostics_handoff.rs::validate_diagnostics_handoff_json",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "launcher-diagnostics-handoff",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "launcher_handoff_example_validates_through_core_reader"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#diagnostics-handoff-command"
+    }
+  ]
+}

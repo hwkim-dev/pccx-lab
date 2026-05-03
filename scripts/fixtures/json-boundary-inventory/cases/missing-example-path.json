@@ -1,0 +1,9 @@
+{
+  "description": "Change one documented example path to a missing file.",
+  "set": [
+    {
+      "path": ["boundaries", 0, "examplePath"],
+      "value": "docs/examples/not-present.example.json"
+    }
+  ]
+}

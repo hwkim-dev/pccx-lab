@@ -40,6 +40,7 @@ run_in_ui npm run build
 run "$REPO_ROOT/scripts/pccx-lab-boundary-smoke.sh"
 run "$REPO_ROOT/scripts/test-boundary-smoke-fixtures.sh"
 run "$REPO_ROOT/scripts/test-json-boundary-shapes.sh"
+run "$REPO_ROOT/scripts/test-json-boundary-inventory.sh"
 run cargo test -p pccx-core --test public_claim_guards
 
 printf '\n[validate] all local checks passed\n'

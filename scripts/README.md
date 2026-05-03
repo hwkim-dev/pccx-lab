@@ -13,6 +13,7 @@ to the point where `npm run tauri dev` works.
 | `pccx-lab-boundary-smoke.sh`   | Verify CLI/core boundary artifacts exist and JSON examples are valid. |
 | `test-boundary-smoke-fixtures.sh` | Prove boundary smoke fails clearly on malformed or missing fixture roots. |
 | `test-json-boundary-shapes.sh` | Validate documented CLI/core JSON example shapes and negative drift fixtures. |
+| `test-json-boundary-inventory.sh` | Verify the JSON boundary inventory stays aligned with docs, shape checks, and Rust tests. |
 | `validate-local.sh`            | Run the local PR-readiness gate: Rust, frontend, static guards, and boundary smoke. |
 
 `npm run test:static` in `ui/` runs the local assistant guard against
@@ -35,6 +36,14 @@ from `scripts/fixtures/json-boundary-shapes/` to prove missing fields and wrong
 types fail with file path, boundary kind, and reason. It is parse-only and
 shape-only; it does not run providers, launchers, IDE bridges, MCP runtimes,
 network calls, or hardware flows.
+
+`scripts/test-json-boundary-inventory.sh` validates
+`scripts/fixtures/json-boundary-inventory.json`, which maps each documented JSON
+boundary example to its producer or reader and validation coverage. It also
+stages small negative inventory fixtures to prove missing example paths,
+missing required fields, unknown or mismatched boundary kinds, and missing
+coverage paths fail with the inventory path, boundary kind or entry index,
+field, and reason.
 
 ## Typical flows
 
@@ -79,6 +88,12 @@ bash scripts/test-boundary-smoke-fixtures.sh
 
 ```bash
 bash scripts/test-json-boundary-shapes.sh
+```
+
+**JSON boundary inventory fixture loop:**
+
+```bash
+bash scripts/test-json-boundary-inventory.sh
 ```
 
 ## For AI agents

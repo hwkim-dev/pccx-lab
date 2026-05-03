@@ -1,0 +1,13 @@
+{
+  "description": "Change one boundary kind to a different known shape kind.",
+  "set": [
+    {
+      "path": ["boundaries", 2, "boundaryKind"],
+      "value": "lab-status"
+    },
+    {
+      "path": ["boundaries", 2, "shapeValidation", "kind"],
+      "value": "lab-status"
+    }
+  ]
+}

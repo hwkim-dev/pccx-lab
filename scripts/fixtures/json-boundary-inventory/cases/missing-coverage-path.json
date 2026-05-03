@@ -1,0 +1,9 @@
+{
+  "description": "Point one coverage field at a missing Rust test path.",
+  "set": [
+    {
+      "path": ["boundaries", 5, "rustValidation", "testPath"],
+      "value": "crates/core/tests/missing_inventory_coverage.rs"
+    }
+  ]
+}
