@@ -1,0 +1,175 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 pccxai
+// Positive shape tests for documented CLI/core JSON boundary examples.
+
+use std::path::{Path, PathBuf};
+
+use serde::de::DeserializeOwned;
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf()
+}
+
+fn read_example(name: &str) -> String {
+    let path = repo_root().join("docs/examples").join(name);
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()))
+}
+
+fn parse_example<T: DeserializeOwned>(name: &str) -> T {
+    let text = read_example(name);
+    serde_json::from_str(&text)
+        .unwrap_or_else(|error| panic!("{name} is not shaped as expected: {error}"))
+}
+
+#[test]
+fn status_example_deserializes_into_core_contract() {
+    let status: pccx_core::LabStatus = parse_example("run-status.example.json");
+
+    assert_eq!(
+        status.schema_version,
+        pccx_core::status::STATUS_SCHEMA_VERSION
+    );
+    assert_eq!(status.tool, "pccx-lab");
+    assert_eq!(status.workspace_state.trace_loaded, false);
+    assert_eq!(status.plugin_state.stable_abi, false);
+    assert!(!status.available_workflows.is_empty());
+    assert!(!status.limitations.is_empty());
+}
+
+#[test]
+fn theme_example_deserializes_into_core_contract() {
+    let theme: pccx_core::ThemeTokenContract = parse_example("theme-tokens.example.json");
+
+    assert_eq!(theme.schema_version, pccx_core::theme::THEME_SCHEMA_VERSION);
+    assert!(!theme.token_slots.is_empty());
+    assert!(!theme.presets.is_empty());
+    for preset in theme.presets {
+        assert!(!preset.name.is_empty());
+        assert!(preset.tokens.background.starts_with('#'));
+        assert!(preset.tokens.foreground.starts_with('#'));
+    }
+}
+
+#[test]
+fn workflow_descriptor_example_deserializes_into_core_contract() {
+    let descriptors: pccx_core::WorkflowDescriptorSet =
+        parse_example("workflow-descriptors.example.json");
+
+    assert_eq!(
+        descriptors.schema_version,
+        pccx_core::workflows::WORKFLOW_DESCRIPTOR_SCHEMA_VERSION
+    );
+    assert_eq!(descriptors.tool, "pccx-lab");
+    assert!(!descriptors.descriptors.is_empty());
+    for descriptor in descriptors.descriptors {
+        assert!(!descriptor.workflow_id.is_empty());
+        assert_eq!(descriptor.execution_state, "descriptor_only");
+        assert_eq!(descriptor.evidence_state, "metadata-only");
+    }
+}
+
+#[test]
+fn workflow_proposal_example_deserializes_into_core_contract() {
+    let proposals: pccx_core::WorkflowProposalSet =
+        parse_example("workflow-proposals.example.json");
+
+    assert_eq!(
+        proposals.schema_version,
+        pccx_core::proposals::WORKFLOW_PROPOSAL_SCHEMA_VERSION
+    );
+    assert_eq!(proposals.tool, "pccx-lab");
+    assert!(!proposals.proposals.is_empty());
+    for proposal in proposals.proposals {
+        assert!(!proposal.proposal_id.is_empty());
+        assert_eq!(proposal.proposal_state, "proposal_only");
+        assert!(proposal.expected_artifacts.is_empty());
+    }
+}
+
+#[test]
+fn workflow_results_example_deserializes_into_core_contract() {
+    let results: pccx_core::WorkflowResultSummarySet =
+        parse_example("workflow-results.example.json");
+
+    assert_eq!(
+        results.schema_version,
+        pccx_core::results::WORKFLOW_RESULT_SUMMARY_SCHEMA_VERSION
+    );
+    assert_eq!(results.tool, "pccx-lab");
+    assert!(results.summaries.len() <= results.max_entries);
+    assert!(!results.summaries.is_empty());
+    for summary in results.summaries {
+        assert_eq!(
+            summary.schema_version,
+            pccx_core::results::WORKFLOW_RESULT_SUMMARY_SCHEMA_VERSION
+        );
+        assert_eq!(
+            summary.output_policy,
+            "summary-only; stdout and stderr lines are omitted"
+        );
+    }
+}
+
+#[test]
+fn workflow_runner_example_deserializes_into_core_contract() {
+    let result: pccx_core::WorkflowRunResult =
+        parse_example("workflow-runner-blocked.example.json");
+
+    assert_eq!(
+        result.schema_version,
+        pccx_core::runner::WORKFLOW_RUNNER_RESULT_SCHEMA_VERSION
+    );
+    assert_eq!(result.status, "blocked");
+    assert_eq!(result.runner_enabled, false);
+    assert!(result.stdout_lines.is_empty());
+    assert!(result.stderr_lines.is_empty());
+}
+
+#[test]
+fn diagnostics_envelope_example_keeps_expected_shape() {
+    let value: serde_json::Value = parse_example("diagnostics-envelope.example.json");
+    let root = value
+        .as_object()
+        .expect("diagnostics envelope must be an object");
+
+    assert_eq!(root["envelope"], "0");
+    assert_eq!(root["tool"], "pccx-lab");
+    assert!(root["source"].as_str().is_some());
+
+    let diagnostics = root["diagnostics"]
+        .as_array()
+        .expect("diagnostics must be an array");
+    for item in diagnostics {
+        assert!(item["line"].as_u64().is_some());
+        assert!(item["column"].as_u64().is_some());
+        assert!(item["severity"].as_str().is_some());
+        assert!(item["code"].as_str().is_some());
+        assert!(item["message"].as_str().is_some());
+        assert!(item["source"].as_str().is_some());
+    }
+}
+
+#[test]
+fn launcher_handoff_example_validates_through_core_reader() {
+    let text = read_example("launcher-diagnostics-handoff.example.json");
+    let summary = pccx_core::validate_diagnostics_handoff_json(&text)
+        .expect("launcher diagnostics handoff example must validate");
+
+    assert_eq!(
+        summary.schema_version,
+        pccx_core::HANDOFF_VALIDATION_SCHEMA_VERSION
+    );
+    assert_eq!(
+        summary.handoff_schema_version,
+        pccx_core::LAUNCHER_HANDOFF_SCHEMA_VERSION
+    );
+    assert!(summary.valid);
+    assert!(summary.read_only_flags.no_launcher_execution);
+    assert!(summary.read_only_flags.no_pccx_lab_execution);
+}
