@@ -77,6 +77,7 @@ INFO "  workflow-runner       (disabled-by-default allowlisted pilot)"
 INFO "  launcher-diagnostics-handoff (read-only launcher handoff reader)"
 INFO "  launcher-device-session-status (read-only launcher status reader)"
 INFO "  mcp-read-only-tool-plan (future tool boundary map)"
+INFO "  plugin-boundary-plan (future plugin boundary map)"
 INFO "  trace-discovery       (headless CI path)"
 INFO "  xsim-log-handoff      (pccx-FPGA verification loop)"
 
@@ -93,6 +94,7 @@ check_file "$REPO_ROOT/docs/examples/workflow-runner-blocked.example.json"
 check_file "$REPO_ROOT/docs/examples/launcher-diagnostics-handoff.example.json"
 check_file "$REPO_ROOT/docs/examples/launcher-device-session-status.example.json"
 check_file "$REPO_ROOT/docs/examples/mcp-read-only-tool-plan.example.json"
+check_file "$REPO_ROOT/docs/examples/plugin-boundary-plan.example.json"
 
 echo
 INFO "CLI command source presence"

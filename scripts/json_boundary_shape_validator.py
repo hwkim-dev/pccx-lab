@@ -683,6 +683,206 @@ def validate_mcp_read_only_tool_plan(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_boundary_plan(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-boundary-plan.v0")
+    require_string_fields(root, "$", ["tool", "planId", "planState", "hostMode"])
+    if root["planState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.planState: expected descriptor_only")
+    if root["hostMode"] != "cli_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_first_gui_second")
+
+    manifest = expect_object(require_field(root, "$", "manifestDraft"), "$.manifestDraft")
+    require_string_fields(
+        manifest,
+        "$.manifestDraft",
+        ["schemaVersion", "manifestState"],
+    )
+    require_string_array(
+        require_field(manifest, "$.manifestDraft", "requiredFields"),
+        "$.manifestDraft.requiredFields",
+        min_items=1,
+    )
+    require_string_array(
+        require_field(manifest, "$.manifestDraft", "optionalFields"),
+        "$.manifestDraft.optionalFields",
+    )
+    require_string_array(
+        require_field(manifest, "$.manifestDraft", "limitations"),
+        "$.manifestDraft.limitations",
+        min_items=1,
+    )
+
+    capabilities = require_object_array(
+        require_field(root, "$", "capabilityCatalog"),
+        "$.capabilityCatalog",
+        min_items=1,
+    )
+    for capability in capabilities:
+        require_string_fields(
+            capability,
+            "$.capabilityCatalog[]",
+            [
+                "capabilityId",
+                "capabilityState",
+                "inputPolicy",
+                "outputPolicy",
+                "permissionProfile",
+            ],
+        )
+
+    loading = expect_object(require_field(root, "$", "loadingBoundary"), "$.loadingBoundary")
+    require_string_fields(loading, "$.loadingBoundary", ["state", "defaultMode"])
+    require_string_array(
+        require_field(loading, "$.loadingBoundary", "allowedDuringPlan"),
+        "$.loadingBoundary.allowedDuringPlan",
+        min_items=1,
+    )
+    require_bool_fields(
+        loading,
+        "$.loadingBoundary",
+        [
+            "pluginCodeLoaded",
+            "dynamicLibrariesLoaded",
+            "untrustedExecutionAllowed",
+            "hostApiStable",
+        ],
+    )
+    for field in [
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "untrustedExecutionAllowed",
+        "hostApiStable",
+    ]:
+        if loading[field] is not False:
+            raise ShapeError(f"unexpected value at $.loadingBoundary.{field}: expected false")
+
+    host_api = expect_object(require_field(root, "$", "hostApiBoundary"), "$.hostApiBoundary")
+    require_string_field(host_api, "$.hostApiBoundary", "state")
+    exposed = require_object_array(
+        require_field(host_api, "$.hostApiBoundary", "exposedContracts"),
+        "$.hostApiBoundary.exposedContracts",
+        min_items=1,
+    )
+    for contract in exposed:
+        path = "$.hostApiBoundary.exposedContracts[]"
+        require_string_fields(contract, path, ["contractId", "coreBoundary", "exposureState"])
+        if expect_bool(require_field(contract, path, "readOnly"), child(path, "readOnly")) is not True:
+            raise ShapeError("unexpected value at $.hostApiBoundary.exposedContracts[].readOnly: expected true")
+    require_string_array(
+        require_field(host_api, "$.hostApiBoundary", "forbiddenAccess"),
+        "$.hostApiBoundary.forbiddenAccess",
+        min_items=1,
+    )
+
+    sample = expect_object(require_field(root, "$", "samplePluginPlan"), "$.samplePluginPlan")
+    require_string_fields(
+        sample,
+        "$.samplePluginPlan",
+        [
+            "pluginId",
+            "sampleState",
+            "entryKind",
+            "inputContract",
+            "outputContract",
+            "executionState",
+        ],
+    )
+    if sample["executionState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.samplePluginPlan.executionState: expected not_implemented")
+    require_string_array(
+        require_field(sample, "$.samplePluginPlan", "limitations"),
+        "$.samplePluginPlan.limitations",
+        min_items=1,
+    )
+
+    security = expect_object(require_field(root, "$", "securityModel"), "$.securityModel")
+    require_string_field(security, "$.securityModel", "state")
+    require_bool_fields(
+        security,
+        "$.securityModel",
+        [
+            "sandboxRequired",
+            "explicitApprovalRequired",
+            "permissionsDefaultDeny",
+            "rawShellCommandsAllowed",
+            "networkAccessAllowed",
+            "fileWriteAllowed",
+        ],
+    )
+    for field in ["sandboxRequired", "explicitApprovalRequired", "permissionsDefaultDeny"]:
+        if security[field] is not True:
+            raise ShapeError(f"unexpected value at $.securityModel.{field}: expected true")
+    for field in ["rawShellCommandsAllowed", "networkAccessAllowed", "fileWriteAllowed"]:
+        if security[field] is not False:
+            raise ShapeError(f"unexpected value at $.securityModel.{field}: expected false")
+    require_string_array(
+        require_field(security, "$.securityModel", "blockedActions"),
+        "$.securityModel.blockedActions",
+        min_items=1,
+    )
+
+    cli = expect_object(require_field(root, "$", "cliFirstPlan"), "$.cliFirstPlan")
+    require_string_fields(cli, "$.cliFirstPlan", ["state", "guiPolicy"])
+    commands = require_object_array(
+        require_field(cli, "$.cliFirstPlan", "proposedCommands"),
+        "$.cliFirstPlan.proposedCommands",
+        min_items=1,
+    )
+    for command in commands:
+        path = "$.cliFirstPlan.proposedCommands[]"
+        require_string_fields(command, path, ["commandId", "availabilityState", "sideEffectPolicy"])
+        require_string_array(
+            require_field(command, path, "fixedArgsPreview"),
+            child(path, "fixedArgsPreview"),
+            min_items=1,
+        )
+
+    external = expect_object(
+        require_field(root, "$", "externalIntegrationBoundary"),
+        "$.externalIntegrationBoundary",
+    )
+    require_string_fields(external, "$.externalIntegrationBoundary", ["state", "rule"])
+    require_string_array(
+        require_field(external, "$.externalIntegrationBoundary", "consumers"),
+        "$.externalIntegrationBoundary.consumers",
+        min_items=1,
+    )
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "untrustedExecutionAllowed",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "modelExecution",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -694,6 +894,7 @@ SPECS = [
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
+    BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
 ]
 
 

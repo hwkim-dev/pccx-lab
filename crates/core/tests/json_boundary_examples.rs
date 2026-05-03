@@ -238,3 +238,54 @@ fn mcp_read_only_tool_plan_example_keeps_descriptor_only_safety_boundary() {
     assert_eq!(safety["publicPush"], false);
     assert_eq!(safety["releaseOrTag"], false);
 }
+
+#[test]
+fn plugin_boundary_plan_example_keeps_manifest_only_safety_boundary() {
+    let value: serde_json::Value = parse_example("plugin-boundary-plan.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin boundary plan must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-boundary-plan.v0");
+    assert_eq!(root["planState"], "descriptor_only");
+    assert_eq!(root["hostMode"], "cli_first_gui_second");
+
+    let manifest = root["manifestDraft"]
+        .as_object()
+        .expect("manifest draft must be an object");
+    assert_eq!(manifest["manifestState"], "draft");
+
+    let loading = root["loadingBoundary"]
+        .as_object()
+        .expect("loading boundary must be an object");
+    assert_eq!(loading["state"], "not_implemented");
+    assert_eq!(loading["pluginCodeLoaded"], false);
+    assert_eq!(loading["dynamicLibrariesLoaded"], false);
+    assert_eq!(loading["untrustedExecutionAllowed"], false);
+    assert_eq!(loading["hostApiStable"], false);
+
+    let sample = root["samplePluginPlan"]
+        .as_object()
+        .expect("sample plugin plan must be an object");
+    assert_eq!(sample["executionState"], "not_implemented");
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["untrustedExecutionAllowed"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}

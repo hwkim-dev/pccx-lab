@@ -20,6 +20,7 @@ wrappers backed by `pccx-core`.
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
 | Future MCP/tool consumer | Descriptor, proposal, and read-only tool-plan JSON | Consume descriptor-only contracts until a controlled adapter exists. |
+| Future plugin consumer | Plugin boundary-plan JSON | Treat manifest and capability data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
 runtime is implemented by these examples.
@@ -177,6 +178,41 @@ planning. It does not implement an MCP runtime and does not grant
 approval to execute writes, shell commands, provider calls, hardware
 access, launcher/editor bridges, release/tag control, or public pushes.
 
+## Plugin Boundary Plan
+
+Full fixture:
+[`plugin-boundary-plan.example.json`](examples/plugin-boundary-plan.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-boundary-plan.v0",
+  "planState": "descriptor_only",
+  "hostMode": "cli_first_gui_second",
+  "manifestDraft": {
+    "schemaVersion": "pccx.lab.plugin-manifest.v0",
+    "manifestState": "draft"
+  },
+  "loadingBoundary": {
+    "state": "not_implemented",
+    "pluginCodeLoaded": false,
+    "untrustedExecutionAllowed": false,
+    "hostApiStable": false
+  },
+  "safetyFlags": {
+    "descriptorOnly": true,
+    "readOnly": true,
+    "pluginRuntimeImplemented": false,
+    "marketplaceFlow": false,
+    "writeBack": false
+  }
+}
+```
+
+Use this fixture for manifest, host API, permission, and security-model
+alignment before implementing any plugin loader. It does not load plugin
+code, execute untrusted code, define a package distribution flow, or
+grant approval to write files or mutate repositories.
+
 ## Workflow Results
 
 ```bash
@@ -214,6 +250,8 @@ this summary contract.
   is reviewed.
 - Use the MCP read-only tool-plan fixture for tool-list, permission, and
   audit-plan alignment before implementing any adapter.
+- Use the plugin boundary-plan fixture for manifest and host API
+  alignment before implementing any loader.
 
 ## Launcher Device/Session Status
 

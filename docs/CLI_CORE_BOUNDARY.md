@@ -27,6 +27,7 @@ separate workflow logic island.
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
 | `docs/examples/mcp-read-only-tool-plan.example.json` | planned boundary map | Checked future MCP/tool adapter plan over fixed CLI/core commands; no runtime is implemented. |
+| `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -58,6 +59,7 @@ aligned.
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 
 ## Current cross-repo direction
 
@@ -422,6 +424,29 @@ comparison, and pull-request summary preparation require separate
 reviewed boundaries before they can read additional inputs, write
 artifacts, or prepare public repository text.
 
+## plugin-boundary-plan
+
+The checked fixture
+[`docs/examples/plugin-boundary-plan.example.json`](examples/plugin-boundary-plan.example.json)
+defines the first plugin manifest and host API planning boundary. It is
+manifest-only and descriptor-only. No plugin loader, dynamic library
+loading, untrusted execution, package distribution flow, GUI-only
+workflow, shell command, provider call, network call, hardware access,
+launcher/editor bridge, repository mutation, artifact write, public
+push, or release/tag control is implemented.
+
+The draft manifest shape records required fields such as `pluginId`,
+`name`, `version`, `entryKind`, `capabilities`, `inputContracts`,
+`outputContracts`, `permissions`, and `limitations`. Capability entries
+are limited to planned diagnostics, report-panel, and trace-import
+metadata. Trace import remains deferred until a separate summary
+boundary exists.
+
+The host API plan keeps plugin-facing data behind existing CLI/core
+contracts: lab status, workflow descriptors, diagnostics envelopes, and
+workflow result summaries. The GUI may render manifest and capability
+metadata only after CLI/core contracts exist. No stable plugin ABI is promised.
+
 ## GUI foundation
 
 The current GUI addition is only a compact verification dashboard panel
@@ -447,6 +472,7 @@ bridges, launcher bridges, or arbitrary shell commands.
 |---|---|
 | Full GUI workflows | Deferred until reusable CLI/core commands exist. |
 | Plugin ABI stability | Not promised. |
+| Plugin loader/runtime | Not implemented in this foundation. |
 | MCP runtime | Not implemented in this foundation. |
 | Editor or launcher runtime bridge | Not implemented in this foundation. |
 | Hardware inference and throughput status | Not claimed by status output. |

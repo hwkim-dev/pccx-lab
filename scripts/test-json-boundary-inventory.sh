@@ -125,7 +125,8 @@ run_case \
     "inventory validation: all checks passed" \
     "[lab-status] inventory ok" \
     "[launcher-diagnostics-handoff] inventory ok" \
-    "[mcp-read-only-tool-plan] inventory ok"
+    "[mcp-read-only-tool-plan] inventory ok" \
+    "[plugin-boundary-plan] inventory ok"
 
 missing_path_inventory="$(stage_inventory_fixture missing-example-path)"
 run_case \
