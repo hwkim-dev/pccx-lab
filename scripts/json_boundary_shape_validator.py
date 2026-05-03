@@ -683,6 +683,176 @@ def validate_mcp_read_only_tool_plan(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_permission_model(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-permission-model.v0")
+    require_string_fields(
+        root,
+        "$",
+        ["tool", "modelId", "modelState", "adapterState", "defaultMode"],
+    )
+    if root["modelState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.modelState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+
+    approval = expect_object(require_field(root, "$", "approvalPolicy"), "$.approvalPolicy")
+    require_string_field(approval, "$.approvalPolicy", "state")
+    approval_true_flags = [
+        "userApprovalRequiredForPathInput",
+        "userApprovalRequiredForWriteAction",
+        "userApprovalRequiredForArtifactOutput",
+    ]
+    approval_false_flags = [
+        "rawShellCommandsAllowed",
+        "silentFallbackAllowed",
+        "backgroundMutationAllowed",
+    ]
+    require_bool_fields(
+        approval,
+        "$.approvalPolicy",
+        approval_true_flags + approval_false_flags,
+    )
+    for flag in approval_true_flags:
+        if approval[flag] is not True:
+            raise ShapeError(f"unexpected value at $.approvalPolicy.{flag}: expected true")
+    for flag in approval_false_flags:
+        if approval[flag] is not False:
+            raise ShapeError(f"unexpected value at $.approvalPolicy.{flag}: expected false")
+
+    profiles = require_object_array(
+        require_field(root, "$", "permissionProfiles"),
+        "$.permissionProfiles",
+        min_items=1,
+    )
+    profile_ids = set()
+    for profile in profiles:
+        path = "$.permissionProfiles[]"
+        require_string_fields(
+            profile,
+            path,
+            [
+                "profileId",
+                "profileState",
+                "inputReferenceKind",
+                "outputPolicy",
+            ],
+        )
+        profile_id = profile["profileId"]
+        profile_ids.add(profile_id)
+        require_string_array(
+            require_field(profile, path, "allowedCommandKinds"),
+            child(path, "allowedCommandKinds"),
+        )
+        expect_bool(
+            require_field(profile, path, "requiresUserApproval"),
+            child(path, "requiresUserApproval"),
+        )
+        if expect_bool(require_field(profile, path, "auditRequired"), child(path, "auditRequired")) is not True:
+            raise ShapeError("unexpected value at $.permissionProfiles[].auditRequired: expected true")
+        require_string_array(require_field(profile, path, "examples"), child(path, "examples"))
+
+        if profile_id == "write_action_pending_review":
+            if profile["profileState"] != "deferred":
+                raise ShapeError(
+                    "unexpected value at $.permissionProfiles[].profileState: "
+                    "write_action_pending_review must be deferred"
+                )
+            if profile["allowedCommandKinds"] != []:
+                raise ShapeError(
+                    "unexpected value at $.permissionProfiles[].allowedCommandKinds: "
+                    "write_action_pending_review must not allow command kinds"
+                )
+
+    actions = require_object_array(
+        require_field(root, "$", "actionClasses"),
+        "$.actionClasses",
+        min_items=1,
+    )
+    for action in actions:
+        path = "$.actionClasses[]"
+        require_string_fields(
+            action,
+            path,
+            ["actionClass", "permissionProfile", "defaultDecision", "sideEffectPolicy"],
+        )
+        if action["permissionProfile"] not in profile_ids:
+            raise ShapeError(
+                "unexpected value at $.actionClasses[].permissionProfile: "
+                f"unknown profile {action['permissionProfile']}"
+            )
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "arbitrary-shell-command",
+        "public-push",
+        "release-or-tag",
+        "repository-write-back",
+        "artifact-write",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    audit = expect_object(require_field(root, "$", "auditPolicy"), "$.auditPolicy")
+    require_string_fields(audit, "$.auditPolicy", ["state", "eventSchema"])
+    audit_true_flags = ["auditRequiredForAllowedProfiles", "redactionRequired"]
+    audit_false_flags = ["pathEchoAllowed", "stdoutCaptureAllowed", "stderrCaptureAllowed"]
+    require_bool_fields(audit, "$.auditPolicy", audit_true_flags + audit_false_flags)
+    for flag in audit_true_flags:
+        if audit[flag] is not True:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{flag}: expected true")
+    for flag in audit_false_flags:
+        if audit[flag] is not False:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{flag}: expected false")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_audit_event(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-audit-event.v0")
@@ -996,6 +1166,7 @@ SPECS = [
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
+    BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
 ]
