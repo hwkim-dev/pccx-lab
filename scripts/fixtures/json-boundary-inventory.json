@@ -257,6 +257,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-approval-decision-boundary"
     },
     {
+      "boundaryKind": "mcp-blocked-invocation-result",
+      "examplePath": "docs/examples/mcp-blocked-invocation-result.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-blocked-invocation-result-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-blocked-invocation-result",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_blocked_invocation_result_example_keeps_non_executing_result_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-blocked-invocation-result-boundary"
+    },
+    {
       "boundaryKind": "mcp-audit-event",
       "examplePath": "docs/examples/mcp-audit-event.example.json",
       "producingCommand": null,
