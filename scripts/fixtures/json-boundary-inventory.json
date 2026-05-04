@@ -325,6 +325,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-invocation-request-boundary"
     },
     {
+      "boundaryKind": "mcp-client-session-state",
+      "examplePath": "docs/examples/mcp-client-session-state.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-client-session-state-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-client-session-state",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_client_session_state_example_keeps_client_session_blocked_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-client-session-state-boundary"
+    },
+    {
       "boundaryKind": "mcp-blocked-invocation-result",
       "examplePath": "docs/examples/mcp-blocked-invocation-result.example.json",
       "producingCommand": null,

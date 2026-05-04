@@ -1649,6 +1649,179 @@ fn mcp_invocation_request_example_keeps_invocation_blocked_boundary() {
 }
 
 #[test]
+fn mcp_client_session_state_example_keeps_client_session_blocked_boundary() {
+    let value: serde_json::Value = parse_example("mcp-client-session-state.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP client/session state must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.mcp-client-session-state.v0"
+    );
+    assert_eq!(root["sessionState"], "not_started");
+    assert_eq!(root["connectionState"], "not_configured");
+    assert_eq!(root["transportState"], "not_open");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "mcp_read_only_tool_plan"
+            && source["toolCatalogAvailableAsData"] == true
+            && source["clientRuntimeAllowed"] == false
+            && source["serverRuntimeAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "mcp_invocation_request"
+            && source["sessionStartAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+            && source["commandExecutionAllowed"] == false
+    }));
+
+    let session = root["clientSession"]
+        .as_object()
+        .expect("client session must be an object");
+    assert_eq!(session["sessionKind"], "planned_mcp_client_session_state");
+    assert_eq!(session["lifecycleState"], "not_started");
+    assert_eq!(session["approvalState"], "not_approved");
+    assert_eq!(session["invocationState"], "not_invoked");
+    assert_eq!(session["summaryOnly"], true);
+    assert_eq!(session["sessionOpen"], false);
+    assert_eq!(session["transportOpen"], false);
+    assert_eq!(session["handshakeComplete"], false);
+    assert_eq!(session["clientRuntimeStarted"], false);
+    assert_eq!(session["serverRuntimeStarted"], false);
+    assert_eq!(session["toolCatalogFetched"], false);
+    assert_eq!(session["toolInvocationStarted"], false);
+    assert_eq!(session["approvalExecutorCalled"], false);
+    assert_eq!(session["permissionExecutorCalled"], false);
+    assert_eq!(session["commandExecutionAttempted"], false);
+    assert_eq!(session["localFileReadAttempted"], false);
+    assert_eq!(session["repositoryMutationAttempted"], false);
+    assert_eq!(session["networkCallAttempted"], false);
+    assert_eq!(session["hardwareAccessAttempted"], false);
+
+    let transport = root["transportPolicy"]
+        .as_object()
+        .expect("transport policy must be an object");
+    assert_eq!(transport["state"], "not_open");
+    assert_eq!(transport["transportOpenAllowed"], false);
+    assert_eq!(transport["stdioProcessAllowed"], false);
+    assert_eq!(transport["socketAllowed"], false);
+    assert_eq!(transport["networkAllowed"], false);
+    assert_eq!(transport["browserAllowed"], false);
+    assert_eq!(transport["ipcAllowed"], false);
+    assert_eq!(transport["serverStartAllowed"], false);
+    assert_eq!(transport["clientStartAllowed"], false);
+    assert_eq!(transport["handshakeAllowed"], false);
+    assert_eq!(transport["toolListRequestAllowed"], false);
+
+    let audit = root["auditPolicy"]
+        .as_object()
+        .expect("audit policy must be an object");
+    assert_eq!(audit["summaryOnly"], true);
+    assert_eq!(audit["auditLoggerAllowed"], false);
+    assert_eq!(audit["auditPersistenceAllowed"], false);
+    assert_eq!(audit["pathEchoAllowed"], false);
+    assert_eq!(audit["stdoutIncluded"], false);
+    assert_eq!(audit["stderrIncluded"], false);
+    assert_eq!(audit["rawLogsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "mcp-client-runtime",
+        "mcp-handshake",
+        "transport-open",
+        "tool-list-request",
+        "approval-executor",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["clientSessionStateFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["mcpServerImplemented"], false);
+    assert_eq!(safety["mcpClientImplemented"], false);
+    assert_eq!(safety["mcpClientSessionStarted"], false);
+    assert_eq!(safety["transportOpened"], false);
+    assert_eq!(safety["handshakeAttempted"], false);
+    assert_eq!(safety["toolListRequested"], false);
+    assert_eq!(safety["approvalExecutorImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["toolInvocationPathImplemented"], false);
+    assert_eq!(safety["toolInvocationAttempted"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["auditLoggerImplemented"], false);
+    assert_eq!(safety["auditPersistence"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["launcherExecution"], false);
+    assert_eq!(safety["editorExecution"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+}
+
+#[test]
 fn mcp_blocked_invocation_result_example_keeps_non_executing_result_boundary() {
     let value: serde_json::Value = parse_example("mcp-blocked-invocation-result.example.json");
     let root = value
