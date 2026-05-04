@@ -3606,6 +3606,242 @@ fn plugin_host_session_state_example_keeps_host_session_blocked_boundary() {
 }
 
 #[test]
+fn plugin_invocation_request_example_keeps_invocation_blocked_boundary() {
+    let value: serde_json::Value = parse_example("plugin-invocation-request.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin invocation request must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.plugin-invocation-request.v0"
+    );
+    assert_eq!(root["requestState"], "blocked_by_policy");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_load_request"
+            && source["approved"] == false
+            && source["pluginLoaderAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_host_session_state"
+            && source["hostSessionOpen"] == false
+            && source["hostApiBindAllowed"] == false
+            && source["capabilityDispatchAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+
+    let request = root["invocationRequest"]
+        .as_object()
+        .expect("invocation request must be an object");
+    assert_eq!(request["requestKind"], "planned_plugin_invocation_gate");
+    assert_eq!(request["summaryOnly"], true);
+    assert_eq!(request["approvalRequired"], true);
+    assert_eq!(request["approved"], false);
+    assert_eq!(request["inputRefOnly"], true);
+    assert_eq!(request["pathEchoAllowed"], false);
+    assert_eq!(request["privatePathEchoAllowed"], false);
+    assert_eq!(request["localFileReadAllowed"], false);
+    assert_eq!(request["repositoryReadAllowed"], false);
+    assert_eq!(request["rawTraceReadAllowed"], false);
+    assert_eq!(request["rawReportReadAllowed"], false);
+    assert_eq!(request["artifactReadAllowed"], false);
+    assert_eq!(request["commandExecutionAllowed"], false);
+    assert_eq!(request["shellExecutionAllowed"], false);
+    assert_eq!(request["runtimeExecutionAllowed"], false);
+    assert_eq!(request["pluginLoaderAllowed"], false);
+    assert_eq!(request["pluginRuntimeAllowed"], false);
+    assert_eq!(request["sandboxStartAllowed"], false);
+    assert_eq!(request["hostApiBindAllowed"], false);
+    assert_eq!(request["capabilityDispatchAllowed"], false);
+    assert_eq!(request["pluginInvocationAllowed"], false);
+    assert_eq!(request["packageInstallAllowed"], false);
+    assert_eq!(request["dynamicCodeLoadAllowed"], false);
+    assert_eq!(request["providerCallAllowed"], false);
+    assert_eq!(request["networkCallAllowed"], false);
+    assert_eq!(request["launcherExecutionAllowed"], false);
+    assert_eq!(request["editorExecutionAllowed"], false);
+    assert_eq!(request["hardwareAccessAllowed"], false);
+    assert_eq!(request["modelLoadAllowed"], false);
+
+    let decision = root["invocationDecision"]
+        .as_object()
+        .expect("invocation decision must be an object");
+    assert_eq!(decision["state"], "not_invoked");
+    assert_eq!(decision["approved"], false);
+    assert_eq!(decision["denied"], true);
+    assert_eq!(decision["pluginHostSessionStarted"], false);
+    assert_eq!(decision["pluginLoaded"], false);
+    assert_eq!(decision["sandboxStarted"], false);
+    assert_eq!(decision["runtimeStarted"], false);
+    assert_eq!(decision["hostApiBound"], false);
+    assert_eq!(decision["capabilityDispatchStarted"], false);
+    assert_eq!(decision["pluginInvocationStarted"], false);
+    assert_eq!(decision["permissionExecutorCalled"], false);
+    assert_eq!(decision["inputReaderCalled"], false);
+    assert_eq!(decision["traceImporterCalled"], false);
+    assert_eq!(decision["commandExecutionAttempted"], false);
+    assert_eq!(decision["shellExecutionAttempted"], false);
+    assert_eq!(decision["runtimeExecutionAttempted"], false);
+    assert_eq!(decision["localFileReadAttempted"], false);
+    assert_eq!(decision["repositoryReadAttempted"], false);
+    assert_eq!(decision["rawTraceReadAttempted"], false);
+    assert_eq!(decision["rawReportReadAttempted"], false);
+    assert_eq!(decision["artifactReadAttempted"], false);
+    assert_eq!(decision["artifactWriteAttempted"], false);
+    assert_eq!(decision["reportWriteAttempted"], false);
+    assert_eq!(decision["repositoryMutationAttempted"], false);
+    assert_eq!(decision["providerCallAttempted"], false);
+    assert_eq!(decision["networkCallAttempted"], false);
+    assert_eq!(decision["hardwareAccessAttempted"], false);
+    assert_eq!(decision["modelLoadAttempted"], false);
+
+    let context = root["plannedPluginContext"]
+        .as_object()
+        .expect("planned plugin context must be an object");
+    assert_eq!(context["summaryOnly"], true);
+    assert_eq!(context["approvedInputReferenceOnly"], true);
+    assert_eq!(context["privatePathsIncluded"], false);
+    assert_eq!(context["manifestContentIncluded"], false);
+    assert_eq!(context["packageContentIncluded"], false);
+    assert_eq!(context["sourceCodeIncluded"], false);
+    assert_eq!(context["localFileRead"], false);
+    assert_eq!(context["repositoryRead"], false);
+    assert_eq!(context["rawTraceRead"], false);
+    assert_eq!(context["rawReportRead"], false);
+    assert_eq!(context["artifactRead"], false);
+    assert_eq!(context["stdoutIncluded"], false);
+    assert_eq!(context["stderrIncluded"], false);
+    assert_eq!(context["rawLogsIncluded"], false);
+    assert_eq!(context["modelWeightPathsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-host-session",
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "plugin-sandbox-start",
+        "plugin-host-api-bind",
+        "plugin-capability-dispatch",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "trace-importer",
+        "manifest-reader",
+        "validator-command",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "package-install",
+        "package-distribution",
+        "marketplace-flow",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["pluginInvocationRequestFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginSandboxImplemented"], false);
+    assert_eq!(safety["pluginHostSessionStarted"], false);
+    assert_eq!(safety["pluginHostApiBound"], false);
+    assert_eq!(safety["capabilityDispatchImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["inputReaderImplemented"], false);
+    assert_eq!(safety["traceImporterImplemented"], false);
+    assert_eq!(safety["manifestReaderImplemented"], false);
+    assert_eq!(safety["validatorCommandImplemented"], false);
+    assert_eq!(safety["pluginInvocationPathImplemented"], false);
+    assert_eq!(safety["pluginInvocationAttempted"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["auditLoggerImplemented"], false);
+    assert_eq!(safety["auditPersistence"], false);
+    assert_eq!(safety["packageInstall"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["dynamicCodeLoad"], false);
+    assert_eq!(safety["untrustedExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["launcherExecution"], false);
+    assert_eq!(safety["editorExecution"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["manifestContentIncluded"], false);
+    assert_eq!(safety["packageContentIncluded"], false);
+    assert_eq!(safety["sourceCodeIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["diagnosticsProduced"], false);
+    assert_eq!(safety["panelProduced"], false);
+    assert_eq!(safety["reportItemsProduced"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["compatibilityClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+}
+
+#[test]
 fn plugin_review_packet_example_keeps_summary_only_boundary() {
     let value: serde_json::Value = parse_example("plugin-review-packet.example.json");
     let root = value

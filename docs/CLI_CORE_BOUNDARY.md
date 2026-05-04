@@ -50,6 +50,7 @@ separate workflow logic island.
 | `docs/examples/plugin-manifest-validation-result.example.json` | planned manifest validation result | Checked summary-only result shape for a future approved manifest validation request; no manifest reader, validator command, plugin runtime, or loader is implemented. |
 | `docs/examples/plugin-load-request.example.json` | planned load-request gate | Checked blocked load-request shape for a future reviewed plugin loader gate; no loader, runtime, sandbox, manifest reader, package install, or dynamic code loading is implemented. |
 | `docs/examples/plugin-host-session-state.example.json` | planned host/session state | Checked blocked host/session state for a future reviewed plugin loader gate; no loader, runtime, sandbox, host API binding, capability dispatch, or command execution is implemented. |
+| `docs/examples/plugin-invocation-request.example.json` | planned invocation request | Checked blocked invocation-request shape for a future reviewed plugin capability dispatch gate; no loader, runtime, sandbox, host API binding, capability dispatch, or command execution is implemented. |
 | `docs/examples/plugin-review-packet.example.json` | planned review packet contract | Checked summary-only review packet shape over plugin permission, input, output, blocked-result, manifest-validation, and audit summaries; no plugin loader, runtime, writer, package, marketplace, or repository mutation path is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
@@ -98,6 +99,7 @@ aligned.
 | `plugin-manifest-validation-result` | `docs/examples/plugin-manifest-validation-result.example.json` | Reader only; planned summary-only result shape for a future approved plugin manifest validation request | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-load-request` | `docs/examples/plugin-load-request.example.json` | Reader only; planned blocked load-request gate over approved plugin manifest, permission, validation, audit, and review summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-host-session-state` | `docs/examples/plugin-host-session-state.example.json` | Reader only; planned blocked host/session state over approved plugin plan, permission, validation, review, load-request, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-invocation-request` | `docs/examples/plugin-invocation-request.example.json` | Reader only; planned blocked invocation-request gate over approved plugin permission, input, review, load-request, host/session, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-review-packet` | `docs/examples/plugin-review-packet.example.json` | Reader only; planned summary-only review packet shape over approved plugin permission, input, output, blocked-result, manifest-validation, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -841,6 +843,32 @@ The host/session state intentionally keeps `sessionState` set to
 `not_started`, and `runtimeState` set to `not_started`. No
 compatibility promise, plugin ABI stability promise, marketplace claim,
 runtime claim, or hardware claim is made.
+
+## plugin invocation request boundary
+
+[`docs/examples/plugin-invocation-request.example.json`](examples/plugin-invocation-request.example.json)
+defines the checked blocked invocation-request shape for a future
+reviewed plugin capability dispatch gate. It links the plugin permission
+model, input contract, review packet, load-request, host/session state,
+and audit-event summaries, then records that no host session, loader,
+sandbox, runtime, host API binding, capability dispatch, or plugin
+invocation has started.
+
+The fixture is summary-only metadata. It does not approve inputs, read
+local files, read repositories, read raw traces, read raw reports, echo
+private paths, load plugin code, start a loader, start a runtime, start
+a sandbox, bind a host API, dispatch capabilities, call a permission
+executor, read inputs, import traces, read manifests, run a validator
+command, execute commands, write reports, write artifacts, mutate
+repositories, install packages, distribute packages, use a marketplace
+flow, call providers, use the network, touch hardware, access KV260,
+access FPGA repos, load models, upload telemetry, push publicly, or
+control releases/tags.
+
+The invocation request intentionally keeps `approved` false and the
+decision `state` set to `not_invoked`. No compatibility promise, plugin
+ABI stability promise, marketplace claim, runtime claim, or hardware
+claim is made.
 
 ## plugin review packet boundary
 

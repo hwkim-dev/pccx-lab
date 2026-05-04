@@ -444,6 +444,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-host-session-state-boundary"
     },
     {
+      "boundaryKind": "plugin-invocation-request",
+      "examplePath": "docs/examples/plugin-invocation-request.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-invocation-request-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-invocation-request",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_invocation_request_example_keeps_invocation_blocked_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-invocation-request-boundary"
+    },
+    {
       "boundaryKind": "plugin-review-packet",
       "examplePath": "docs/examples/plugin-review-packet.example.json",
       "producingCommand": null,
