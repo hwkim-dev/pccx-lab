@@ -141,6 +141,7 @@ run_case \
     "[mcp-blocked-invocation-result] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[mcp-sample-catalog] inventory ok" \
+    "[hybrid-strategy-plan] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
     "[plugin-manifest-validation-result] inventory ok" \
     "[plugin-sample-catalog] inventory ok" \

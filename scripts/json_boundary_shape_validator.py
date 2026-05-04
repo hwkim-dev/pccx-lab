@@ -11952,6 +11952,315 @@ def validate_sail_adoption_plan(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_hybrid_strategy_plan(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.hybrid-strategy-plan.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "strategyPlanId",
+            "strategyState",
+            "lowLevelTrackState",
+            "scriptTrackState",
+            "controlRuntimeState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    expected_states = {
+        "strategyState": "descriptor_only",
+        "lowLevelTrackState": "planned_descriptor",
+        "scriptTrackState": "not_implemented",
+        "controlRuntimeState": "not_implemented",
+        "defaultMode": "descriptor_only",
+        "hostMode": "cli_core_first_gui_second",
+    }
+    for field, expected in expected_states.items():
+        if root[field] != expected:
+            raise ShapeError(f"unexpected value at $.{field}: expected {expected}")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(ref, "$.sourceBoundaryRefs[]", ["refId", "schemaVersion", "examplePath", "state"])
+    if not any(
+        ref["refId"] == "workflow_descriptors"
+        and ref.get("lowLevelTrackCandidate") is True
+        and ref.get("scriptTrackCandidate") is True
+        and ref.get("commandExecutionAllowed") is False
+        and ref.get("runtimeExecutionAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing workflow_descriptors hybrid strategy source reference")
+    if not any(
+        ref["refId"] == "workflow_results"
+        and ref.get("resultSummaryAvailable") is True
+        and ref.get("payloadIncluded") is False
+        and ref.get("reportWriterAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing workflow_results summary-only source reference")
+    if not any(
+        ref["refId"] == "verification_gate"
+        and ref.get("verificationRunAllowed") is False
+        and ref.get("simulatorExecutionAllowed") is False
+        and ref.get("hardwareControlAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing disabled verification_gate source reference")
+
+    strategy = expect_object(require_field(root, "$", "hybridStrategy"), "$.hybridStrategy")
+    require_string_fields(strategy, "$.hybridStrategy", ["strategyKind", "scope", "issueRef"])
+    strategy_true_flags = ["summaryOnly", "descriptorOnly", "cliCoreFirst", "guiSecond"]
+    require_bool_fields(strategy, "$.hybridStrategy", strategy_true_flags)
+    for flag in strategy_true_flags:
+        if strategy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.hybridStrategy.{flag}: expected true")
+
+    low_level = expect_object(
+        require_field(strategy, "$.hybridStrategy", "lowLevelTrack"),
+        "$.hybridStrategy.lowLevelTrack",
+    )
+    require_string_fields(
+        low_level,
+        "$.hybridStrategy.lowLevelTrack",
+        ["trackId", "trackState", "audience", "purpose"],
+    )
+    if low_level["trackState"] != "planned_descriptor":
+        raise ShapeError("unexpected value at $.hybridStrategy.lowLevelTrack.trackState: expected planned_descriptor")
+    low_level_false_flags = [
+        "sourceReadAllowed",
+        "simulatorExecutionAllowed",
+        "verificationRunAllowed",
+        "hardwareControlAllowed",
+    ]
+    require_bool_fields(low_level, "$.hybridStrategy.lowLevelTrack", low_level_false_flags)
+    for flag in low_level_false_flags:
+        if low_level[flag] is not False:
+            raise ShapeError(f"unexpected value at $.hybridStrategy.lowLevelTrack.{flag}: expected false")
+
+    script = expect_object(
+        require_field(strategy, "$.hybridStrategy", "scriptTrack"),
+        "$.hybridStrategy.scriptTrack",
+    )
+    require_string_fields(
+        script,
+        "$.hybridStrategy.scriptTrack",
+        ["trackId", "trackState", "audience", "purpose"],
+    )
+    if script["trackState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.hybridStrategy.scriptTrack.trackState: expected not_implemented")
+    script_false_flags = [
+        "grammarIncluded",
+        "parserImplemented",
+        "compilerImplemented",
+        "runtimeImplemented",
+        "scriptExecutionAllowed",
+        "hardwareControlAllowed",
+    ]
+    require_bool_fields(script, "$.hybridStrategy.scriptTrack", script_false_flags)
+    for flag in script_false_flags:
+        if script[flag] is not False:
+            raise ShapeError(f"unexpected value at $.hybridStrategy.scriptTrack.{flag}: expected false")
+
+    phases = require_object_array(require_field(root, "$", "plannedPhases"), "$.plannedPhases", min_items=1)
+    phase_ids = set()
+    for phase in phases:
+        path = "$.plannedPhases[]"
+        require_string_fields(
+            phase,
+            path,
+            ["phaseId", "state", "summary", "requiredBefore", "sideEffectPolicy"],
+        )
+        phase_ids.add(phase["phaseId"])
+        if phase["phaseId"] != "execution_gate_review":
+            require_bool_fields(phase, path, ["fileReadAllowed", "commandExecutionAllowed"])
+            if phase["fileReadAllowed"] is not False:
+                raise ShapeError("unexpected value at $.plannedPhases[].fileReadAllowed: expected false")
+            if phase["commandExecutionAllowed"] is not False:
+                raise ShapeError("unexpected value at $.plannedPhases[].commandExecutionAllowed: expected false")
+    for phase_id in ["track_scope_review", "language_shape_review", "execution_gate_review"]:
+        if phase_id not in phase_ids:
+            raise ShapeError(f"missing phase id in $.plannedPhases: {phase_id}")
+
+    input_policy = expect_object(require_field(root, "$", "inputPolicy"), "$.inputPolicy")
+    require_string_fields(input_policy, "$.inputPolicy", ["acceptedInputKind", "summary"])
+    input_false_flags = [
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "cppSourceReadAllowed",
+        "systemVerilogSourceReadAllowed",
+        "scriptSourceReadAllowed",
+        "grammarReadAllowed",
+        "traceReadAllowed",
+        "reportReadAllowed",
+        "artifactReadAllowed",
+        "repositoryReadAllowed",
+        "environmentReadAllowed",
+        "secretsReadAllowed",
+        "tokensReadAllowed",
+    ]
+    require_bool_fields(input_policy, "$.inputPolicy", input_false_flags)
+    for flag in input_false_flags:
+        if input_policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.inputPolicy.{flag}: expected false")
+
+    output_policy = expect_object(require_field(root, "$", "outputPolicy"), "$.outputPolicy")
+    require_string_fields(output_policy, "$.outputPolicy", ["outputKind", "summary"])
+    output_false_flags = [
+        "cppSourceIncluded",
+        "systemVerilogSourceIncluded",
+        "scriptSourceIncluded",
+        "grammarIncluded",
+        "generatedParserIncluded",
+        "compiledArtifactIncluded",
+        "runtimePlanIncluded",
+        "traceContentIncluded",
+        "reportContentIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "privatePathsIncluded",
+    ]
+    require_bool_fields(output_policy, "$.outputPolicy", output_false_flags)
+    for flag in output_false_flags:
+        if output_policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.outputPolicy.{flag}: expected false")
+
+    review = expect_object(require_field(root, "$", "reviewGate"), "$.reviewGate")
+    require_string_fields(review, "$.reviewGate", ["state", "summary"])
+    review_true_flags = ["approvalRequiredBeforeImplementation", "approvedForDescriptor"]
+    review_false_flags = [
+        "approvedForSourceRead",
+        "approvedForGrammar",
+        "approvedForParser",
+        "approvedForCompiler",
+        "approvedForRuntime",
+        "approvedForScriptExecution",
+        "approvedForSimulatorExecution",
+        "approvedForHardwareControl",
+        "approvedForReportWrite",
+        "approvedForArtifactWrite",
+        "approvedForRepositoryMutation",
+    ]
+    require_bool_fields(review, "$.reviewGate", review_true_flags + review_false_flags)
+    for flag in review_true_flags:
+        if review[flag] is not True:
+            raise ShapeError(f"unexpected value at $.reviewGate.{flag}: expected true")
+    for flag in review_false_flags:
+        if review[flag] is not False:
+            raise ShapeError(f"unexpected value at $.reviewGate.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "cppSourceReadAllowed",
+        "systemVerilogSourceReadAllowed",
+        "scriptSourceReadAllowed",
+        "grammarReadAllowed",
+        "reportWriteAllowed",
+        "artifactWriteAllowed",
+        "repositoryMutationAllowed",
+        "commandExecutionAllowed",
+        "simulatorExecutionAllowed",
+        "hardwareControlAllowed",
+        "runtimeExecutionAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked = require_field(root, "$", "blockedActions")
+    require_string_array(blocked, "$.blockedActions", min_items=1)
+    for required in [
+        "cpp-source-read",
+        "systemverilog-source-read",
+        "custom-script-source-read",
+        "custom-language-grammar-read",
+        "custom-language-parser",
+        "custom-language-compiler",
+        "custom-script-runtime",
+        "custom-script-execution",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "command-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "planOnly", "summaryOnly"]
+    false_flags = [
+        "cppSourceReaderImplemented",
+        "systemVerilogSourceReaderImplemented",
+        "scriptSourceReaderImplemented",
+        "customLanguageGrammarIncluded",
+        "customLanguageParserImplemented",
+        "customLanguageCompilerImplemented",
+        "customScriptRuntimeImplemented",
+        "customScriptExecution",
+        "simulatorExecution",
+        "verificationExecution",
+        "hardwareControl",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportReaderImplemented",
+        "reportWriterImplemented",
+        "networkCalls",
+        "providerCalls",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -11961,6 +12270,7 @@ SPECS = [
     BoundarySpec("workflow-results", "docs/examples/workflow-results.example.json", validate_workflow_results),
     BoundarySpec("workflow-runner-result", "docs/examples/workflow-runner-blocked.example.json", validate_workflow_runner_result),
     BoundarySpec("sail-adoption-plan", "docs/examples/sail-adoption-plan.example.json", validate_sail_adoption_plan),
+    BoundarySpec("hybrid-strategy-plan", "docs/examples/hybrid-strategy-plan.example.json", validate_hybrid_strategy_plan),
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),

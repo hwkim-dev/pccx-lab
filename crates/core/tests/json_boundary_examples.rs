@@ -5797,6 +5797,163 @@ fn sail_adoption_plan_example_keeps_descriptor_only_boundary() {
 }
 
 #[test]
+fn hybrid_strategy_plan_example_keeps_descriptor_only_boundary() {
+    let value: serde_json::Value = parse_example("hybrid-strategy-plan.example.json");
+    let root = value
+        .as_object()
+        .expect("hybrid strategy plan must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.hybrid-strategy-plan.v0");
+    assert_eq!(root["strategyState"], "descriptor_only");
+    assert_eq!(root["lowLevelTrackState"], "planned_descriptor");
+    assert_eq!(root["scriptTrackState"], "not_implemented");
+    assert_eq!(root["controlRuntimeState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "descriptor_only");
+    assert_eq!(root["hostMode"], "cli_core_first_gui_second");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "workflow_descriptors"
+            && item["lowLevelTrackCandidate"] == true
+            && item["scriptTrackCandidate"] == true
+            && item["commandExecutionAllowed"] == false
+            && item["runtimeExecutionAllowed"] == false
+    }));
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "verification_gate"
+            && item["verificationRunAllowed"] == false
+            && item["simulatorExecutionAllowed"] == false
+            && item["hardwareControlAllowed"] == false
+    }));
+
+    let strategy = root["hybridStrategy"]
+        .as_object()
+        .expect("hybrid strategy must be an object");
+    assert_eq!(strategy["summaryOnly"], true);
+    assert_eq!(strategy["descriptorOnly"], true);
+    assert_eq!(strategy["cliCoreFirst"], true);
+
+    let low_level = strategy["lowLevelTrack"]
+        .as_object()
+        .expect("low-level track must be an object");
+    assert_eq!(low_level["trackState"], "planned_descriptor");
+    assert_eq!(low_level["sourceReadAllowed"], false);
+    assert_eq!(low_level["simulatorExecutionAllowed"], false);
+    assert_eq!(low_level["verificationRunAllowed"], false);
+    assert_eq!(low_level["hardwareControlAllowed"], false);
+
+    let script = strategy["scriptTrack"]
+        .as_object()
+        .expect("script track must be an object");
+    assert_eq!(script["trackState"], "not_implemented");
+    assert_eq!(script["grammarIncluded"], false);
+    assert_eq!(script["parserImplemented"], false);
+    assert_eq!(script["compilerImplemented"], false);
+    assert_eq!(script["runtimeImplemented"], false);
+    assert_eq!(script["scriptExecutionAllowed"], false);
+    assert_eq!(script["hardwareControlAllowed"], false);
+
+    let input = root["inputPolicy"]
+        .as_object()
+        .expect("input policy must be an object");
+    assert_eq!(input["cppSourceReadAllowed"], false);
+    assert_eq!(input["systemVerilogSourceReadAllowed"], false);
+    assert_eq!(input["scriptSourceReadAllowed"], false);
+    assert_eq!(input["grammarReadAllowed"], false);
+    assert_eq!(input["traceReadAllowed"], false);
+    assert_eq!(input["repositoryReadAllowed"], false);
+    assert_eq!(input["secretsReadAllowed"], false);
+    assert_eq!(input["tokensReadAllowed"], false);
+
+    let output = root["outputPolicy"]
+        .as_object()
+        .expect("output policy must be an object");
+    assert_eq!(output["cppSourceIncluded"], false);
+    assert_eq!(output["systemVerilogSourceIncluded"], false);
+    assert_eq!(output["scriptSourceIncluded"], false);
+    assert_eq!(output["grammarIncluded"], false);
+    assert_eq!(output["generatedParserIncluded"], false);
+    assert_eq!(output["compiledArtifactIncluded"], false);
+    assert_eq!(output["runtimePlanIncluded"], false);
+    assert_eq!(output["reportContentIncluded"], false);
+    assert_eq!(output["stdoutIncluded"], false);
+    assert_eq!(output["stderrIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "cpp-source-read",
+        "systemverilog-source-read",
+        "custom-script-source-read",
+        "custom-language-grammar-read",
+        "custom-language-parser",
+        "custom-language-compiler",
+        "custom-script-runtime",
+        "custom-script-execution",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "command-execution",
+        "kv260-access",
+        "fpga-repo-access",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["planOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["cppSourceReaderImplemented"], false);
+    assert_eq!(safety["systemVerilogSourceReaderImplemented"], false);
+    assert_eq!(safety["scriptSourceReaderImplemented"], false);
+    assert_eq!(safety["customLanguageGrammarIncluded"], false);
+    assert_eq!(safety["customLanguageParserImplemented"], false);
+    assert_eq!(safety["customLanguageCompilerImplemented"], false);
+    assert_eq!(safety["customScriptRuntimeImplemented"], false);
+    assert_eq!(safety["customScriptExecution"], false);
+    assert_eq!(safety["simulatorExecution"], false);
+    assert_eq!(safety["verificationExecution"], false);
+    assert_eq!(safety["hardwareControl"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn plugin_host_session_state_example_keeps_host_session_blocked_boundary() {
     let value: serde_json::Value = parse_example("plugin-host-session-state.example.json");
     let root = value

@@ -77,6 +77,11 @@ boundary. There is no private back channel into lab internals. See
   it is not a Sail source reader, parser, compiler, model execution
   path, refinement check, proof path, report writer, artifact writer, or
   hardware path.
+- `docs/examples/hybrid-strategy-plan.example.json` records a
+  descriptor-only hybrid strategy plan for future C++/SystemVerilog and
+  custom-script control tracks; it is not a source reader, grammar
+  reader, parser, compiler, runtime, simulator runner, verification run,
+  report writer, artifact writer, or hardware-control path.
 - `docs/examples/mcp-read-only-tool-plan.example.json` maps a future
   MCP/tool adapter to read-only CLI/core commands; it is a checked plan,
   not a runtime implementation.

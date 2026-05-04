@@ -138,6 +138,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-adoption-plan-boundary"
     },
     {
+      "boundaryKind": "hybrid-strategy-plan",
+      "examplePath": "docs/examples/hybrid-strategy-plan.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#hybrid-strategy-plan-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "hybrid-strategy-plan",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "hybrid_strategy_plan_example_keeps_descriptor_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#hybrid-strategy-plan-boundary"
+    },
+    {
       "boundaryKind": "launcher-diagnostics-handoff",
       "examplePath": "docs/examples/launcher-diagnostics-handoff.example.json",
       "producingCommand": null,
