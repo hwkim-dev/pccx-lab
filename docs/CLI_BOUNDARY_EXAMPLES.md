@@ -178,6 +178,43 @@ planning. It does not implement an MCP runtime and does not grant
 approval to execute writes, shell commands, provider calls, hardware
 access, launcher/editor bridges, release/tag control, or public pushes.
 
+## MCP Tool List
+
+Full fixture:
+[`mcp-tool-list.example.json`](examples/mcp-tool-list.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-tool-list.v0",
+  "listState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "toolListRequest": {
+    "requestKind": "planned_mcp_tool_listing",
+    "summaryOnly": true,
+    "pathEchoAllowed": false,
+    "toolInvocationAllowed": false,
+    "commandExecutionAllowed": false
+  },
+  "tools": [
+    {
+      "toolId": "lab.status.read",
+      "approvedForListing": true,
+      "requiresSeparateInvocationBoundary": true,
+      "approvedForInvocation": false,
+      "toolInvocationAllowed": false
+    }
+  ]
+}
+```
+
+Use this fixture to review the descriptor-only MCP tool listing surface
+before implementing any server, client, transport, runtime, or
+invocation path. It does not read files, echo paths, execute commands,
+write reports, mutate repositories, call providers, use the network,
+touch hardware, or control releases/tags. No runtime, marketplace, or
+API/ABI stability claim is made.
+
 ## MCP Read-Only Analysis Flow
 
 Full fixture:

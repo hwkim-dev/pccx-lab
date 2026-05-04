@@ -172,6 +172,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-read-only-tool-plan"
     },
     {
+      "boundaryKind": "mcp-tool-list",
+      "examplePath": "docs/examples/mcp-tool-list.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-tool-list-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-tool-list",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_tool_list_example_keeps_descriptor_only_listing_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-tool-list-boundary"
+    },
+    {
       "boundaryKind": "mcp-read-only-analysis-flow",
       "examplePath": "docs/examples/mcp-read-only-analysis-flow.example.json",
       "producingCommand": null,
