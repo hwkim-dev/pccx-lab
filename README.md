@@ -72,6 +72,11 @@ boundary. There is no private back channel into lab internals. See
   previews for future approved workflow runs.
 - `pccx-lab workflow-results --format json` returns summary-only
   workflow result metadata without full logs.
+- `docs/examples/sail-adoption-plan.example.json` records a
+  descriptor-only adoption plan for future Sail reference-model review;
+  it is not a Sail source reader, parser, compiler, model execution
+  path, refinement check, proof path, report writer, artifact writer, or
+  hardware path.
 - `docs/examples/mcp-read-only-tool-plan.example.json` maps a future
   MCP/tool adapter to read-only CLI/core commands; it is a checked plan,
   not a runtime implementation.
