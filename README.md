@@ -107,6 +107,10 @@ boundary. There is no private back channel into lab internals. See
   invocation-request gate for a future MCP/tool adapter; it is not an MCP
   server, client, runtime, approval executor, permission executor,
   command executor, tool invocation path, file reader, or write path.
+- `docs/examples/mcp-client-session-state.example.json` records a blocked
+  client/session state for a future MCP/tool adapter; it is not an MCP
+  server, client, runtime, transport, command executor, tool invocation
+  path, audit logger, file reader, or write path.
 - `docs/examples/mcp-blocked-invocation-result.example.json` records a
   blocked, non-executed invocation result for a future MCP/tool adapter;
   it is not an MCP runtime, command executor, tool invocation path, file

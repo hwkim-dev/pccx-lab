@@ -2949,6 +2949,299 @@ def validate_mcp_invocation_request(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_client_session_state(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-client-session-state.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "clientSessionStateId",
+            "adapterState",
+            "defaultMode",
+            "automationPath",
+            "sessionState",
+            "connectionState",
+            "transportState",
+        ],
+    )
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["sessionState"] != "not_started":
+        raise ShapeError("unexpected value at $.sessionState: expected not_started")
+    if root["connectionState"] != "not_configured":
+        raise ShapeError("unexpected value at $.connectionState: expected not_configured")
+    if root["transportState"] != "not_open":
+        raise ShapeError("unexpected value at $.transportState: expected not_open")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        for field in [
+            "clientRuntimeAllowed",
+            "serverRuntimeAllowed",
+            "approvalExecutorAllowed",
+            "permissionExecutorAllowed",
+            "sessionStartAllowed",
+            "toolInvocationAllowed",
+            "commandExecutionAllowed",
+            "pathEchoAllowed",
+            "loggerAllowed",
+            "artifactWriteAllowed",
+            "repositoryMutationAllowed",
+            "writeActionAllowed",
+        ]:
+            if field in ref and expect_bool(require_field(ref, path, field), child(path, field)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{field}: expected false")
+        if "approved" in ref and expect_bool(require_field(ref, path, "approved"), child(path, "approved")) is not False:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].approved: expected false")
+        if "toolCatalogAvailableAsData" in ref and expect_bool(
+            require_field(ref, path, "toolCatalogAvailableAsData"),
+            child(path, "toolCatalogAvailableAsData"),
+        ) is not True:
+            raise ShapeError(
+                "unexpected value at $.sourceBoundaryRefs[].toolCatalogAvailableAsData: "
+                "expected true"
+            )
+
+    session = expect_object(require_field(root, "$", "clientSession"), "$.clientSession")
+    require_string_fields(
+        session,
+        "$.clientSession",
+        [
+            "sessionKind",
+            "lifecycleState",
+            "connectionPolicy",
+            "toolCatalogState",
+            "approvalState",
+            "invocationState",
+            "summary",
+        ],
+    )
+    if session["sessionKind"] != "planned_mcp_client_session_state":
+        raise ShapeError(
+            "unexpected value at $.clientSession.sessionKind: "
+            "expected planned_mcp_client_session_state"
+        )
+    if session["lifecycleState"] != "not_started":
+        raise ShapeError("unexpected value at $.clientSession.lifecycleState: expected not_started")
+    if session["approvalState"] != "not_approved":
+        raise ShapeError("unexpected value at $.clientSession.approvalState: expected not_approved")
+    if session["invocationState"] != "not_invoked":
+        raise ShapeError("unexpected value at $.clientSession.invocationState: expected not_invoked")
+    session_true_fields = ["summaryOnly"]
+    session_false_fields = [
+        "sessionOpen",
+        "transportOpen",
+        "handshakeComplete",
+        "clientRuntimeStarted",
+        "serverRuntimeStarted",
+        "toolCatalogFetched",
+        "toolInvocationStarted",
+        "approvalExecutorCalled",
+        "permissionExecutorCalled",
+        "commandExecutionAttempted",
+        "shellExecutionAttempted",
+        "runtimeExecutionAttempted",
+        "localFileReadAttempted",
+        "repositoryReadAttempted",
+        "artifactReadAttempted",
+        "artifactWriteAttempted",
+        "repositoryMutationAttempted",
+        "providerCallAttempted",
+        "networkCallAttempted",
+        "hardwareAccessAttempted",
+        "modelLoadAttempted",
+    ]
+    require_bool_fields(session, "$.clientSession", session_true_fields + session_false_fields)
+    if session["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.clientSession.summaryOnly: expected true")
+    for field in session_false_fields:
+        if session[field] is not False:
+            raise ShapeError(f"unexpected value at $.clientSession.{field}: expected false")
+
+    rows = require_object_array(require_field(root, "$", "sessionRows"), "$.sessionRows", min_items=1)
+    for row in rows:
+        require_string_fields(
+            row,
+            "$.sessionRows[]",
+            ["rowId", "state", "sourceRef", "summary", "blockedReason"],
+        )
+
+    transport = expect_object(require_field(root, "$", "transportPolicy"), "$.transportPolicy")
+    require_string_fields(transport, "$.transportPolicy", ["state"])
+    if transport["state"] != "not_open":
+        raise ShapeError("unexpected value at $.transportPolicy.state: expected not_open")
+    require_string_array(
+        require_field(transport, "$.transportPolicy", "allowedTransportKinds"),
+        "$.transportPolicy.allowedTransportKinds",
+        min_items=1,
+    )
+    transport_false_fields = [
+        "transportOpenAllowed",
+        "stdioProcessAllowed",
+        "socketAllowed",
+        "networkAllowed",
+        "browserAllowed",
+        "ipcAllowed",
+        "serverStartAllowed",
+        "clientStartAllowed",
+        "handshakeAllowed",
+        "toolListRequestAllowed",
+    ]
+    require_bool_fields(transport, "$.transportPolicy", transport_false_fields)
+    for field in transport_false_fields:
+        if transport[field] is not False:
+            raise ShapeError(f"unexpected value at $.transportPolicy.{field}: expected false")
+
+    audit = expect_object(require_field(root, "$", "auditPolicy"), "$.auditPolicy")
+    require_string_fields(audit, "$.auditPolicy", ["state", "eventSchema", "storageState"])
+    audit_true_fields = ["summaryOnly"]
+    audit_false_fields = [
+        "auditLoggerAllowed",
+        "auditPersistenceAllowed",
+        "pathEchoAllowed",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+    ]
+    require_bool_fields(audit, "$.auditPolicy", audit_true_fields + audit_false_fields)
+    if audit["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.auditPolicy.summaryOnly: expected true")
+    for field in audit_false_fields:
+        if audit[field] is not False:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{field}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_fields = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "toolInvocationAllowed",
+        "commandExecutionAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_fields)
+    for field in mutation_false_fields:
+        if mutation[field] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{field}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "mcp-client-runtime",
+        "mcp-handshake",
+        "transport-open",
+        "tool-list-request",
+        "approval-executor",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = [
+        "dataOnly",
+        "descriptorOnly",
+        "readOnly",
+        "clientSessionStateFixtureOnly",
+        "summaryOnly",
+    ]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "mcpClientSessionStarted",
+        "transportOpened",
+        "handshakeAttempted",
+        "toolListRequested",
+        "approvalExecutorImplemented",
+        "permissionExecutorImplemented",
+        "toolInvocationPathImplemented",
+        "toolInvocationAttempted",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "auditLoggerImplemented",
+        "auditPersistence",
+        "diagnosticsProduced",
+        "reportProduced",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_blocked_invocation_result(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-blocked-invocation-result.v0")
@@ -5882,6 +6175,7 @@ SPECS = [
     BoundarySpec("mcp-approval-request", "docs/examples/mcp-approval-request.example.json", validate_mcp_approval_request),
     BoundarySpec("mcp-approval-decision", "docs/examples/mcp-approval-decision.example.json", validate_mcp_approval_decision),
     BoundarySpec("mcp-invocation-request", "docs/examples/mcp-invocation-request.example.json", validate_mcp_invocation_request),
+    BoundarySpec("mcp-client-session-state", "docs/examples/mcp-client-session-state.example.json", validate_mcp_client_session_state),
     BoundarySpec("mcp-blocked-invocation-result", "docs/examples/mcp-blocked-invocation-result.example.json", validate_mcp_blocked_invocation_result),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
