@@ -139,6 +139,7 @@ run_case \
     "[mcp-audit-event] shape ok" \
     "[sail-interface-boundary] shape ok" \
     "[sail-review-packet] shape ok" \
+    "[sail-evidence-manifest] shape ok" \
     "[hybrid-strategy-plan] shape ok" \
     "[hybrid-interface-boundary] shape ok" \
     "[hybrid-review-packet] shape ok" \

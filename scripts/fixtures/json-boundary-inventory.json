@@ -172,6 +172,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-review-packet"
     },
     {
+      "boundaryKind": "sail-evidence-manifest",
+      "examplePath": "docs/examples/sail-evidence-manifest.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#sail-evidence-manifest",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "sail-evidence-manifest",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "sail_evidence_manifest_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-evidence-manifest"
+    },
+    {
       "boundaryKind": "hybrid-strategy-plan",
       "examplePath": "docs/examples/hybrid-strategy-plan.example.json",
       "producingCommand": null,
