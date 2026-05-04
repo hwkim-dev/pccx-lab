@@ -614,6 +614,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-sample-catalog-boundary"
     },
     {
+      "boundaryKind": "plugin-sample-detail",
+      "examplePath": "docs/examples/plugin-sample-detail.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-sample-detail-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-sample-detail",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_sample_detail_example_keeps_descriptor_only_detail_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-sample-detail-boundary"
+    },
+    {
       "boundaryKind": "plugin-capability-list",
       "examplePath": "docs/examples/plugin-capability-list.example.json",
       "producingCommand": null,

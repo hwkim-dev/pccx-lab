@@ -5067,6 +5067,192 @@ fn plugin_sample_catalog_example_keeps_descriptor_only_catalog_boundary() {
 }
 
 #[test]
+fn plugin_sample_detail_example_keeps_descriptor_only_detail_boundary() {
+    let value: serde_json::Value = parse_example("plugin-sample-detail.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin sample detail must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-sample-detail.v0");
+    assert_eq!(root["detailState"], "descriptor_only");
+    assert_eq!(root["sampleState"], "listed_not_executed");
+    assert_eq!(root["resultState"], "blocked_summary");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_sample_catalog"
+            && source["sampleCatalogAvailable"] == true
+            && source["sampleDiscoveryAllowed"] == false
+            && source["manifestReaderAllowed"] == false
+            && source["packageReaderAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_sample_result"
+            && source["sampleResultAvailable"] == true
+            && source["sampleResultProduced"] == false
+            && source["resultPayloadReaderAllowed"] == false
+            && source["artifactReaderAllowed"] == false
+    }));
+
+    let selected = root["selectedSample"]
+        .as_object()
+        .expect("selected sample must be an object");
+    assert_eq!(selected["samplePluginId"], "example.diagnostics.summary");
+    assert_eq!(selected["detailState"], "selected_descriptor_only");
+    assert_eq!(selected["catalogEntryState"], "listed_descriptor_only");
+    assert_eq!(selected["planState"], "descriptor_only");
+    assert_eq!(selected["resultState"], "blocked_summary");
+    assert_eq!(selected["sampleState"], "not_executed");
+    assert_eq!(selected["invocationState"], "not_invoked");
+    assert_eq!(selected["summaryOnly"], true);
+    assert_eq!(selected["descriptorOnly"], true);
+    assert_eq!(selected["sampleCatalogAvailable"], true);
+    assert_eq!(selected["samplePlanAvailable"], true);
+    assert_eq!(selected["sampleResultAvailable"], true);
+    assert_eq!(selected["samplePluginImplemented"], false);
+    assert_eq!(selected["samplePluginExecuted"], false);
+    assert_eq!(selected["sampleResultProduced"], false);
+    assert_eq!(selected["pluginInvocationAttempted"], false);
+    assert_eq!(selected["manifestPathIncluded"], false);
+    assert_eq!(selected["manifestContentIncluded"], false);
+    assert_eq!(selected["packagePathIncluded"], false);
+    assert_eq!(selected["packageContentIncluded"], false);
+    assert_eq!(selected["sourceCodeIncluded"], false);
+    assert_eq!(selected["resultPayloadIncluded"], false);
+    assert_eq!(selected["diagnosticsPayloadIncluded"], false);
+    assert_eq!(selected["resultPayloadReaderAllowed"], false);
+    assert_eq!(selected["reportReaderAllowed"], false);
+    assert_eq!(selected["artifactReaderAllowed"], false);
+    assert_eq!(selected["pluginLoaderAllowed"], false);
+    assert_eq!(selected["pluginInvocationAllowed"], false);
+
+    let sections = root["detailSections"]
+        .as_array()
+        .expect("detail sections must be an array");
+    assert!(sections.iter().any(|section| {
+        section["sectionId"] == "execution_status"
+            && section["sectionState"] == "blocked"
+            && section["contentIncluded"] == false
+            && section["pathEchoAllowed"] == false
+    }));
+
+    let flow = root["detailFlow"]
+        .as_object()
+        .expect("detail flow must be an object");
+    assert_eq!(flow["flowState"], "blocked");
+    assert_eq!(flow["commandKind"], "planned-cli-fixed-args");
+    let steps = flow["steps"].as_array().expect("steps must be an array");
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "detail_display_gate"
+            && step["state"] == "descriptor_only"
+            && step["sideEffectPolicy"] == "local_render_only"
+    }));
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "sample_execution_gate"
+            && step["state"] == "blocked"
+            && step["sideEffectPolicy"] == "no_plugin_load_or_invocation"
+    }));
+
+    let display = root["displayPolicy"]
+        .as_object()
+        .expect("display policy must be an object");
+    assert_eq!(display["summaryOnly"], true);
+    assert_eq!(display["pathEchoAllowed"], false);
+    assert_eq!(display["manifestContentIncluded"], false);
+    assert_eq!(display["packageContentIncluded"], false);
+    assert_eq!(display["sourceCodeIncluded"], false);
+    assert_eq!(display["resultPayloadIncluded"], false);
+    assert_eq!(display["reportContentIncluded"], false);
+    assert_eq!(display["artifactPathsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "sample-discovery",
+        "manifest-reader",
+        "package-reader",
+        "source-reader",
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "sandbox-start",
+        "plugin-capability-dispatch",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "result-payload-read",
+        "report-read",
+        "report-write",
+        "artifact-read",
+        "artifact-write",
+        "command-execution",
+        "dynamic-code-load",
+        "package-build",
+        "package-distribution",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "model-load",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sampleDetailFixtureOnly"], true);
+    assert_eq!(safety["sampleDiscoveryImplemented"], false);
+    assert_eq!(safety["samplePluginImplemented"], false);
+    assert_eq!(safety["samplePluginExecuted"], false);
+    assert_eq!(safety["sampleResultProduced"], false);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["manifestReaderImplemented"], false);
+    assert_eq!(safety["packageReaderImplemented"], false);
+    assert_eq!(safety["sourceReaderImplemented"], false);
+    assert_eq!(safety["resultPayloadReaderImplemented"], false);
+    assert_eq!(safety["reportReaderImplemented"], false);
+    assert_eq!(safety["capabilityDispatchImplemented"], false);
+    assert_eq!(safety["pluginInvocationImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["compatibilityClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn plugin_capability_list_example_keeps_descriptor_only_boundary() {
     let value: serde_json::Value = parse_example("plugin-capability-list.example.json");
     let root = value
