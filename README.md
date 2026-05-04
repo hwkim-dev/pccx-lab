@@ -150,6 +150,11 @@ boundary. There is no private back channel into lab internals. See
   plugin sample; it is not a plugin loader, runtime, sandbox, host API
   binding, capability dispatcher, invocation path, result payload
   reader, report reader/writer, or artifact reader/writer.
+- `docs/examples/plugin-sample-catalog.example.json` records a
+  descriptor-only catalog for planned plugin samples; it is not sample
+  discovery, a manifest/package/source reader, plugin loader, runtime,
+  sandbox, capability dispatcher, invocation path, result payload reader,
+  report reader/writer, or artifact reader/writer.
 - `docs/examples/plugin-manifest-validation-result.example.json` records
   the summary-only result shape for a future approved plugin manifest
   validation request; it is not a manifest reader, validator command,
