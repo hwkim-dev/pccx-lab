@@ -48,6 +48,7 @@ separate workflow logic island.
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `docs/examples/plugin-sample-plan.example.json` | planned sample plan | Checked descriptor-only sample plugin plan over approved plugin input/output and capability summaries; no sample code, package, loader, runtime, or dispatch path is implemented. |
 | `docs/examples/plugin-sample-result.example.json` | planned sample result | Checked descriptor-only sample plugin result metadata over approved sample-plan, capability, output, review, and blocked-result summaries; no plugin loader, runtime, sandbox, host API binding, dispatch, invocation, result reader, report reader/writer, or artifact reader/writer is implemented. |
+| `docs/examples/plugin-sample-catalog.example.json` | planned sample catalog | Checked descriptor-only sample catalog over approved sample-plan, sample-result, capability, and permission summaries; no sample discovery, manifest/package/source reader, loader, runtime, sandbox, dispatch, invocation, result reader, report reader/writer, or artifact reader/writer is implemented. |
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
 | `docs/examples/plugin-input-contract.example.json` | planned input contract | Checked summary-only plugin input shape for approved diagnostics and workflow-result summaries; no plugin runtime or input reader is implemented. |
 | `docs/examples/plugin-trace-summary-input.example.json` | planned trace-summary input gate | Checked summary-only trace metadata input shape for future plugin trace review; no trace importer, raw trace reader, plugin runtime, or input reader is implemented. |
@@ -115,6 +116,7 @@ aligned.
 | `plugin-manifest-validation-result` | `docs/examples/plugin-manifest-validation-result.example.json` | Reader only; planned summary-only result shape for a future approved plugin manifest validation request | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-sample-plan` | `docs/examples/plugin-sample-plan.example.json` | Reader only; planned descriptor-only sample plugin plan over approved plugin boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-sample-result` | `docs/examples/plugin-sample-result.example.json` | Reader only; planned descriptor-only plugin sample result metadata over approved plugin boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-sample-catalog` | `docs/examples/plugin-sample-catalog.example.json` | Reader only; planned descriptor-only plugin sample catalog over approved sample summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-capability-list` | `docs/examples/plugin-capability-list.example.json` | Reader only; planned descriptor-only capability listing over approved plugin boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-capability-detail` | `docs/examples/plugin-capability-detail.example.json` | Reader only; planned descriptor-only plugin capability detail over one listed capability summary | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-load-request` | `docs/examples/plugin-load-request.example.json` | Reader only; planned blocked load-request gate over approved plugin manifest, permission, validation, audit, and review summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -995,6 +997,33 @@ execution, input reading, payload reading, report reading/writing,
 artifact reading/writing, or repository mutation. No plugin ABI
 stability, compatibility promise, marketplace claim, runtime claim, or
 hardware claim is made.
+
+## plugin sample-catalog boundary
+
+[`docs/examples/plugin-sample-catalog.example.json`](examples/plugin-sample-catalog.example.json)
+defines the checked descriptor-only catalog shape for planned plugin
+samples. It links the sample-plan, sample-result, selected capability
+detail, and permission model summaries, then records one listed
+diagnostics summary sample without discovering files, reading manifests,
+reading packages, reading source, loading plugins, or invoking samples.
+
+The fixture is summary-only metadata. It does not echo paths, include
+manifest contents, include package contents, include source code,
+include diagnostics payloads, include sample result payloads, read local
+files, read repositories, read raw traces, read raw reports, read raw
+logs, read reports, read artifacts, write reports, write artifacts, load
+plugin code, start a sandbox, bind a host API, dispatch capabilities,
+invoke plugins, execute commands, mutate repositories, call providers,
+use the network, touch hardware, access KV260, access FPGA repos, load
+models, upload telemetry, push publicly, or control releases/tags.
+
+The plugin sample catalog is approved for descriptor summary metadata
+only. It is not approved for sample discovery, manifest/package/source
+reading, code generation, package build, loading, sandbox start,
+dispatch, invocation, permission execution, input reading, payload
+reading, report reading/writing, artifact reading/writing, or repository
+mutation. No plugin ABI stability, compatibility promise, marketplace
+claim, runtime claim, or hardware claim is made.
 
 ## plugin manifest validation result boundary
 
