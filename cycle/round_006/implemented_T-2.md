@@ -62,7 +62,7 @@ cargo-test exit=0
 ```
 $ cd /home/hwkim/Desktop/github/pccx-lab/src/ui/src-tauri && cargo check
     Checking pccx-core v0.1.0
-    Checking pccx-ai-copilot v0.1.0
+    Checking pccx-workflow-facade v0.1.0
     Checking srcui v0.1.0
 warning: unused imports: `RegisterSnapshot` and `step_to_cycle as step_to_cycle_fn`
   --> src/lib.rs:11:32

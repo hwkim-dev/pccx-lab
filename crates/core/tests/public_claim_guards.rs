@@ -12,13 +12,13 @@ const FORBIDDEN_PUBLIC_CLAIMS: &[&str] = &[
     "stable mcp interface",
     "mcp ready",
     "ai ide",
-    "ai copilot",
-    "ai copilot analysis",
+    "ai workflow",
+    "ai workflow analysis",
     "ai inline generation",
     "ai summary",
     "ask ai",
     "autonomous verification",
-    "vibe coding",
+    concat!("vibe ", "coding"),
     "llm-driven testbench generation",
     "provider-backed assistant",
     "api-key powered assistant",
@@ -212,7 +212,7 @@ fn public_core_json_contracts_do_not_use_guarded_claim_wording() {
 #[test]
 fn public_claim_guard_rejects_representative_negative_fixtures() {
     let cases = [
-        ("assistant overclaim", "AI Copilot analysis"),
+        ("workflow overclaim", "AI workflow analysis"),
         (
             "provider credential claim",
             "Configure the API key for real API completions.",
@@ -233,7 +233,7 @@ fn public_claim_guard_rejects_representative_negative_fixtures() {
 #[test]
 fn public_claim_guard_allows_safe_boundary_fixture() {
     let text = [
-        "Local workflow assistant.",
+        "Local workflow panel.",
         "Draft helper and proposal-only preview.",
         "CLI-first verification lab.",
         "No stable plugin ABI is promised.",

@@ -1,5 +1,5 @@
 [package]
-name = "pccx-ai-copilot"
+name = "pccx-workflow-facade"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

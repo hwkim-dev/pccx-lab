@@ -1,7 +1,3 @@
-use pccx_ai_copilot::{
-    compress_context, generate_uvm_sequence, get_available_extensions,
-    list_uvm_strategies as copilot_uvm_strategies, Extension,
-};
 use pccx_core::hw_model::HardwareModel;
 use pccx_core::license::get_license_info as core_license_info;
 use pccx_core::live_window::{LiveSample, LiveWindow};
@@ -13,6 +9,10 @@ use pccx_core::roofline::{
 };
 use pccx_core::step_snapshot::{step_to_cycle as step_to_cycle_fn, RegisterSnapshot};
 use pccx_core::trace::{NpuEvent, NpuTrace};
+use pccx_workflow_facade::{
+    compress_context, generate_uvm_sequence, get_available_extensions,
+    list_uvm_strategies as workflow_uvm_strategies, Extension,
+};
 use std::fs::File;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
@@ -58,7 +58,7 @@ fn load_pccx(path: &str, state: State<'_, AppState>, app: AppHandle) -> Result<P
     Ok(pccx.header)
 }
 
-/// Returns the list of available extensions from ai_copilot.
+/// Returns the list of available extensions from workflow_facade.
 #[tauri::command]
 fn get_extensions() -> Vec<Extension> {
     get_available_extensions()
@@ -267,11 +267,11 @@ fn generate_markdown_report(
     Ok(pccx_reports::render_markdown(trace_opt, synth_opt.as_ref()))
 }
 
-/// Enumerates every UVM strategy the ai_copilot's sequence generator accepts.
+/// Enumerates every UVM strategy the workflow_facade's sequence generator accepts.
 /// The UI uses this to populate a dropdown so users never type invalid names.
 #[tauri::command]
 fn list_uvm_strategies() -> Vec<String> {
-    copilot_uvm_strategies()
+    workflow_uvm_strategies()
         .into_iter()
         .map(|s| s.to_string())
         .collect()

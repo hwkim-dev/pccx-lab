@@ -1,5 +1,5 @@
 export const assistantWordingRegressionFixture = [
-  "AI Copilot",
+  "Workflow Facade",
   "Ask AI",
   "provider-backed assistant",
   "API-key-powered assistant",

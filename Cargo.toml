@@ -9,7 +9,7 @@ members = [
     "crates/lsp",
     "crates/schema",
     "crates/uvm_bridge",
-    "crates/ai_copilot",
+    "crates/workflow_facade",
     "ui/src-tauri"
 ]
 resolver = "2"

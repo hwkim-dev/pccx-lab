@@ -445,7 +445,7 @@ export function CodeEditor() {
         </div>
       </div>
 
-      {/* ─── Workflow Assistant Floating Prompt ─── */}
+      {/* ─── Workflow Panel Floating Prompt ─── */}
       {aiBoxOpen && (
         <div className="absolute z-50 left-1/2 top-10 transform -translate-x-1/2 w-[400px] shadow-2xl rounded-lg overflow-hidden flex flex-col" style={{ background: theme.bgSurface, border: `0.5px solid ${theme.borderSubtle}`, boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }}>
            <div className="flex items-center px-3 py-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20" style={{ borderBottom: `0.5px solid ${theme.borderSubtle}` }}>

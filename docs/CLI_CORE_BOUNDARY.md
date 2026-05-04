@@ -114,9 +114,9 @@ consumer note wording. Do not use private worker or tool language as
 public coordination text, and do not expose or bypass staging repository
 state in public requests.
 
-## Local workflow assistant boundary
+## Local workflow panel boundary
 
-The Workflow Assistant is a local-only planning and draft-helper surface.
+The Workflow Panel is a local-only planning and draft-helper surface.
 It may summarize bounded trace context, propose next steps, or request
 existing GUI/Tauri helper actions that are backed by Rust core
 boundaries. It must not add API keys, provider selectors, provider URLs,

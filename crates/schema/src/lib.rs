@@ -4,7 +4,7 @@
 // TypeScript interfaces are generated automatically during `cargo test`.
 //
 // Dependency rules (enforced by this module boundary comment):
-//   No dependency on ui/, uvm_bridge/, or ai_copilot/.
+//   No dependency on ui/, uvm_bridge/, or workflow_facade/.
 //   Types here are wire DTOs -- thin data carriers with no domain logic.
 
 use serde::{Deserialize, Serialize};

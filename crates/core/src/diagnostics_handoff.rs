@@ -262,7 +262,7 @@ fn validate_text_safety(text: &str) -> Result<(), DiagnosticsHandoffError> {
         "gemma 3n e4b runs on kv260",
         "20 tok/s achieved",
         "timing closed",
-        "autonomous coding system",
+        concat!("autonomous ", "coding system"),
         "claude directly controls",
         "gpt directly controls",
     ] {

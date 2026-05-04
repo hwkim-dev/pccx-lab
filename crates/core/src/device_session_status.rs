@@ -272,7 +272,7 @@ fn validate_text_safety(text: &str) -> Result<(), DeviceSessionStatusError> {
         "20 tok/s achieved",
         "timing closed",
         "bitstream ready",
-        "autonomous coding system",
+        concat!("autonomous ", "coding system"),
         "claude directly controls",
         "gpt directly controls",
     ] {

@@ -42,7 +42,7 @@ def test_list_uvm_strategies_known_set(driver):
     assert res["ok"], res
     strategies = res["value"]
     # Guard against accidental deletion — these five strategies ship
-    # with the ai_copilot UVM generator.
+    # with the workflow_facade UVM generator.
     expected = {
         "l2_prefetch",
         "barrier_reduction",

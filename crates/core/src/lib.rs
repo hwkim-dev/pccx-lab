@@ -2,7 +2,7 @@
 // pccx-core: standalone NPU performance simulator and trace analysis engine.
 //
 // Dependency rules (enforced by this module boundary comment):
-//   No dependency on ui/, uvm_bridge/, or ai_copilot/.
+//   No dependency on ui/, uvm_bridge/, or workflow_facade/.
 //   All public APIs must be usable by foreign crates via the items re-exported below.
 
 pub mod api_ring;

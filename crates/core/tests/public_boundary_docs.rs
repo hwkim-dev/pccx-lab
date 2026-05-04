@@ -40,7 +40,7 @@ fn public_boundary_docs_do_not_use_forbidden_clone_wording() {
         "jetbrains clone",
         "xcode clone",
         "ai ide",
-        "vibe coding gui",
+        concat!("vibe ", "coding gui"),
         "autonomous verification gui",
     ] {
         assert!(

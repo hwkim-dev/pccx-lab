@@ -44,7 +44,7 @@ Downstreams that want a quiet upgrade pin to `=0.x`.
 6. **Publish** (if pushing to crates.io): run `cargo publish -p <name>`
    in dependency order — pccx-core first, then pccx-reports /
    pccx-verification / pccx-authoring / pccx-evolve / pccx-uvm-bridge
-   / pccx-ai-copilot, then pccx-remote / pccx-ide.  `pccx-ide` depends
+   / pccx-workflow-facade, then pccx-remote / pccx-ide.  `pccx-ide` depends
    on every runtime crate so it publishes last.
 
 ## Planned automation (Phase 1 M1.4 follow-up)

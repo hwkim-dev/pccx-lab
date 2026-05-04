@@ -239,7 +239,7 @@ schema validation on pccx-FPGA CLI stability.
 Adopt Germán & Hassan 2009 pattern (b): MIT permissive core
 (parsers, UI shell, `flat_buffer_v2`, `vivado_timing`, test
 fixtures) + proprietary-candidate boundary for any future
-AI-copilot bridge. Document per Kapitsaki 2015's module-by-module
+workflow facade bridge. Document per Kapitsaki 2015's module-by-module
 compatibility table; reference Apache-2.0 patent grant as the
 rationale for any future migration off MIT. Use DCO (not CLA)
 for contributor provenance — lighter touch matching MIT posture.

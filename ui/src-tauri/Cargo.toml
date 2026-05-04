@@ -28,7 +28,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["time"] }
 pccx-core = { path = "../../crates/core" }
 pccx-reports = { path = "../../crates/reports" }
-pccx-ai-copilot = { path = "../../crates/ai_copilot" }
+pccx-workflow-facade = { path = "../../crates/workflow_facade" }
 pccx-lsp = { path = "../../crates/lsp" }
 pccx-authoring = { path = "../../crates/authoring" }
 pccx-verification = { path = "../../crates/verification" }

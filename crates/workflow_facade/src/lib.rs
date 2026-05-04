@@ -1,7 +1,7 @@
-// Module Boundary: ai_copilot/
+// Module Boundary: workflow_facade/
 // Depends on: core/ (via pccx-core crate)
 //
-// pccx-ai-copilot: LLM wrapper and extension registry for pccx-lab.
+// pccx-workflow-facade: workflow facade and extension registry for pccx-lab.
 // Provides context compression and extension catalogue for the Tauri UI.
 
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ pub fn get_available_extensions() -> Vec<Extension> {
         Extension {
             id:           "qwen2-7b-q4".to_string(),
             name:         "Qwen2 (7B) — INT4 Quantised".to_string(),
-            description:  "Multilingual local LLM with strong code generation. Supports Korean system-prompt.".to_string(),
+            description:  "Multilingual local LLM with strong code-oriented workflows. Supports Korean system context.".to_string(),
             size_mb:      4200,
             is_installed: false,
             category:     ExtensionCategory::LocalLlm,
@@ -138,7 +138,7 @@ pub fn get_available_extensions() -> Vec<Extension> {
 
 // ─── Context Compression ──────────────────────────────────────────────────────
 
-/// Compresses NPU trace statistics into a concise LLM prompt context string.
+/// Compresses NPU trace statistics into a concise LLM context string.
 ///
 /// The output is designed to be prepended to any user query to give the LLM
 /// enough context to reason about the trace without the full event list.
@@ -264,7 +264,7 @@ pub fn list_uvm_strategies() -> Vec<&'static str> {
 // ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
 //
 // Scaffolds for the Phase 2 IntelliSense + Phase 5 agent orchestration
-// work.  Today `pccx-ai-copilot` ships only static helpers for the
+// work.  Today `pccx-workflow-facade` ships only static helpers for the
 // Tauri UI; these traits give Phase 2/5 implementations a stable place
 // to land without churning the crate interface.
 //
@@ -272,7 +272,7 @@ pub fn list_uvm_strategies() -> Vec<&'static str> {
 
 /// Compresses long context (chat history, trace summary, doc excerpt)
 /// into a token-budgeted snippet suitable for feeding back into an LLM
-/// prompt.  Deterministic compressors (head/tail) and learned
+/// context request.  Deterministic compressors (head/tail) and learned
 /// compressors (LLMLingua-style) both implement this trait.
 pub trait ContextCompressor {
     /// Returns a snippet whose token count is <= `target_tokens`
@@ -281,7 +281,7 @@ pub trait ContextCompressor {
     fn name(&self) -> &'static str;
 }
 
-/// Runs a single subagent task with the given prompt and context,
+/// Runs a single workflow task with the given request and context,
 /// returning the subagent's reply or a propagated error.
 /// Used by pccx-ide / pccx-remote to drive log analysis, research,
 /// doc drafting patterns in parallel.

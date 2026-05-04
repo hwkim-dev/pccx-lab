@@ -91,7 +91,7 @@ table from IPC.
 
 **Current state.** `VerificationSuite.tsx:323-331` — eight rows
 literal. No counter, no drop detection, no fuzz, no round-trip
-capture. `src/ai_copilot/src/lib.rs:119` declares a "vcd-exporter"
+capture. `src/workflow_facade/src/lib.rs:119` declares a "vcd-exporter"
 plugin whose implementation nowhere exists.
 
 **Gap vs SOTA.** CUPTI auto-logs every CUDA API entry/exit with

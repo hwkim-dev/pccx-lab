@@ -43,11 +43,11 @@ are already fixed and are on main locally:
 - **react-resizable-panels v4 unit migration**: all `defaultSize={24}`
   style literals in `src/ui/src/App.tsx` migrated to `"24%"` strings
   because v4 treats `number` as px rather than percent (breaking
-  change from v3). Right-dock AI Copilot + Live Telemetry now grow to
+  change from v3). Right-dock Workflow Facade + Live Telemetry now grow to
   `maxSize="70%"` correctly; center-panel content wrapper got
   `min-w-0 min-h-0` to stop tabs from pushing the flex container
   out of the viewport.
-- **i18n leak fix**: 14 new keys under `copilot.*` in
+- **i18n leak fix**: 14 new keys under `workflow.*` in
   `src/ui/src/i18n.tsx`; all Korean string literals in `App.tsx`
   (trace-load success / failure, IPC / HTTP / API / UVM / generic
   errors, context label, sample-question block, keyboard hint) now

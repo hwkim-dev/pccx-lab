@@ -1,5 +1,5 @@
 export const safeLocalAssistantFixture = [
-  "local workflow assistant",
+  "local workflow panel",
   "draft helper",
   "proposal-only preview",
   "disabled allowlisted runner pilot",

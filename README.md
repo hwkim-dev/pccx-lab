@@ -46,7 +46,7 @@ Phase 1 split the original monolithic `core` into nine focused crates under `cra
 - `crates/lsp/` — Phase 2 IntelliSense façade (sync + async provider traits, multiplexers, subprocess spawner).
 - `crates/remote/` — Phase 3 backend-daemon scaffold.
 - `crates/uvm_bridge/` — SystemVerilog/UVM DPI-C boundary.
-- `crates/ai_copilot/` — assistant-facing helper scaffolds; provider runtime integration is outside the CLI/core boundary.
+- `crates/workflow_facade/` — workflow-boundary helper scaffolds; provider runtime integration is outside the CLI/core boundary.
 - `ui/src-tauri/` (`pccx-ide`) — Tauri shell consuming the core / reports crates through IPC.
 - `ui/` — React + Vite frontend; talks to `pccx-ide` via Tauri IPC.
 

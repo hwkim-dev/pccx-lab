@@ -128,7 +128,7 @@ const DEFAULT_LAYOUT: IJsonModel = {
       selected: 0,
       children: [
         { type: "tab", id: "border-lab-status", name: "Lab Status", component: "lab-status", enableClose: false },
-        { type: "tab", id: "border-copilot", name: "Workflow Assistant", component: "copilot", enableClose: false },
+        { type: "tab", id: "border-workflow", name: "Workflow Panel", component: "workflow", enableClose: false },
         { type: "tab", id: "border-stats", name: "Stats", component: "stats" },
         { type: "tab", id: "border-telemetry", name: "Telemetry", component: "telemetry" },
       ],
@@ -320,13 +320,13 @@ function AppInner() {
     }
   }, [model]);
 
-  // ── Workflow Assistant Chat ─────────────────────────────────────────────
+  // ── Workflow Panel Chat ─────────────────────────────────────────────
 
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "system", content: t("copilot.idle") },
+    { role: "system", content: t("workflow.idle") },
   ]);
   const [inputText, setInputText] = useState("");
-  const [copilotBusy, setCopilotBusy] = useState(false);
+  const [workflowBusy, setWorkflowBusy] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const addMsg = (role: ChatMessage["role"], content: string) =>
@@ -341,9 +341,9 @@ function AppInner() {
         const lic: string = await invoke("get_license_info");
         setLicense(lic);
         const ctx: string = await invoke("compress_trace_context");
-        addMsg("system", `[OK] ${t("copilot.traceLoaded")} ${ctx}`);
+        addMsg("system", `[OK] ${t("workflow.traceLoaded")} ${ctx}`);
       } catch (e) {
-        addMsg("system", `[WARN] ${t("copilot.traceFailed")}: ${e}`);
+        addMsg("system", `[WARN] ${t("workflow.traceFailed")}: ${e}`);
       }
     })();
   }, []);
@@ -402,7 +402,7 @@ function AppInner() {
     }
 
     switch (action) {
-      case "view.copilot": toggleBorderTab("border-copilot"); break;
+      case "view.workflow": toggleBorderTab("border-workflow"); break;
       case "view.bottom":  toggleBorderTab("border-console"); break;
       case "view.sidebar": toggleBorderTab("border-explorer"); break;
       case "command.palette": setCmdPaletteOpen(true); break;
@@ -455,36 +455,36 @@ function AppInner() {
       const dt = performance.now() - t0;
       const count = payload.byteLength / 24;
       addMsg("system", `[FAST] IPC: ${(payload.byteLength / 1024 / 1024).toFixed(2)} MB (${count.toLocaleString()} events) -- ${dt.toFixed(1)} ms`);
-    } catch (e) { addMsg("system", `${t("copilot.ipcError")}: ${e}`); }
+    } catch (e) { addMsg("system", `${t("workflow.ipcError")}: ${e}`); }
   };
 
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || copilotBusy) return;
+    if (!text || workflowBusy) return;
     setInputText(""); addMsg("user", text);
-    setCopilotBusy(true);
+    setWorkflowBusy(true);
     try {
       let ctx = "";
       if (traceLoaded) { try { ctx = await invoke("compress_trace_context"); } catch {} }
       const low = text.toLowerCase();
       let reply = "";
       if (low.includes("병목") || low.includes("bottleneck")) {
-        reply = `${t("copilot.context")}: ${ctx}\n\n${t("copilot.bottleneck")}`;
+        reply = `${t("workflow.context")}: ${ctx}\n\n${t("workflow.bottleneck")}`;
       } else if (low.includes("uvm") || low.includes("testbench") || low.includes("코드")) {
         try {
           const s = low.includes("barrier") ? "barrier_reduction" : "l2_prefetch";
           const sv: string = await invoke("generate_uvm_sequence_cmd", { strategy: s });
-          reply = `${t("copilot.uvmIntro")} (${s}):\n\n\`\`\`\n${sv}\n\`\`\`\n\n${t("copilot.uvmHint")}`;
-        } catch { reply = t("copilot.uvmFailed"); }
+          reply = `${t("workflow.uvmIntro")} (${s}):\n\n\`\`\`\n${sv}\n\`\`\`\n\n${t("workflow.uvmHint")}`;
+        } catch { reply = t("workflow.uvmFailed"); }
       } else if (low.includes("report") || low.includes("보고서")) {
-        reply = t("copilot.reportHint");
+        reply = t("workflow.reportHint");
         selectOrAddTab("report", "Report", "report");
       } else {
-        reply = `${t("copilot.context")}: ${ctx || t("copilot.none")}\n\n${t("copilot.hintExamples")}`;
+        reply = `${t("workflow.context")}: ${ctx || t("workflow.none")}\n\n${t("workflow.hintExamples")}`;
       }
-      addMsg("ai", `${reply}\n${t("copilot.localOnlyHint")}`);
-    } catch (e) { addMsg("ai", `${t("copilot.error")}: ${e}`); }
-    finally { setCopilotBusy(false); }
+      addMsg("ai", `${reply}\n${t("workflow.localOnlyHint")}`);
+    } catch (e) { addMsg("ai", `${t("workflow.error")}: ${e}`); }
+    finally { setWorkflowBusy(false); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -506,11 +506,11 @@ function AppInner() {
 
   // ── Inspector Panel Renderers ────────────────────────────────────────────
 
-  const renderCopilotContent = () => (
+  const renderWorkflowContent = () => (
     <div className="w-full h-full flex flex-col min-w-0 min-h-0">
       <div className="flex flex-col px-3 pb-2 pt-2 gap-1 shrink-0" style={{ borderBottom: `0.5px solid ${theme.borderSubtle}` }}>
         <span style={{ fontSize: 11, color: theme.text, fontWeight: 600 }}>{t("panel.workflowAssistant")}</span>
-        <span style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.4 }}>{t("copilot.localOnly")}</span>
+        <span style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.4 }}>{t("workflow.localOnly")}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5 min-h-0">
         {messages.map((m, i) => (
@@ -535,7 +535,7 @@ function AppInner() {
             value={inputText} onChange={e => setInputText(e.target.value)}
             onKeyDown={handleKeyDown} />
           <Button size="1" color="blue" variant="soft"
-            disabled={copilotBusy || !inputText.trim()} onClick={handleSend}>Send</Button>
+            disabled={workflowBusy || !inputText.trim()} onClick={handleSend}>Send</Button>
         </Flex>
       </div>
     </div>
@@ -662,7 +662,7 @@ function AppInner() {
 
       // Border panels: right inspector
       case "lab-status": return <LabStatusPanel />;
-      case "copilot":   return renderCopilotContent();
+      case "workflow":   return renderWorkflowContent();
       case "stats":     return renderStatsContent();
       case "telemetry": return renderTelemetryContent();
 
@@ -673,7 +673,7 @@ function AppInner() {
       default:
         return <div style={{ padding: 16, color: theme.textMuted }}>Unknown panel: {component}</div>;
     }
-  }, [theme, header, license, messages, inputText, copilotBusy, traceLoaded, t]);
+  }, [theme, header, license, messages, inputText, workflowBusy, traceLoaded, t]);
 
   // ── Tab Rendering ───────────────────────────────────────────────────────
 
@@ -700,7 +700,7 @@ function AppInner() {
     modules:    <Blocks size={11} />,
     git:        <GitBranch size={11} />,
     "lab-status": <ShieldCheck size={11} />,
-    copilot:    <BrainCircuit size={11} />,
+    workflow:    <BrainCircuit size={11} />,
     stats:      <BarChart3 size={11} />,
     telemetry:  <Radio size={11} />,
     "bottom-panel": <Terminal size={11} />,

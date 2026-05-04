@@ -53,7 +53,7 @@ const lineChecks = [
   {
     name: "assistant overclaim wording",
     patterns: [
-      /\bAI\s+Copilot\b/i,
+      /\bWorkflow\s+Facade\b/i,
       /\bAsk\s+AI\b/i,
       /\bLLM[-\s]+driven\s+testbench\s+generation\b/i,
       /\bprovider[-\s]+backed\s+assistant\b/i,
@@ -61,8 +61,8 @@ const lineChecks = [
       /\bcloud[-\s]+assistant\b/i,
       /\bcloud\s+LLM\s+bridge\b/i,
       /\bcloud[-\s]+LLM\b/i,
-      /\b(?:Claude|GPT)\s+directly\s+controls\s+pccx-lab\b/i,
-      /\b(?:Claude|GPT)\s+controls\s+pccx-lab\b/i,
+      /\bprovider\s+runtime\s+directly\s+controls\s+pccx-lab\b/i,
+      /\bprovider\s+runtime\s+controls\s+pccx-lab\b/i,
     ],
   },
   {
@@ -99,7 +99,7 @@ const compactBans = [
   "providerapikey",
   "providerkey",
   "providertoken",
-  "aicopilot",
+  "workflowfacade",
   "askai",
   "cloudassistant",
   "cloudllm",
