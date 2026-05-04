@@ -140,6 +140,7 @@ run_case \
     "[sail-interface-boundary] shape ok" \
     "[sail-review-packet] shape ok" \
     "[sail-evidence-manifest] shape ok" \
+    "[sail-evidence-detail] shape ok" \
     "[hybrid-strategy-plan] shape ok" \
     "[hybrid-interface-boundary] shape ok" \
     "[hybrid-review-packet] shape ok" \

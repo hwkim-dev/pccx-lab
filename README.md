@@ -95,6 +95,13 @@ boundary. There is no private back channel into lab internals. See
   generator, model execution path, refinement check, proof path,
   report/artifact reader or writer, command runner, repository reader,
   or hardware path.
+- `docs/examples/sail-evidence-detail.example.json` records a
+  descriptor-only detail view for one selected approved Sail evidence
+  summary reference; it is not a Sail source reader, RTL source reader,
+  AST reader, generated-model reader, parser, compiler, model
+  generator, model execution path, refinement check, proof path,
+  verification run, report/artifact reader or writer, command runner,
+  repository reader, marketplace flow, or hardware path.
 - `docs/examples/hybrid-strategy-plan.example.json` records a
   descriptor-only hybrid strategy plan for future C++/SystemVerilog and
   custom-script control tracks; it is not a source reader, grammar

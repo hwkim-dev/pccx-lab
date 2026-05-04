@@ -145,6 +145,7 @@ run_case \
     "[sail-interface-boundary] inventory ok" \
     "[sail-review-packet] inventory ok" \
     "[sail-evidence-manifest] inventory ok" \
+    "[sail-evidence-detail] inventory ok" \
     "[hybrid-strategy-plan] inventory ok" \
     "[hybrid-interface-boundary] inventory ok" \
     "[hybrid-review-packet] inventory ok" \
