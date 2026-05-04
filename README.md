@@ -104,6 +104,11 @@ boundary. There is no private back channel into lab internals. See
   sample discovery, an MCP server/client/runtime/transport, command
   executor, result payload reader, report reader/writer, artifact
   reader/writer, audit logger, or tool invocation path.
+- `docs/examples/mcp-sample-detail.example.json` records descriptor-only
+  detail metadata for one planned read-only MCP sample; it is not sample
+  discovery, an MCP server/client/runtime/transport, command executor,
+  payload reader, report/artifact reader or writer, audit logger, tool
+  invocation path, marketplace flow, or compatibility claim.
 - `docs/examples/mcp-read-only-analysis-flow.example.json` records a
   checked dry-run flow contract for composing existing CLI/core summaries
   into a future read-only report path; it is not a command executor or

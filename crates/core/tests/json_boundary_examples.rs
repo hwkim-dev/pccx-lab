@@ -1087,6 +1087,189 @@ fn mcp_sample_catalog_example_keeps_descriptor_only_catalog_boundary() {
 }
 
 #[test]
+fn mcp_sample_detail_example_keeps_descriptor_only_detail_boundary() {
+    let value: serde_json::Value = parse_example("mcp-sample-detail.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP sample detail must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.mcp-sample-detail.v0");
+    assert_eq!(root["detailState"], "descriptor_only");
+    assert_eq!(root["sampleState"], "listed_not_executed");
+    assert_eq!(root["resultState"], "blocked_summary");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "mcp_sample_catalog"
+            && source["sampleCatalogAvailable"] == true
+            && source["sampleDiscoveryAllowed"] == false
+            && source["commandExecutorAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "mcp_sample_result"
+            && source["sampleResultAvailable"] == true
+            && source["sampleResultProduced"] == false
+            && source["resultPayloadReaderAllowed"] == false
+            && source["artifactReaderAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "mcp_tool_detail"
+            && source["selectedToolId"] == "lab.status.read"
+            && source["commandExecutorAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+
+    let selected = root["selectedSample"]
+        .as_object()
+        .expect("selected sample must be an object");
+    assert_eq!(selected["sampleToolId"], "lab.status.read");
+    assert_eq!(selected["detailState"], "selected_descriptor_only");
+    assert_eq!(selected["catalogEntryState"], "listed_descriptor_only");
+    assert_eq!(selected["planState"], "descriptor_only");
+    assert_eq!(selected["resultState"], "blocked_summary");
+    assert_eq!(selected["sampleState"], "not_executed");
+    assert_eq!(selected["invocationState"], "not_invoked");
+    assert_eq!(selected["summaryOnly"], true);
+    assert_eq!(selected["descriptorOnly"], true);
+    assert_eq!(selected["sampleCatalogAvailable"], true);
+    assert_eq!(selected["samplePlanAvailable"], true);
+    assert_eq!(selected["sampleResultAvailable"], true);
+    assert_eq!(selected["toolDetailAvailable"], true);
+    assert_eq!(selected["sampleToolImplemented"], false);
+    assert_eq!(selected["sampleToolExecuted"], false);
+    assert_eq!(selected["sampleResultProduced"], false);
+    assert_eq!(selected["toolInvocationAttempted"], false);
+    assert_eq!(selected["commandArgsIncluded"], false);
+    assert_eq!(selected["rawCommandIncluded"], false);
+    assert_eq!(selected["labStatusPayloadIncluded"], false);
+    assert_eq!(selected["workflowResultContentIncluded"], false);
+    assert_eq!(selected["resultPayloadIncluded"], false);
+    assert_eq!(selected["resultPayloadReaderAllowed"], false);
+    assert_eq!(selected["reportReaderAllowed"], false);
+    assert_eq!(selected["artifactReaderAllowed"], false);
+    assert_eq!(selected["mcpRuntimeAllowed"], false);
+    assert_eq!(selected["commandExecutionAllowed"], false);
+    assert_eq!(selected["toolInvocationAllowed"], false);
+
+    let sections = root["detailSections"]
+        .as_array()
+        .expect("detail sections must be an array");
+    assert!(sections.iter().any(|section| {
+        section["sectionId"] == "execution_status"
+            && section["sectionState"] == "blocked"
+            && section["contentIncluded"] == false
+            && section["pathEchoAllowed"] == false
+            && section["rawCommandIncluded"] == false
+    }));
+
+    let flow = root["detailFlow"]
+        .as_object()
+        .expect("detail flow must be an object");
+    assert_eq!(flow["flowState"], "blocked");
+    assert_eq!(flow["commandKind"], "planned-cli-fixed-args");
+    let steps = flow["steps"].as_array().expect("steps must be an array");
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "detail_display_gate"
+            && step["state"] == "descriptor_only"
+            && step["sideEffectPolicy"] == "local_render_only"
+    }));
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "sample_invocation_gate"
+            && step["state"] == "blocked"
+            && step["sideEffectPolicy"] == "no_mcp_invocation_or_execution"
+    }));
+
+    let display = root["displayPolicy"]
+        .as_object()
+        .expect("display policy must be an object");
+    assert_eq!(display["summaryOnly"], true);
+    assert_eq!(display["pathEchoAllowed"], false);
+    assert_eq!(display["rawCommandIncluded"], false);
+    assert_eq!(display["labStatusPayloadIncluded"], false);
+    assert_eq!(display["workflowResultContentIncluded"], false);
+    assert_eq!(display["resultPayloadIncluded"], false);
+    assert_eq!(display["reportContentIncluded"], false);
+    assert_eq!(display["artifactPathsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "sample-discovery",
+        "tool-discovery",
+        "mcp-server-start",
+        "mcp-client-start",
+        "mcp-runtime-start",
+        "tool-invocation",
+        "command-execution",
+        "result-payload-read",
+        "lab-status-payload-read",
+        "workflow-result-read",
+        "report-read",
+        "report-write",
+        "artifact-read",
+        "artifact-write",
+        "repository-read",
+        "repository-mutation",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "model-load",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sampleDetailFixtureOnly"], true);
+    assert_eq!(safety["sampleDiscoveryImplemented"], false);
+    assert_eq!(safety["sampleToolImplemented"], false);
+    assert_eq!(safety["sampleToolExecuted"], false);
+    assert_eq!(safety["sampleResultProduced"], false);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["commandExecutorImplemented"], false);
+    assert_eq!(safety["resultPayloadReaderImplemented"], false);
+    assert_eq!(safety["reportReaderImplemented"], false);
+    assert_eq!(safety["toolInvocationImplemented"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn mcp_read_only_analysis_flow_example_keeps_dry_run_boundary() {
     let value: serde_json::Value = parse_example("mcp-read-only-analysis-flow.example.json");
     let root = value

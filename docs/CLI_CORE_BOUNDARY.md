@@ -34,6 +34,7 @@ separate workflow logic island.
 | `docs/examples/mcp-sample-plan.example.json` | planned sample plan | Checked descriptor-only MCP sample plan over approved tool, flow, report, and permission summaries; no server, client, runtime, transport, command executor, permission executor, audit logger, report writer, or tool invocation path is implemented. |
 | `docs/examples/mcp-sample-result.example.json` | planned sample result | Checked descriptor-only MCP sample result metadata over approved sample-plan, tool-detail, report, evidence, and blocked-result summaries; no server, client, runtime, transport, command executor, result reader, report reader/writer, artifact reader/writer, or tool invocation path is implemented. |
 | `docs/examples/mcp-sample-catalog.example.json` | planned sample catalog | Checked descriptor-only MCP sample catalog over approved sample-plan, sample-result, tool-detail, and permission summaries; no sample discovery, server, client, runtime, transport, command executor, result reader, report reader/writer, artifact reader/writer, audit logger, or tool invocation path is implemented. |
+| `docs/examples/mcp-sample-detail.example.json` | planned sample detail | Checked descriptor-only MCP sample detail over approved sample-catalog, sample-result, sample-plan, tool-detail, and permission summaries; no sample discovery, server, client, runtime, transport, command executor, result reader, report reader/writer, artifact reader/writer, audit logger, or tool invocation path is implemented. |
 | `docs/examples/mcp-read-only-analysis-flow.example.json` | planned flow contract | Checked dry-run analysis-flow contract over existing CLI/core summaries; no runtime or command executor is implemented. |
 | `docs/examples/mcp-read-only-report-contract.example.json` | planned report contract | Checked summary-only report output shape for a future read-only tool adapter; no report writer is implemented. |
 | `docs/examples/mcp-verification-run-comparison.example.json` | planned comparison contract | Checked summary-only verification-run comparison shape for future MCP/tool review; no file reader, report writer, or command executor is implemented. |
@@ -105,6 +106,7 @@ aligned.
 | `mcp-sample-plan` | `docs/examples/mcp-sample-plan.example.json` | Reader only; planned descriptor-only MCP sample plan over approved tool, flow, report, and permission summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-sample-result` | `docs/examples/mcp-sample-result.example.json` | Reader only; planned descriptor-only MCP sample result metadata over approved sample-plan, tool-detail, report, evidence, and blocked-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-sample-catalog` | `docs/examples/mcp-sample-catalog.example.json` | Reader only; planned descriptor-only MCP sample catalog over approved sample summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-sample-detail` | `docs/examples/mcp-sample-detail.example.json` | Reader only; planned descriptor-only MCP sample detail over one listed sample summary | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-analysis-flow` | `docs/examples/mcp-read-only-analysis-flow.example.json` | Reader only; planned dry-run read-only analysis-flow contract over existing CLI/core summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-report-contract` | `docs/examples/mcp-read-only-report-contract.example.json` | Reader only; planned summary-only report output shape for a future read-only tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-verification-run-comparison` | `docs/examples/mcp-verification-run-comparison.example.json` | Reader only; planned summary-only comparison shape over approved workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -658,6 +660,34 @@ releases/tags.
 
 The MCP sample catalog is approved for descriptor summary metadata
 only. It is not approved for sample discovery, client implementation,
+transport, runtime, command execution, invocation, permission execution,
+approval execution, audit persistence, payload reading, report
+reading/writing, artifact reading/writing, or repository mutation. No
+runtime, marketplace, hardware, throughput, timing-closure, release, or
+API/ABI stability claim is made.
+
+## MCP sample-detail boundary
+
+[`docs/examples/mcp-sample-detail.example.json`](examples/mcp-sample-detail.example.json)
+defines the checked descriptor-only detail shape for one planned
+read-only MCP sample. It links the sample-catalog, sample-result,
+sample-plan, selected tool detail, and permission model summaries, then
+records the selected lab status sample without discovering files,
+starting an MCP server or client, opening a transport, executing
+commands, or invoking tools.
+
+The fixture is summary-only metadata. It does not echo paths, include
+raw commands, read local files, read repositories, read raw traces, read
+raw reports, read raw logs, read reports, read artifacts, include
+lab-status payloads, include workflow result content, read result
+payloads, read or write reports, read or write artifacts, create audit
+logs, execute commands, invoke tools, mutate repositories, call
+providers, use the network, touch hardware, access KV260, access FPGA
+repos, load models, upload telemetry, push publicly, or control
+releases/tags.
+
+The MCP sample detail is approved for descriptor summary metadata only.
+It is not approved for sample discovery, client implementation,
 transport, runtime, command execution, invocation, permission execution,
 approval execution, audit persistence, payload reading, report
 reading/writing, artifact reading/writing, or repository mutation. No
