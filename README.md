@@ -104,6 +104,10 @@ boundary. There is no private back channel into lab internals. See
   descriptor-only permission profiles, sandbox requirements, and approval
   gates for future plugin capabilities; it is not a plugin runtime,
   sandbox, or permission executor.
+- `docs/examples/plugin-audit-event.example.json` records the redacted
+  audit-event shape for future approved plugin metadata review; it is
+  not an audit logger, plugin loader, runtime, sandbox, or command
+  executor.
 - `pccx-lab run-approved-workflow <proposal-id> --format json` returns
   a blocked result by default; the pilot only runs fixed allowlisted
   pccx-lab commands when explicitly enabled for local validation.

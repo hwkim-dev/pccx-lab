@@ -35,6 +35,7 @@ separate workflow logic island.
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
 | `docs/examples/plugin-output-contract.example.json` | planned output contract | Checked summary-only plugin output shape for diagnostic, report-panel, and report item previews; no plugin runtime or report writer is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
+| `docs/examples/plugin-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for future approved plugin metadata review; no logger, runtime, or plugin loader is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -74,6 +75,7 @@ aligned.
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-output-contract` | `docs/examples/plugin-output-contract.example.json` | Reader only; planned summary-only plugin output shape for future diagnostic, report-panel, and report item previews | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-audit-event` | `docs/examples/plugin-audit-event.example.json` | Reader only; planned redacted audit-event shape for future approved plugin metadata review | Shape validator, inventory test, Rust JSON-shape test |
 
 ## Current cross-repo direction
 
@@ -633,6 +635,26 @@ calls, network calls, hardware probes, KV260 access, FPGA repo access,
 runtime launch, model load, telemetry upload, public push,
 release/tag control, repository mutation, and artifact writes are
 blocked in this boundary.
+
+## plugin audit event boundary
+
+[`docs/examples/plugin-audit-event.example.json`](examples/plugin-audit-event.example.json)
+defines the checked audit-event shape for future approved plugin
+metadata review. It is an example-only, redacted metadata boundary for a
+future CLI/core plugin approval path.
+
+The fixture records the request id, plugin id, capability id, permission
+profile, fixed argument preview, approved input reference kind, outcome
+state, validation summary, and redaction state that a future plugin
+review flow would need to preserve.
+
+This fixture does not create an audit log file, validate a manifest,
+load plugin code, install packages, start a plugin runtime, implement a
+sandbox, execute commands, write artifacts, mutate repositories, call
+providers, use the network, touch hardware, access KV260, access FPGA
+repos, upload telemetry, push publicly, or control releases/tags. It
+also excludes private paths, secrets, tokens, model paths, stdout,
+stderr, and artifact paths. No stable plugin ABI is promised.
 
 ## GUI foundation
 

@@ -1070,3 +1070,85 @@ fn plugin_permission_model_example_keeps_permission_boundary_non_executing() {
     assert_eq!(safety["publicPush"], false);
     assert_eq!(safety["releaseOrTag"], false);
 }
+
+#[test]
+fn plugin_audit_event_example_keeps_redacted_non_executing_boundary() {
+    let value: serde_json::Value = parse_example("plugin-audit-event.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin audit event must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-audit-event.v0");
+    assert_eq!(root["eventState"], "example_only");
+    assert_eq!(root["pluginRuntimeState"], "not_implemented");
+    assert_eq!(root["loaderState"], "not_implemented");
+    assert_eq!(root["outcomeState"], "not_executed");
+    assert_eq!(root["pluginId"], "example.diagnostics.summary");
+    assert_eq!(root["capabilityId"], "plugin.manifest.validate");
+
+    let args = root["fixedArgsPreview"]
+        .as_array()
+        .expect("fixed args preview must be an array");
+    assert_eq!(args[0], "plugin-manifest");
+    assert_eq!(args[1], "validate");
+    assert_eq!(args[2], "--file");
+    assert_eq!(args[3], "<approved-manifest-json>");
+
+    let validation = root["validationSummary"]
+        .as_object()
+        .expect("validation summary must be an object");
+    assert_eq!(validation["summaryOnly"], true);
+    assert_eq!(validation["pathEchoed"], false);
+    assert_eq!(validation["stdoutCaptured"], false);
+    assert_eq!(validation["stderrCaptured"], false);
+    assert_eq!(validation["artifactWritten"], false);
+    assert_eq!(validation["pluginCodeLoaded"], false);
+    assert_eq!(validation["packageInstalled"], false);
+    assert_eq!(validation["dynamicLibrariesLoaded"], false);
+
+    let redaction = root["redactionState"]
+        .as_object()
+        .expect("redaction state must be an object");
+    assert_eq!(redaction["privatePathsIncluded"], false);
+    assert_eq!(redaction["secretsIncluded"], false);
+    assert_eq!(redaction["tokensIncluded"], false);
+    assert_eq!(redaction["modelWeightPathsIncluded"], false);
+    assert_eq!(redaction["stdoutIncluded"], false);
+    assert_eq!(redaction["stderrIncluded"], false);
+    assert_eq!(redaction["artifactPathsIncluded"], false);
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["auditFixtureOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["sandboxImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}

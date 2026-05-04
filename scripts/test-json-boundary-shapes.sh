@@ -123,6 +123,7 @@ run_case \
     "[mcp-permission-model] shape ok" \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
+    "[plugin-audit-event] shape ok" \
     "[plugin-boundary-plan] shape ok" \
     "[plugin-dry-run-flow] shape ok" \
     "[plugin-output-contract] shape ok"

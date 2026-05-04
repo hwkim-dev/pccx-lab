@@ -1577,6 +1577,133 @@ def validate_plugin_permission_model(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_audit_event(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-audit-event.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "eventId",
+            "requestId",
+            "eventState",
+            "pluginRuntimeState",
+            "loaderState",
+            "timestamp",
+            "pluginId",
+            "capabilityId",
+            "auditEvent",
+            "commandKind",
+            "approvedInputReferenceKind",
+            "permissionProfile",
+            "outcomeState",
+            "sideEffectPolicy",
+        ],
+    )
+    if root["eventState"] != "example_only":
+        raise ShapeError("unexpected value at $.eventState: expected example_only")
+    if root["pluginRuntimeState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.pluginRuntimeState: expected not_implemented")
+    if root["loaderState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.loaderState: expected not_implemented")
+    if root["outcomeState"] != "not_executed":
+        raise ShapeError("unexpected value at $.outcomeState: expected not_executed")
+
+    require_string_array(
+        require_field(root, "$", "fixedArgsPreview"),
+        "$.fixedArgsPreview",
+        min_items=1,
+    )
+
+    validation = expect_object(
+        require_field(root, "$", "validationSummary"),
+        "$.validationSummary",
+    )
+    require_string_fields(validation, "$.validationSummary", ["state", "summary"])
+    validation_true_flags = ["summaryOnly"]
+    validation_false_flags = [
+        "pathEchoed",
+        "stdoutCaptured",
+        "stderrCaptured",
+        "artifactWritten",
+        "pluginCodeLoaded",
+        "packageInstalled",
+        "dynamicLibrariesLoaded",
+    ]
+    require_bool_fields(
+        validation,
+        "$.validationSummary",
+        validation_true_flags + validation_false_flags,
+    )
+    if validation["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.validationSummary.summaryOnly: expected true")
+    for field in validation_false_flags:
+        if validation[field] is not False:
+            raise ShapeError(f"unexpected value at $.validationSummary.{field}: expected false")
+
+    redaction = expect_object(require_field(root, "$", "redactionState"), "$.redactionState")
+    require_string_field(redaction, "$.redactionState", "state")
+    redaction_false_flags = [
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "modelWeightPathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "artifactPathsIncluded",
+    ]
+    require_bool_fields(redaction, "$.redactionState", redaction_false_flags)
+    for flag in redaction_false_flags:
+        if redaction[flag] is not False:
+            raise ShapeError(f"unexpected value at $.redactionState.{flag}: expected false")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "auditFixtureOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "sandboxImplemented",
+        "permissionExecutorImplemented",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_boundary_plan(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-boundary-plan.v0")
@@ -2221,6 +2348,7 @@ SPECS = [
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
+    BoundarySpec("plugin-audit-event", "docs/examples/plugin-audit-event.example.json", validate_plugin_audit_event),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
     BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
     BoundarySpec("plugin-output-contract", "docs/examples/plugin-output-contract.example.json", validate_plugin_output_contract),
