@@ -360,6 +360,43 @@ not load plugin code, execute commands, write artifacts, mutate
 repositories, echo private paths, include full logs, or promise a stable
 plugin ABI.
 
+## Plugin Blocked Invocation Result
+
+Full fixture:
+[`plugin-blocked-invocation-result.example.json`](examples/plugin-blocked-invocation-result.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-blocked-invocation-result.v0",
+  "resultState": "blocked_by_policy",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "sandboxState": "not_implemented",
+  "pluginInvocationRequest": {
+    "commandKind": "planned-cli-fixed-args",
+    "pluginCodeLoadAllowed": false,
+    "packageInstallAllowed": false
+  },
+  "blockedResult": {
+    "state": "not_executed",
+    "summaryOnly": true,
+    "pluginInvocationAttempted": false,
+    "commandExecutionAttempted": false
+  },
+  "outputPreview": {
+    "diagnosticsProduced": false,
+    "reportItemsProduced": false,
+    "artifactPathsIncluded": false
+  }
+}
+```
+
+Use this fixture to review the bounded result shape a future plugin path
+should return when policy or missing runtime support blocks invocation.
+It does not load plugin code, execute commands, read inputs, write
+artifacts, mutate repositories, call providers, use the network, touch
+hardware, or create an ABI stability commitment.
+
 ## Plugin Permission Model
 
 Full fixture:

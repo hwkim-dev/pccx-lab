@@ -116,6 +116,10 @@ boundary. There is no private back channel into lab internals. See
   summary-only output shape for future plugin diagnostic, report-panel,
   and report item previews; it is not a plugin loader, runtime, command
   executor, artifact writer, or stable ABI.
+- `docs/examples/plugin-blocked-invocation-result.example.json` records a
+  blocked, non-executed invocation result for a future plugin path; it
+  is not a plugin loader, runtime, sandbox, permission executor, input
+  reader, report writer, artifact reader, or ABI promise.
 - `docs/examples/plugin-permission-model.example.json` records the
   descriptor-only permission profiles, sandbox requirements, and approval
   gates for future plugin capabilities; it is not a plugin runtime,

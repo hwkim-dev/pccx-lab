@@ -136,6 +136,7 @@ run_case \
     "[plugin-dry-run-flow] inventory ok" \
     "[plugin-input-contract] inventory ok" \
     "[plugin-output-contract] inventory ok" \
+    "[plugin-blocked-invocation-result] inventory ok" \
     "[plugin-permission-model] inventory ok"
 
 missing_path_inventory="$(stage_inventory_fixture missing-example-path)"

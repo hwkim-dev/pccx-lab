@@ -359,6 +359,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-output-contract-boundary"
     },
     {
+      "boundaryKind": "plugin-blocked-invocation-result",
+      "examplePath": "docs/examples/plugin-blocked-invocation-result.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-blocked-invocation-result-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-blocked-invocation-result",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_blocked_invocation_result_example_keeps_non_executing_result_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-blocked-invocation-result-boundary"
+    },
+    {
       "boundaryKind": "plugin-permission-model",
       "examplePath": "docs/examples/plugin-permission-model.example.json",
       "producingCommand": null,
