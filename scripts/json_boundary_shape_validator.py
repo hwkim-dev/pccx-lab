@@ -13840,6 +13840,377 @@ def validate_hybrid_interface_boundary(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_hybrid_review_packet(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.hybrid-review-packet.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "reviewPacketId",
+            "reviewState",
+            "adapterState",
+            "defaultMode",
+            "packetKind",
+            "automationPath",
+        ],
+    )
+    expected_states = {
+        "reviewState": "descriptor_only",
+        "adapterState": "not_implemented",
+        "defaultMode": "read_only",
+        "packetKind": "summary_only_hybrid_review_packet",
+        "automationPath": "cli_core_first",
+    }
+    for field, expected in expected_states.items():
+        if root[field] != expected:
+            raise ShapeError(f"unexpected value at $.{field}: expected {expected}")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    ref_ids = set()
+    ref_false_flags = [
+        "sourceReadAllowed",
+        "executionAllowed",
+        "artifactWriteAllowed",
+        "commandExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "payloadIncluded",
+        "reportReadAllowed",
+        "verificationRunAllowed",
+        "simulatorExecutionAllowed",
+        "hardwareControlAllowed",
+    ]
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        ref_ids.add(ref["refId"])
+        if ref.get("summaryReferenceAllowed") is not True:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].summaryReferenceAllowed: expected true")
+        for flag in ref_false_flags:
+            if flag in ref and expect_bool(require_field(ref, path, flag), child(path, flag)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{flag}: expected false")
+    for ref_id in [
+        "hybrid_strategy_plan",
+        "hybrid_interface_boundary",
+        "workflow_descriptors",
+        "workflow_results",
+        "verification_gate",
+    ]:
+        if ref_id not in ref_ids:
+            raise ShapeError(f"missing source boundary ref: {ref_id}")
+
+    inputs = require_object_array(
+        require_field(root, "$", "reviewInputs"),
+        "$.reviewInputs",
+        min_items=5,
+    )
+    allowed_input_kinds = {
+        "strategy_summary",
+        "interface_summary",
+        "workflow_summary",
+        "verification_gate_summary",
+        "report_summary_gate",
+    }
+    input_ids = set()
+    input_false_flags = [
+        "cppSourceRead",
+        "systemVerilogSourceRead",
+        "scriptSourceRead",
+        "grammarRead",
+        "parserOutputRead",
+        "compilerOutputRead",
+        "runtimePlanRead",
+        "simulatorOutputRead",
+        "verificationResultRead",
+        "hardwareControlRead",
+        "reportRead",
+        "artifactRead",
+        "localFileRead",
+        "repositoryRead",
+        "privatePathEchoAllowed",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogIncluded",
+        "artifactPathIncluded",
+    ]
+    for item in inputs:
+        path = "$.reviewInputs[]"
+        require_string_fields(item, path, ["inputId", "inputKind", "inputState", "sourceRef", "summary"])
+        input_id = item["inputId"]
+        if input_id in input_ids:
+            raise ShapeError(f"duplicate value at $.reviewInputs[].inputId: {input_id}")
+        input_ids.add(input_id)
+        if item["inputKind"] not in allowed_input_kinds:
+            raise ShapeError(
+                "unexpected value at $.reviewInputs[].inputKind: "
+                f"expected one of {sorted(allowed_input_kinds)}"
+            )
+        if item["inputState"] != "approved_summary_only":
+            raise ShapeError("unexpected value at $.reviewInputs[].inputState: expected approved_summary_only")
+        require_bool_fields(item, path, ["summaryOnly", "approvalRequired"] + input_false_flags)
+        for flag in ["summaryOnly", "approvalRequired"]:
+            if item[flag] is not True:
+                raise ShapeError(f"unexpected value at $.reviewInputs[].{flag}: expected true")
+        for flag in input_false_flags:
+            if item[flag] is not False:
+                raise ShapeError(f"unexpected value at $.reviewInputs[].{flag}: expected false")
+        fields = require_object_array(
+            require_field(item, path, "fieldDescriptors"),
+            child(path, "fieldDescriptors"),
+            min_items=1,
+        )
+        for field in fields:
+            require_string_fields(field, "$.reviewInputs[].fieldDescriptors[]", ["fieldName", "valueKind", "policy"])
+
+    policy = expect_object(require_field(root, "$", "reviewPolicy"), "$.reviewPolicy")
+    require_string_fields(policy, "$.reviewPolicy", ["state", "packetKind", "redactionRule"])
+    if policy["state"] != "planned":
+        raise ShapeError("unexpected value at $.reviewPolicy.state: expected planned")
+    if policy["packetKind"] != "summary_only_hybrid_review_packet":
+        raise ShapeError("unexpected value at $.reviewPolicy.packetKind: expected summary_only_hybrid_review_packet")
+    expect_integer(require_field(policy, "$.reviewPolicy", "maxSections"), "$.reviewPolicy.maxSections")
+    policy_true_flags = ["summaryOnly", "approvalRequired", "auditRequired"]
+    policy_false_flags = [
+        "cppSourceReadAllowed",
+        "systemVerilogSourceReadAllowed",
+        "scriptSourceReadAllowed",
+        "grammarReadAllowed",
+        "parserRequestAllowed",
+        "compilerRequestAllowed",
+        "runtimeRequestAllowed",
+        "scriptExecutionAllowed",
+        "simulatorExecutionAllowed",
+        "verificationRunAllowed",
+        "hardwareControlAllowed",
+        "commandExecutionAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+        "providerCallAllowed",
+        "networkCallAllowed",
+        "hardwareAccessAllowed",
+        "kv260AccessAllowed",
+        "fpgaRepoAccessAllowed",
+        "modelLoadAllowed",
+        "pathEchoAllowed",
+        "stdoutAllowed",
+        "stderrAllowed",
+        "rawLogAllowed",
+        "privatePathsAllowed",
+        "generatedArtifactsAllowed",
+    ]
+    require_bool_fields(policy, "$.reviewPolicy", policy_true_flags + policy_false_flags)
+    for flag in policy_true_flags:
+        if policy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.reviewPolicy.{flag}: expected true")
+    for flag in policy_false_flags:
+        if policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.reviewPolicy.{flag}: expected false")
+
+    packet = expect_object(require_field(root, "$", "sampleReviewPacket"), "$.sampleReviewPacket")
+    require_string_fields(packet, "$.sampleReviewPacket", ["reviewPacketState", "targetRepository", "titlePreview"])
+    if packet["reviewPacketState"] != "summary_only_fixture":
+        raise ShapeError("unexpected value at $.sampleReviewPacket.reviewPacketState: expected summary_only_fixture")
+    section_false_flags = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "sourceIncluded",
+        "grammarIncluded",
+        "rawReportIncluded",
+    ]
+    sections = require_object_array(
+        require_field(packet, "$.sampleReviewPacket", "reviewSections"),
+        "$.sampleReviewPacket.reviewSections",
+        min_items=2,
+    )
+    for section in sections:
+        path = "$.sampleReviewPacket.reviewSections[]"
+        require_string_fields(section, path, ["sectionId", "sectionKind", "heading", "summary"])
+        require_bool_fields(section, path, ["summaryOnly"] + section_false_flags)
+        if section["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleReviewPacket.reviewSections[].summaryOnly: expected true")
+        for flag in section_false_flags:
+            if section[flag] is not False:
+                raise ShapeError(f"unexpected value at $.sampleReviewPacket.reviewSections[].{flag}: expected false")
+
+    for array_name, min_items in [("riskRows", 1), ("checklistItems", 1), ("validationLines", 1)]:
+        rows = require_object_array(
+            require_field(packet, "$.sampleReviewPacket", array_name),
+            child("$.sampleReviewPacket", array_name),
+            min_items=min_items,
+        )
+        for row in rows:
+            path = f"$.sampleReviewPacket.{array_name}[]"
+            require_bool_fields(row, path, ["summaryOnly"])
+            if row["summaryOnly"] is not True:
+                raise ShapeError(f"unexpected value at {path}.summaryOnly: expected true")
+            if array_name == "validationLines":
+                require_string_fields(row, path, ["lineId", "result", "summary"])
+                false_flags = ["commandIncluded", "stdoutIncluded", "stderrIncluded", "rawLogsIncluded", "artifactPathIncluded"]
+            elif array_name == "checklistItems":
+                require_string_fields(row, path, ["itemId", "state", "label"])
+                false_flags = ["commandIncluded", "pathIncluded", "artifactPathIncluded"]
+            else:
+                require_string_fields(row, path, ["rowId", "severity", "sourceRef", "summary", "mitigation"])
+                false_flags = ["commandIncluded", "pathIncluded", "artifactPathIncluded"]
+            require_bool_fields(row, path, false_flags)
+            for flag in false_flags:
+                if row[flag] is not False:
+                    raise ShapeError(f"unexpected value at {path}.{flag}: expected false")
+
+    packet_true_flags = ["summaryOnly"]
+    packet_false_flags = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "sourceIncluded",
+        "grammarIncluded",
+        "rawReportIncluded",
+        "reviewOutputPublished",
+        "projectUpdated",
+    ]
+    require_bool_fields(packet, "$.sampleReviewPacket", packet_true_flags + packet_false_flags)
+    if packet["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.sampleReviewPacket.summaryOnly: expected true")
+    for flag in packet_false_flags:
+        if packet[flag] is not False:
+            raise ShapeError(f"unexpected value at $.sampleReviewPacket.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "cppSourceReadAllowed",
+        "systemVerilogSourceReadAllowed",
+        "scriptSourceReadAllowed",
+        "grammarReadAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "repositoryMutationAllowed",
+        "commandExecutionAllowed",
+        "simulatorExecutionAllowed",
+        "verificationRunAllowed",
+        "hardwareControlAllowed",
+        "runtimeExecutionAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked = require_field(root, "$", "blockedActions")
+    require_string_array(blocked, "$.blockedActions", min_items=1)
+    for required in [
+        "cpp-source-read",
+        "systemverilog-source-read",
+        "custom-script-source-read",
+        "custom-language-grammar-read",
+        "custom-language-parser",
+        "custom-language-compiler",
+        "custom-script-runtime",
+        "custom-script-execution",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "report-read",
+        "report-write",
+        "artifact-read",
+        "artifact-write",
+        "command-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    safety_true_flags = ["dataOnly", "descriptorOnly", "readOnly", "hybridReviewPacketFixtureOnly", "summaryOnly", "cliCoreFirst"]
+    safety_false_flags = [
+        "cppSourceReaderImplemented",
+        "systemVerilogSourceReaderImplemented",
+        "scriptSourceReaderImplemented",
+        "customLanguageGrammarIncluded",
+        "customLanguageParserImplemented",
+        "customLanguageCompilerImplemented",
+        "customScriptRuntimeImplemented",
+        "customScriptExecution",
+        "simulatorExecution",
+        "verificationExecution",
+        "hardwareControl",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportReaderImplemented",
+        "reportWriterImplemented",
+        "networkCalls",
+        "providerCalls",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", safety_true_flags + safety_false_flags)
+    for flag in safety_true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in safety_false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -13852,6 +14223,7 @@ SPECS = [
     BoundarySpec("sail-interface-boundary", "docs/examples/sail-interface-boundary.example.json", validate_sail_interface_boundary),
     BoundarySpec("hybrid-strategy-plan", "docs/examples/hybrid-strategy-plan.example.json", validate_hybrid_strategy_plan),
     BoundarySpec("hybrid-interface-boundary", "docs/examples/hybrid-interface-boundary.example.json", validate_hybrid_interface_boundary),
+    BoundarySpec("hybrid-review-packet", "docs/examples/hybrid-review-packet.example.json", validate_hybrid_review_packet),
     BoundarySpec("launcher-diagnostics-handoff", "docs/examples/launcher-diagnostics-handoff.example.json", validate_launcher_handoff),
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),

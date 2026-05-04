@@ -189,6 +189,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#hybrid-interface-boundary"
     },
     {
+      "boundaryKind": "hybrid-review-packet",
+      "examplePath": "docs/examples/hybrid-review-packet.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#hybrid-review-packet",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "hybrid-review-packet",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "hybrid_review_packet_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#hybrid-review-packet"
+    },
+    {
       "boundaryKind": "launcher-diagnostics-handoff",
       "examplePath": "docs/examples/launcher-diagnostics-handoff.example.json",
       "producingCommand": null,

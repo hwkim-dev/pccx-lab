@@ -93,6 +93,12 @@ boundary. There is no private back channel into lab internals. See
   grammar reader, parser, compiler, runtime, script execution path,
   simulator runner, verification run, report/artifact reader or writer,
   or hardware-control path.
+- `docs/examples/hybrid-review-packet.example.json` records a
+  summary-only hybrid review packet over approved strategy, interface,
+  workflow, verification, and report-gate summaries; it is not a source
+  reader, grammar reader, parser, compiler, runtime, script execution
+  path, simulator runner, verification run, report/artifact reader or
+  writer, or hardware-control path.
 - `docs/examples/mcp-read-only-tool-plan.example.json` maps a future
   MCP/tool adapter to read-only CLI/core commands; it is a checked plan,
   not a runtime implementation.
