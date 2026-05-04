@@ -135,6 +135,7 @@ run_case \
     "[mcp-blocked-invocation-result] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
+    "[plugin-manifest-validation-result] inventory ok" \
     "[plugin-dry-run-flow] inventory ok" \
     "[plugin-input-contract] inventory ok" \
     "[plugin-trace-summary-input] inventory ok" \

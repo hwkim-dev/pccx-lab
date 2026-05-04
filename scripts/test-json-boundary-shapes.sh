@@ -129,6 +129,7 @@ run_case \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
     "[plugin-audit-event] shape ok" \
+    "[plugin-manifest-validation-result] shape ok" \
     "[plugin-boundary-plan] shape ok" \
     "[plugin-dry-run-flow] shape ok" \
     "[plugin-input-contract] shape ok" \

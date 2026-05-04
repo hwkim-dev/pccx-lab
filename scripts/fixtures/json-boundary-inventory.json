@@ -342,6 +342,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-boundary-plan"
     },
     {
+      "boundaryKind": "plugin-manifest-validation-result",
+      "examplePath": "docs/examples/plugin-manifest-validation-result.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-manifest-validation-result-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-manifest-validation-result",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_manifest_validation_result_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-manifest-validation-result-boundary"
+    },
+    {
       "boundaryKind": "plugin-dry-run-flow",
       "examplePath": "docs/examples/plugin-dry-run-flow.example.json",
       "producingCommand": null,

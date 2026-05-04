@@ -44,6 +44,7 @@ separate workflow logic island.
 | `docs/examples/plugin-blocked-invocation-result.example.json` | planned blocked result | Checked blocked, non-executed plugin invocation result; no plugin loader, runtime, sandbox, permission executor, input reader, or report writer is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `docs/examples/plugin-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for future approved plugin metadata review; no logger, runtime, or plugin loader is implemented. |
+| `docs/examples/plugin-manifest-validation-result.example.json` | planned manifest validation result | Checked summary-only result shape for a future approved manifest validation request; no manifest reader, validator command, plugin runtime, or loader is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -85,6 +86,7 @@ aligned.
 | `mcp-blocked-invocation-result` | `docs/examples/mcp-blocked-invocation-result.example.json` | Reader only; planned blocked, non-executed invocation result for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-manifest-validation-result` | `docs/examples/plugin-manifest-validation-result.example.json` | Reader only; planned summary-only result shape for a future approved plugin manifest validation request | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-trace-summary-input` | `docs/examples/plugin-trace-summary-input.example.json` | Reader only; planned summary-only trace metadata input gate for future plugin trace review | Shape validator, inventory test, Rust JSON-shape test |
@@ -686,6 +688,27 @@ The host API plan keeps plugin-facing data behind existing CLI/core
 contracts: lab status, workflow descriptors, diagnostics envelopes, and
 workflow result summaries. The GUI may render manifest and capability
 metadata only after CLI/core contracts exist. No stable plugin ABI is promised.
+
+## plugin manifest validation result boundary
+
+[`docs/examples/plugin-manifest-validation-result.example.json`](examples/plugin-manifest-validation-result.example.json)
+defines the checked summary-only result shape for a future approved
+plugin manifest validation request. It links the plugin boundary plan,
+plugin permission model, and plugin audit-event shape, then records a
+bounded result envelope for manifest metadata review.
+
+The fixture does not read a manifest file, echo a path, include manifest
+contents, validate a package, load plugin code, install packages, start
+a plugin runtime, implement a sandbox, execute commands, write
+artifacts, mutate repositories, call providers, use the network, touch
+hardware, access KV260, access FPGA repos, load models, upload
+telemetry, push publicly, or control releases/tags.
+
+The example result keeps only counts, capability ids, blocked capability
+ids, and redacted warning summaries. It is not a manifest reader,
+validator command, plugin loader, runtime, sandbox, permission executor,
+marketplace flow, package distribution flow, compatibility promise, or
+ABI promise.
 
 ## plugin dry-run flow boundary
 

@@ -2465,3 +2465,153 @@ fn plugin_audit_event_example_keeps_redacted_non_executing_boundary() {
     assert_eq!(safety["publicPush"], false);
     assert_eq!(safety["releaseOrTag"], false);
 }
+
+#[test]
+fn plugin_manifest_validation_result_example_keeps_summary_only_boundary() {
+    let value: serde_json::Value = parse_example("plugin-manifest-validation-result.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin manifest validation result must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.plugin-manifest-validation-result.v0"
+    );
+    assert_eq!(root["resultState"], "example_only");
+    assert_eq!(root["pluginRuntimeState"], "not_implemented");
+    assert_eq!(root["loaderState"], "not_implemented");
+    assert_eq!(root["sandboxState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+
+    let manifest = root["sourceManifestRef"]
+        .as_object()
+        .expect("source manifest ref must be an object");
+    assert_eq!(manifest["schemaVersion"], "pccx.lab.plugin-manifest.v0");
+    assert_eq!(manifest["pathEchoAllowed"], false);
+    assert_eq!(manifest["manifestContentIncluded"], false);
+    assert_eq!(manifest["localFileRead"], false);
+
+    let request = root["validationRequest"]
+        .as_object()
+        .expect("validation request must be an object");
+    assert_eq!(request["commandKind"], "planned-cli-fixed-args");
+    assert_eq!(
+        request["approvedInputReferenceKind"],
+        "approved-plugin-manifest-json"
+    );
+    assert_eq!(request["pathEchoAllowed"], false);
+    assert_eq!(request["rawShellCommandAllowed"], false);
+    assert_eq!(request["manifestReaderImplemented"], false);
+    assert_eq!(request["pluginCodeLoadAllowed"], false);
+    assert_eq!(request["packageInstallAllowed"], false);
+
+    let result = root["validationResult"]
+        .as_object()
+        .expect("validation result must be an object");
+    assert_eq!(result["state"], "planned_result_shape");
+    assert_eq!(result["summaryOnly"], true);
+    assert_eq!(result["manifestReaderAttempted"], false);
+    assert_eq!(result["pluginCodeLoaded"], false);
+    assert_eq!(result["commandExecutionAttempted"], false);
+    assert_eq!(result["packageInstalled"], false);
+    assert_eq!(result["dynamicLibrariesLoaded"], false);
+    assert_eq!(result["requiredFieldCount"], 9);
+    assert!(result["missingRequiredFields"]
+        .as_array()
+        .expect("missing required fields must be an array")
+        .is_empty());
+    assert!(result["acceptedCapabilityIds"]
+        .as_array()
+        .expect("accepted capability ids must be an array")
+        .iter()
+        .any(|capability| capability == "plugin.diagnostics.summary"));
+    assert!(result["blockedCapabilityIds"]
+        .as_array()
+        .expect("blocked capability ids must be an array")
+        .iter()
+        .any(|capability| capability == "plugin.trace.importer"));
+
+    let redaction = root["redactionState"]
+        .as_object()
+        .expect("redaction state must be an object");
+    assert_eq!(redaction["privatePathsIncluded"], false);
+    assert_eq!(redaction["manifestContentIncluded"], false);
+    assert_eq!(redaction["secretsIncluded"], false);
+    assert_eq!(redaction["tokensIncluded"], false);
+    assert_eq!(redaction["stdoutIncluded"], false);
+    assert_eq!(redaction["stderrIncluded"], false);
+    assert_eq!(redaction["artifactPathsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "manifest-file-read",
+        "dynamic-code-load",
+        "plugin-package-install",
+        "marketplace-flow",
+        "package-distribution",
+        "command-execution",
+        "local-file-read",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["validationResultFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["pluginManifestValidatorImplemented"], false);
+    assert_eq!(safety["manifestReaderImplemented"], false);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["sandboxImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["manifestContentIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}

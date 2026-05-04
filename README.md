@@ -113,6 +113,10 @@ boundary. There is no private back channel into lab internals. See
 - `docs/examples/plugin-boundary-plan.example.json` records the plugin
   manifest and host API planning boundary; it is not a plugin loader or
   package distribution flow.
+- `docs/examples/plugin-manifest-validation-result.example.json` records
+  the summary-only result shape for a future approved plugin manifest
+  validation request; it is not a manifest reader, validator command,
+  plugin loader, runtime, sandbox, or package distribution flow.
 - `docs/examples/plugin-dry-run-flow.example.json` records a checked
   dry-run flow contract for future approved plugin manifest, capability,
   diagnostics, and report-panel summaries; it is not a plugin loader,
