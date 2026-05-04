@@ -5666,6 +5666,137 @@ fn plugin_load_request_example_keeps_loader_disabled_boundary() {
 }
 
 #[test]
+fn sail_adoption_plan_example_keeps_descriptor_only_boundary() {
+    let value: serde_json::Value = parse_example("sail-adoption-plan.example.json");
+    let root = value
+        .as_object()
+        .expect("Sail adoption plan must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.sail-adoption-plan.v0");
+    assert_eq!(root["planState"], "descriptor_only");
+    assert_eq!(root["modelState"], "not_implemented");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(root["hostMode"], "cli_core_first_gui_second");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "workflow_descriptors"
+            && item["sailWorkflowCandidate"] == true
+            && item["commandExecutionAllowed"] == false
+            && item["modelExecutionAllowed"] == false
+    }));
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "verification_gate"
+            && item["sailGateImplemented"] == false
+            && item["refinementExecutionAllowed"] == false
+            && item["formalProofAllowed"] == false
+    }));
+
+    let plan = root["adoptionPlan"]
+        .as_object()
+        .expect("adoption plan must be an object");
+    assert_eq!(plan["summaryOnly"], true);
+    assert_eq!(plan["descriptorOnly"], true);
+    assert_eq!(plan["cliCoreFirst"], true);
+    assert_eq!(plan["sailParserImplemented"], false);
+    assert_eq!(plan["sailCompilerImplemented"], false);
+    assert_eq!(plan["sailModelImplemented"], false);
+    assert_eq!(plan["sailExecutionAllowed"], false);
+    assert_eq!(plan["rtlRefinementAllowed"], false);
+    assert_eq!(plan["formalProofAllowed"], false);
+
+    let input = root["inputPolicy"]
+        .as_object()
+        .expect("input policy must be an object");
+    assert_eq!(input["sailSourceReadAllowed"], false);
+    assert_eq!(input["rtlSourceReadAllowed"], false);
+    assert_eq!(input["traceReadAllowed"], false);
+    assert_eq!(input["reportReadAllowed"], false);
+    assert_eq!(input["repositoryReadAllowed"], false);
+    assert_eq!(input["secretsReadAllowed"], false);
+    assert_eq!(input["tokensReadAllowed"], false);
+
+    let output = root["outputPolicy"]
+        .as_object()
+        .expect("output policy must be an object");
+    assert_eq!(output["sailSourceIncluded"], false);
+    assert_eq!(output["generatedModelIncluded"], false);
+    assert_eq!(output["compiledArtifactIncluded"], false);
+    assert_eq!(output["proofArtifactIncluded"], false);
+    assert_eq!(output["rtlContentIncluded"], false);
+    assert_eq!(output["reportContentIncluded"], false);
+    assert_eq!(output["stdoutIncluded"], false);
+    assert_eq!(output["stderrIncluded"], false);
+    assert_eq!(output["rawLogsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "sail-source-read",
+        "sail-parser",
+        "sail-compiler",
+        "sail-model-generation",
+        "sail-model-execution",
+        "rtl-refinement-check",
+        "formal-proof",
+        "command-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["planOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sailParserImplemented"], false);
+    assert_eq!(safety["sailCompilerImplemented"], false);
+    assert_eq!(safety["sailModelImplemented"], false);
+    assert_eq!(safety["sailExecution"], false);
+    assert_eq!(safety["rtlRefinementExecution"], false);
+    assert_eq!(safety["formalVerificationExecution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn plugin_host_session_state_example_keeps_host_session_blocked_boundary() {
     let value: serde_json::Value = parse_example("plugin-host-session-state.example.json");
     let root = value

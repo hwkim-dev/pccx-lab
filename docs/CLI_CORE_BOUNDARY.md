@@ -23,6 +23,7 @@ separate workflow logic island.
 | `pccx-lab workflow-proposals --format json` | available | Proposal-only workflow previews from `pccx-core`. |
 | `pccx-lab workflow-results --format json` | available | Summary-only workflow result metadata from `pccx-core`. |
 | `pccx-lab run-approved-workflow <proposal-id> --format json` | disabled-by-default pilot | Fixed allowlisted runner pilot; blocked unless explicitly enabled. |
+| `docs/examples/sail-adoption-plan.example.json` | planned Sail adoption boundary | Checked descriptor-only Sail adoption plan for future reference-model review; no Sail source reader, parser, compiler, model execution, refinement check, proof path, report writer, artifact writer, or hardware path is implemented. |
 | `pccx-lab analyze <file> --format json` | early scaffold | File-shape diagnostics only. |
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
@@ -92,6 +93,7 @@ aligned.
 | `workflow-proposals` | `docs/examples/workflow-proposals.example.json` | `pccx-lab workflow-proposals --format json`; `pccx_core::proposals::workflow_proposals` | Shape validator, inventory test, Rust deserialize test |
 | `workflow-results` | `docs/examples/workflow-results.example.json` | `pccx-lab workflow-results --format json`; `pccx_core::results::workflow_result_summaries` | Shape validator, inventory test, Rust deserialize test |
 | `workflow-runner-result` | `docs/examples/workflow-runner-blocked.example.json` | `pccx-lab run-approved-workflow <proposal-id> --format json`; `pccx_core::runner::blocked_workflow_result` | Shape validator, inventory test, Rust deserialize test |
+| `sail-adoption-plan` | `docs/examples/sail-adoption-plan.example.json` | Reader only; planned descriptor-only Sail adoption boundary over approved CLI/core planning summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
@@ -360,6 +362,29 @@ hardware settings, provider settings, network settings, launcher
 settings, IDE settings, or FPGA repo paths. Results include exit code,
 duration, bounded stdout/stderr lines, truncation status, and redaction
 status.
+
+## Sail adoption plan boundary
+
+[`docs/examples/sail-adoption-plan.example.json`](examples/sail-adoption-plan.example.json)
+defines the checked descriptor-only adoption plan for future Sail
+reference-model review. It records the CLI/core-first staging model,
+review phases, input and output policies, and blocked actions needed
+before any Sail source, generated model, refinement result, proof
+artifact, or report output can be handled.
+
+The fixture is metadata only. It does not read Sail sources, read RTL
+sources, import traces, read reports, read artifacts, include private
+paths, start a parser, start a compiler, generate an ISA model, execute
+a Sail model, run a refinement check, run a formal proof, write reports,
+write artifacts, execute commands, mutate repositories, call providers,
+use the network, touch hardware, access KV260, access FPGA repos, load
+models, upload telemetry, push publicly, or control releases/tags.
+
+The plan is approved for descriptor metadata only. A future
+implementation requires separate reviewed boundaries for source inputs,
+model generation, execution, refinement, report output, and artifacts.
+No runtime, hardware, marketplace, release, or API/ABI stability claim
+is made.
 
 ## analyze command
 
