@@ -87,6 +87,12 @@ boundary. There is no private back channel into lab internals. See
   custom-script control tracks; it is not a source reader, grammar
   reader, parser, compiler, runtime, simulator runner, verification run,
   report writer, artifact writer, or hardware-control path.
+- `docs/examples/hybrid-interface-boundary.example.json` records a
+  descriptor-only hybrid interface handoff boundary over approved
+  summaries; it is not a C++/SystemVerilog/custom-script source reader,
+  grammar reader, parser, compiler, runtime, script execution path,
+  simulator runner, verification run, report/artifact reader or writer,
+  or hardware-control path.
 - `docs/examples/mcp-read-only-tool-plan.example.json` maps a future
   MCP/tool adapter to read-only CLI/core commands; it is a checked plan,
   not a runtime implementation.

@@ -172,6 +172,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#hybrid-strategy-plan-boundary"
     },
     {
+      "boundaryKind": "hybrid-interface-boundary",
+      "examplePath": "docs/examples/hybrid-interface-boundary.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#hybrid-interface-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "hybrid-interface-boundary",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "hybrid_interface_boundary_example_keeps_descriptor_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#hybrid-interface-boundary"
+    },
+    {
       "boundaryKind": "launcher-diagnostics-handoff",
       "examplePath": "docs/examples/launcher-diagnostics-handoff.example.json",
       "producingCommand": null,
