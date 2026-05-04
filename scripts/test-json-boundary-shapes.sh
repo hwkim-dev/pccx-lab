@@ -120,6 +120,8 @@ run_case \
     "[mcp-read-only-tool-plan] shape ok" \
     "[mcp-tool-list] shape ok" \
     "[mcp-tool-detail] shape ok" \
+    "[mcp-sample-plan] shape ok" \
+    "[mcp-sample-result] shape ok" \
     "[mcp-read-only-analysis-flow] shape ok" \
     "[mcp-read-only-report-contract] shape ok" \
     "[mcp-verification-run-comparison] shape ok" \

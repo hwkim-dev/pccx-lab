@@ -223,6 +223,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-sample-plan-boundary"
     },
     {
+      "boundaryKind": "mcp-sample-result",
+      "examplePath": "docs/examples/mcp-sample-result.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-sample-result-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-sample-result",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_sample_result_example_keeps_descriptor_only_result_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-sample-result-boundary"
+    },
+    {
       "boundaryKind": "mcp-read-only-analysis-flow",
       "examplePath": "docs/examples/mcp-read-only-analysis-flow.example.json",
       "producingCommand": null,
