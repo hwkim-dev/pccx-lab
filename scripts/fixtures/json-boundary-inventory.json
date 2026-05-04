@@ -306,6 +306,23 @@
         "testName": "plugin_permission_model_example_keeps_permission_boundary_non_executing"
       },
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-permission-model-boundary"
+    },
+    {
+      "boundaryKind": "plugin-audit-event",
+      "examplePath": "docs/examples/plugin-audit-event.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-audit-event-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-audit-event",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_audit_event_example_keeps_redacted_non_executing_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-audit-event-boundary"
     }
   ]
 }

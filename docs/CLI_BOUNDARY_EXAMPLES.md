@@ -20,7 +20,7 @@ wrappers backed by `pccx-core`.
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
 | Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, and report-contract JSON | Consume descriptor-only contracts until a controlled adapter exists. |
-| Future plugin consumer | Plugin boundary-plan and output-contract JSON | Treat manifest, capability, and output data as planning metadata until a loader boundary exists. |
+| Future plugin consumer | Plugin boundary-plan, permission-model, audit-event, and output-contract JSON | Treat manifest, capability, audit, and output data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
 runtime is implemented by these examples.
@@ -393,6 +393,41 @@ It does not implement a plugin runtime, sandbox, permission executor,
 dynamic code loading, package distribution, provider/network calls,
 hardware access, artifact writes, release/tag control, or public pushes.
 
+## Plugin Audit Event
+
+Full fixture:
+[`plugin-audit-event.example.json`](examples/plugin-audit-event.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-audit-event.v0",
+  "eventState": "example_only",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "pluginId": "example.diagnostics.summary",
+  "capabilityId": "plugin.manifest.validate",
+  "permissionProfile": "manifest_review_read_only",
+  "outcomeState": "not_executed",
+  "validationSummary": {
+    "summaryOnly": true,
+    "pathEchoed": false,
+    "artifactWritten": false,
+    "pluginCodeLoaded": false
+  },
+  "redactionState": {
+    "privatePathsIncluded": false,
+    "secretsIncluded": false,
+    "tokensIncluded": false
+  }
+}
+```
+
+Use this fixture to review the bounded audit metadata a future approved
+plugin manifest or capability review would need to preserve. It does not
+create an audit log file, load plugin code, install packages, execute
+commands, implement a sandbox, write artifacts, mutate repositories, or
+create a plugin ABI stability commitment.
+
 ## Workflow Results
 
 ```bash
@@ -436,6 +471,8 @@ this summary contract.
   alignment before implementing any loader.
 - Use the plugin output-contract fixture for summary-only output shape
   alignment before implementing any plugin runtime or report writer.
+- Use the plugin audit-event fixture for redacted audit metadata
+  alignment before implementing any plugin audit logger or runtime path.
 
 ## Launcher Device/Session Status
 

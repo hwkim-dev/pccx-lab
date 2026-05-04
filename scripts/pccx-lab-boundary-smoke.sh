@@ -85,6 +85,7 @@ INFO "  plugin-boundary-plan (future plugin boundary map)"
 INFO "  plugin-dry-run-flow (future plugin dry-run flow contract)"
 INFO "  plugin-output-contract (future plugin summary output contract)"
 INFO "  plugin-permission-model (future plugin permission map)"
+INFO "  plugin-audit-event (future redacted plugin audit event shape)"
 INFO "  trace-discovery       (headless CI path)"
 INFO "  xsim-log-handoff      (pccx-FPGA verification loop)"
 
@@ -109,6 +110,7 @@ check_file "$REPO_ROOT/docs/examples/plugin-boundary-plan.example.json"
 check_file "$REPO_ROOT/docs/examples/plugin-dry-run-flow.example.json"
 check_file "$REPO_ROOT/docs/examples/plugin-output-contract.example.json"
 check_file "$REPO_ROOT/docs/examples/plugin-permission-model.example.json"
+check_file "$REPO_ROOT/docs/examples/plugin-audit-event.example.json"
 
 echo
 INFO "CLI command source presence"
