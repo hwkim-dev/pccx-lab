@@ -3380,6 +3380,232 @@ fn plugin_load_request_example_keeps_loader_disabled_boundary() {
 }
 
 #[test]
+fn plugin_host_session_state_example_keeps_host_session_blocked_boundary() {
+    let value: serde_json::Value = parse_example("plugin-host-session-state.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin host session state must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.plugin-host-session-state.v0"
+    );
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+    assert_eq!(root["sessionState"], "not_started");
+    assert_eq!(root["loadState"], "not_loaded");
+    assert_eq!(root["sandboxState"], "not_started");
+    assert_eq!(root["runtimeState"], "not_started");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_boundary_plan"
+            && source["pluginLoaderAllowed"] == false
+            && source["dynamicCodeLoadAllowed"] == false
+            && source["hostApiStable"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_load_request"
+            && source["approved"] == false
+            && source["pluginLoaderAllowed"] == false
+            && source["sandboxStartAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+
+    let session = root["pluginHostSession"]
+        .as_object()
+        .expect("plugin host session must be an object");
+    assert_eq!(session["sessionKind"], "planned_plugin_host_session_state");
+    assert_eq!(session["lifecycleState"], "not_started");
+    assert_eq!(session["loadState"], "not_loaded");
+    assert_eq!(session["sandboxState"], "not_started");
+    assert_eq!(session["runtimeState"], "not_started");
+    assert_eq!(session["invocationState"], "not_invoked");
+    assert_eq!(session["summaryOnly"], true);
+    assert_eq!(session["approvalRequired"], true);
+    assert_eq!(session["hostSessionOpen"], false);
+    assert_eq!(session["loaderStarted"], false);
+    assert_eq!(session["runtimeStarted"], false);
+    assert_eq!(session["sandboxStarted"], false);
+    assert_eq!(session["hostApiBound"], false);
+    assert_eq!(session["capabilityDispatchStarted"], false);
+    assert_eq!(session["pluginCodeLoaded"], false);
+    assert_eq!(session["dynamicLibrariesLoaded"], false);
+    assert_eq!(session["packageInstalled"], false);
+    assert_eq!(session["manifestReaderCalled"], false);
+    assert_eq!(session["validatorCommandCalled"], false);
+    assert_eq!(session["permissionExecutorCalled"], false);
+    assert_eq!(session["inputReaderCalled"], false);
+    assert_eq!(session["traceImporterCalled"], false);
+    assert_eq!(session["pluginInvocationStarted"], false);
+    assert_eq!(session["commandExecutionAttempted"], false);
+    assert_eq!(session["localFileReadAttempted"], false);
+    assert_eq!(session["repositoryReadAttempted"], false);
+    assert_eq!(session["artifactReadAttempted"], false);
+    assert_eq!(session["artifactWriteAttempted"], false);
+    assert_eq!(session["reportWriteAttempted"], false);
+    assert_eq!(session["providerCallAttempted"], false);
+    assert_eq!(session["networkCallAttempted"], false);
+    assert_eq!(session["hardwareAccessAttempted"], false);
+    assert_eq!(session["modelLoadAttempted"], false);
+
+    let sandbox = root["sandboxPolicy"]
+        .as_object()
+        .expect("sandbox policy must be an object");
+    assert_eq!(sandbox["state"], "not_started");
+    assert_eq!(sandbox["sandboxRequired"], true);
+    assert_eq!(sandbox["sandboxStartAllowed"], false);
+    assert_eq!(sandbox["processIsolationStarted"], false);
+    assert_eq!(sandbox["filesystemMountAllowed"], false);
+    assert_eq!(sandbox["networkAllowed"], false);
+    assert_eq!(sandbox["environmentPassed"], false);
+    assert_eq!(sandbox["ipcAllowed"], false);
+    assert_eq!(sandbox["permissionProfileApplied"], false);
+
+    let runtime = root["runtimePolicy"]
+        .as_object()
+        .expect("runtime policy must be an object");
+    assert_eq!(runtime["state"], "not_started");
+    assert_eq!(runtime["pluginRuntimeStartAllowed"], false);
+    assert_eq!(runtime["dynamicCodeLoadAllowed"], false);
+    assert_eq!(runtime["packageInstallAllowed"], false);
+    assert_eq!(runtime["untrustedExecutionAllowed"], false);
+    assert_eq!(runtime["commandExecutionAllowed"], false);
+    assert_eq!(runtime["hostApiBindAllowed"], false);
+    assert_eq!(runtime["capabilityDispatchAllowed"], false);
+    assert_eq!(runtime["pluginInvocationAllowed"], false);
+
+    let audit = root["auditPolicy"]
+        .as_object()
+        .expect("audit policy must be an object");
+    assert_eq!(audit["summaryOnly"], true);
+    assert_eq!(audit["auditLoggerAllowed"], false);
+    assert_eq!(audit["auditPersistenceAllowed"], false);
+    assert_eq!(audit["pathEchoAllowed"], false);
+    assert_eq!(audit["stdoutIncluded"], false);
+    assert_eq!(audit["stderrIncluded"], false);
+    assert_eq!(audit["rawLogsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-host-session",
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "plugin-sandbox-start",
+        "plugin-host-api-bind",
+        "plugin-capability-dispatch",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "trace-importer",
+        "manifest-reader",
+        "validator-command",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "package-install",
+        "package-distribution",
+        "marketplace-flow",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["pluginHostSessionStateFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginSandboxImplemented"], false);
+    assert_eq!(safety["pluginHostSessionStarted"], false);
+    assert_eq!(safety["pluginHostApiBound"], false);
+    assert_eq!(safety["capabilityDispatchImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["inputReaderImplemented"], false);
+    assert_eq!(safety["traceImporterImplemented"], false);
+    assert_eq!(safety["manifestReaderImplemented"], false);
+    assert_eq!(safety["validatorCommandImplemented"], false);
+    assert_eq!(safety["pluginInvocationPathImplemented"], false);
+    assert_eq!(safety["pluginInvocationAttempted"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["auditLoggerImplemented"], false);
+    assert_eq!(safety["auditPersistence"], false);
+    assert_eq!(safety["packageInstall"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["dynamicCodeLoad"], false);
+    assert_eq!(safety["untrustedExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["launcherExecution"], false);
+    assert_eq!(safety["editorExecution"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["manifestContentIncluded"], false);
+    assert_eq!(safety["packageContentIncluded"], false);
+    assert_eq!(safety["sourceCodeIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["compatibilityClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+}
+
+#[test]
 fn plugin_review_packet_example_keeps_summary_only_boundary() {
     let value: serde_json::Value = parse_example("plugin-review-packet.example.json");
     let root = value

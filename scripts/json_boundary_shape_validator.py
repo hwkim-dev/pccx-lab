@@ -4369,6 +4369,347 @@ def validate_plugin_load_request(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_host_session_state(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-host-session-state.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "pluginHostSessionStateId",
+            "pluginId",
+            "capabilityId",
+            "permissionProfile",
+            "adapterState",
+            "defaultMode",
+            "hostMode",
+            "sessionState",
+            "loadState",
+            "sandboxState",
+            "runtimeState",
+        ],
+    )
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "disabled":
+        raise ShapeError("unexpected value at $.defaultMode: expected disabled")
+    if root["sessionState"] != "not_started":
+        raise ShapeError("unexpected value at $.sessionState: expected not_started")
+    if root["loadState"] != "not_loaded":
+        raise ShapeError("unexpected value at $.loadState: expected not_loaded")
+    if root["sandboxState"] != "not_started":
+        raise ShapeError("unexpected value at $.sandboxState: expected not_started")
+    if root["runtimeState"] != "not_started":
+        raise ShapeError("unexpected value at $.runtimeState: expected not_started")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        for field in [
+            "pluginLoaderAllowed",
+            "dynamicCodeLoadAllowed",
+            "hostApiStable",
+            "permissionExecutorAllowed",
+            "sandboxStartAllowed",
+            "pluginInvocationAllowed",
+            "manifestReaderAllowed",
+            "validatorCommandAllowed",
+            "artifactWriteAllowed",
+            "packageInstallAllowed",
+            "repositoryMutationAllowed",
+            "pluginRuntimeStartAllowed",
+            "loggerAllowed",
+            "pathEchoAllowed",
+        ]:
+            if field in ref and expect_bool(require_field(ref, path, field), child(path, field)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{field}: expected false")
+        if "approved" in ref and expect_bool(require_field(ref, path, "approved"), child(path, "approved")) is not False:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].approved: expected false")
+
+    session = expect_object(require_field(root, "$", "pluginHostSession"), "$.pluginHostSession")
+    require_string_fields(
+        session,
+        "$.pluginHostSession",
+        [
+            "sessionKind",
+            "lifecycleState",
+            "loadState",
+            "sandboxState",
+            "runtimeState",
+            "invocationState",
+            "summary",
+        ],
+    )
+    if session["sessionKind"] != "planned_plugin_host_session_state":
+        raise ShapeError(
+            "unexpected value at $.pluginHostSession.sessionKind: "
+            "expected planned_plugin_host_session_state"
+        )
+    if session["lifecycleState"] != "not_started":
+        raise ShapeError("unexpected value at $.pluginHostSession.lifecycleState: expected not_started")
+    if session["loadState"] != "not_loaded":
+        raise ShapeError("unexpected value at $.pluginHostSession.loadState: expected not_loaded")
+    if session["sandboxState"] != "not_started":
+        raise ShapeError("unexpected value at $.pluginHostSession.sandboxState: expected not_started")
+    if session["runtimeState"] != "not_started":
+        raise ShapeError("unexpected value at $.pluginHostSession.runtimeState: expected not_started")
+    if session["invocationState"] != "not_invoked":
+        raise ShapeError("unexpected value at $.pluginHostSession.invocationState: expected not_invoked")
+    session_true_fields = ["summaryOnly", "approvalRequired"]
+    session_false_fields = [
+        "hostSessionOpen",
+        "loaderStarted",
+        "runtimeStarted",
+        "sandboxStarted",
+        "hostApiBound",
+        "capabilityDispatchStarted",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "packageInstalled",
+        "manifestReaderCalled",
+        "validatorCommandCalled",
+        "permissionExecutorCalled",
+        "inputReaderCalled",
+        "traceImporterCalled",
+        "pluginInvocationStarted",
+        "commandExecutionAttempted",
+        "localFileReadAttempted",
+        "repositoryReadAttempted",
+        "artifactReadAttempted",
+        "artifactWriteAttempted",
+        "reportWriteAttempted",
+        "providerCallAttempted",
+        "networkCallAttempted",
+        "hardwareAccessAttempted",
+        "modelLoadAttempted",
+    ]
+    require_bool_fields(session, "$.pluginHostSession", session_true_fields + session_false_fields)
+    for field in session_true_fields:
+        if session[field] is not True:
+            raise ShapeError(f"unexpected value at $.pluginHostSession.{field}: expected true")
+    for field in session_false_fields:
+        if session[field] is not False:
+            raise ShapeError(f"unexpected value at $.pluginHostSession.{field}: expected false")
+
+    rows = require_object_array(require_field(root, "$", "hostRows"), "$.hostRows", min_items=1)
+    for row in rows:
+        require_string_fields(
+            row,
+            "$.hostRows[]",
+            ["rowId", "state", "sourceRef", "summary", "blockedReason"],
+        )
+
+    sandbox = expect_object(require_field(root, "$", "sandboxPolicy"), "$.sandboxPolicy")
+    require_string_fields(sandbox, "$.sandboxPolicy", ["state"])
+    if sandbox["state"] != "not_started":
+        raise ShapeError("unexpected value at $.sandboxPolicy.state: expected not_started")
+    sandbox_true_fields = ["sandboxRequired"]
+    sandbox_false_fields = [
+        "sandboxStartAllowed",
+        "processIsolationStarted",
+        "filesystemMountAllowed",
+        "networkAllowed",
+        "environmentPassed",
+        "ipcAllowed",
+        "permissionProfileApplied",
+    ]
+    require_bool_fields(sandbox, "$.sandboxPolicy", sandbox_true_fields + sandbox_false_fields)
+    if sandbox["sandboxRequired"] is not True:
+        raise ShapeError("unexpected value at $.sandboxPolicy.sandboxRequired: expected true")
+    for field in sandbox_false_fields:
+        if sandbox[field] is not False:
+            raise ShapeError(f"unexpected value at $.sandboxPolicy.{field}: expected false")
+
+    runtime = expect_object(require_field(root, "$", "runtimePolicy"), "$.runtimePolicy")
+    require_string_fields(runtime, "$.runtimePolicy", ["state"])
+    if runtime["state"] != "not_started":
+        raise ShapeError("unexpected value at $.runtimePolicy.state: expected not_started")
+    runtime_false_fields = [
+        "pluginRuntimeStartAllowed",
+        "dynamicCodeLoadAllowed",
+        "packageInstallAllowed",
+        "untrustedExecutionAllowed",
+        "commandExecutionAllowed",
+        "hostApiBindAllowed",
+        "capabilityDispatchAllowed",
+        "pluginInvocationAllowed",
+    ]
+    require_bool_fields(runtime, "$.runtimePolicy", runtime_false_fields)
+    for field in runtime_false_fields:
+        if runtime[field] is not False:
+            raise ShapeError(f"unexpected value at $.runtimePolicy.{field}: expected false")
+
+    audit = expect_object(require_field(root, "$", "auditPolicy"), "$.auditPolicy")
+    require_string_fields(audit, "$.auditPolicy", ["state", "eventSchema", "storageState"])
+    audit_true_fields = ["summaryOnly"]
+    audit_false_fields = [
+        "auditLoggerAllowed",
+        "auditPersistenceAllowed",
+        "pathEchoAllowed",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+    ]
+    require_bool_fields(audit, "$.auditPolicy", audit_true_fields + audit_false_fields)
+    if audit["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.auditPolicy.summaryOnly: expected true")
+    for field in audit_false_fields:
+        if audit[field] is not False:
+            raise ShapeError(f"unexpected value at $.auditPolicy.{field}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_fields = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "pluginInvocationAllowed",
+        "commandExecutionAllowed",
+        "packageInstallAllowed",
+        "packageDistributionAllowed",
+        "marketplacePublicationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_fields)
+    for field in mutation_false_fields:
+        if mutation[field] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{field}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "plugin-host-session",
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "plugin-sandbox-start",
+        "plugin-host-api-bind",
+        "plugin-capability-dispatch",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "trace-importer",
+        "manifest-reader",
+        "validator-command",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "package-install",
+        "package-distribution",
+        "marketplace-flow",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = [
+        "dataOnly",
+        "descriptorOnly",
+        "readOnly",
+        "pluginHostSessionStateFixtureOnly",
+        "summaryOnly",
+    ]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginSandboxImplemented",
+        "pluginHostSessionStarted",
+        "pluginHostApiBound",
+        "capabilityDispatchImplemented",
+        "permissionExecutorImplemented",
+        "inputReaderImplemented",
+        "traceImporterImplemented",
+        "manifestReaderImplemented",
+        "validatorCommandImplemented",
+        "pluginInvocationPathImplemented",
+        "pluginInvocationAttempted",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "auditLoggerImplemented",
+        "auditPersistence",
+        "packageInstall",
+        "packageDistribution",
+        "marketplaceFlow",
+        "dynamicCodeLoad",
+        "untrustedExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "manifestContentIncluded",
+        "packageContentIncluded",
+        "sourceCodeIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "compatibilityClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_review_packet(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-review-packet.v0")
@@ -6182,6 +6523,7 @@ SPECS = [
     BoundarySpec("plugin-audit-event", "docs/examples/plugin-audit-event.example.json", validate_plugin_audit_event),
     BoundarySpec("plugin-manifest-validation-result", "docs/examples/plugin-manifest-validation-result.example.json", validate_plugin_manifest_validation_result),
     BoundarySpec("plugin-load-request", "docs/examples/plugin-load-request.example.json", validate_plugin_load_request),
+    BoundarySpec("plugin-host-session-state", "docs/examples/plugin-host-session-state.example.json", validate_plugin_host_session_state),
     BoundarySpec("plugin-review-packet", "docs/examples/plugin-review-packet.example.json", validate_plugin_review_packet),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
     BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
