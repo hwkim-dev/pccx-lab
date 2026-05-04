@@ -308,6 +308,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-evidence-manifest-boundary"
     },
     {
+      "boundaryKind": "mcp-evidence-detail",
+      "examplePath": "docs/examples/mcp-evidence-detail.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-evidence-detail-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-evidence-detail",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_evidence_detail_example_keeps_descriptor_only_detail_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-evidence-detail-boundary"
+    },
+    {
       "boundaryKind": "mcp-permission-model",
       "examplePath": "docs/examples/mcp-permission-model.example.json",
       "producingCommand": null,

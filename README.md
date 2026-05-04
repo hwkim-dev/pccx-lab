@@ -106,6 +106,11 @@ boundary. There is no private back channel into lab internals. See
   references; it is not an MCP runtime, command executor, file reader,
   artifact reader, report writer, hardware probe, audit logger, or
   repository mutation path.
+- `docs/examples/mcp-evidence-detail.example.json` records a
+  descriptor-only detail view for one selected approved evidence
+  reference; it is not an MCP runtime, command executor, file reader,
+  artifact reader, report reader, report writer, hardware probe, audit
+  logger, or repository mutation path.
 - `docs/examples/mcp-permission-model.example.json` records the
   descriptor-only permission profiles and approval gates for a future
   MCP/tool adapter; it is not a permission runtime or command executor.
