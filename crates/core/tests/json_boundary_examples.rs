@@ -4579,6 +4579,171 @@ fn plugin_sample_plan_example_keeps_descriptor_only_sample_boundary() {
 }
 
 #[test]
+fn plugin_sample_result_example_keeps_descriptor_only_result_boundary() {
+    let value: serde_json::Value = parse_example("plugin-sample-result.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin sample result must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-sample-result.v0");
+    assert_eq!(root["resultState"], "blocked_summary");
+    assert_eq!(root["sampleState"], "not_executed");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_sample_plan"
+            && source["samplePlanAvailable"] == true
+            && source["sampleExecuted"] == false
+            && source["pluginLoadAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_output_contract"
+            && source["outputShapeAvailable"] == true
+            && source["payloadIncluded"] == false
+            && source["reportWriteAllowed"] == false
+    }));
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "plugin_blocked_invocation_result"
+            && source["blockedResultAvailable"] == true
+            && source["invocationExecuted"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+
+    let sample = root["sampleResult"]
+        .as_object()
+        .expect("sample result must be an object");
+    assert_eq!(sample["samplePluginId"], "example.diagnostics.summary");
+    assert_eq!(sample["resultState"], "blocked_summary");
+    assert_eq!(sample["sampleState"], "not_executed");
+    assert_eq!(sample["invocationState"], "not_invoked");
+    assert_eq!(sample["summaryOnly"], true);
+    assert_eq!(sample["resultDescriptorOnly"], true);
+    assert_eq!(sample["payloadIncluded"], false);
+    assert_eq!(sample["diagnosticsPayloadIncluded"], false);
+    assert_eq!(sample["samplePluginImplemented"], false);
+    assert_eq!(sample["samplePluginExecuted"], false);
+    assert_eq!(sample["sampleResultProduced"], false);
+    assert_eq!(sample["pluginInvocationAttempted"], false);
+    assert_eq!(sample["pluginLoaderAllowed"], false);
+    assert_eq!(sample["capabilityDispatchAllowed"], false);
+    assert_eq!(sample["pluginInvocationAllowed"], false);
+    assert_eq!(sample["inputReaderAllowed"], false);
+    assert_eq!(sample["reportWriteAllowed"], false);
+    assert_eq!(sample["artifactReadAllowed"], false);
+
+    let flow = root["resultFlow"]
+        .as_object()
+        .expect("result flow must be an object");
+    assert_eq!(flow["flowState"], "blocked");
+    assert_eq!(flow["commandKind"], "planned-cli-fixed-args");
+    let steps = flow["steps"].as_array().expect("steps must be an array");
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "result_envelope_gate"
+            && step["state"] == "blocked"
+            && step["sideEffectPolicy"] == "no_payload_or_report"
+    }));
+    assert!(steps.iter().any(|step| {
+        step["stepId"] == "sample_invocation_gate"
+            && step["state"] == "blocked"
+            && step["sideEffectPolicy"] == "no_plugin_load_or_invocation"
+    }));
+
+    let envelope = root["resultEnvelope"]
+        .as_object()
+        .expect("result envelope must be an object");
+    assert_eq!(envelope["state"], "summary_only");
+    assert_eq!(envelope["payloadIncluded"], false);
+    assert_eq!(envelope["diagnosticsEnvelopeContentIncluded"], false);
+    assert_eq!(envelope["reportContentIncluded"], false);
+    assert_eq!(envelope["stdoutIncluded"], false);
+    assert_eq!(envelope["stderrIncluded"], false);
+    assert_eq!(envelope["rawLogsIncluded"], false);
+    assert_eq!(envelope["localFileReadAllowed"], false);
+    assert_eq!(envelope["repositoryReadAllowed"], false);
+    assert_eq!(envelope["resultPayloadReaderAllowed"], false);
+    assert_eq!(envelope["reportReaderAllowed"], false);
+    assert_eq!(envelope["artifactReadAllowed"], false);
+    assert_eq!(envelope["pluginInvocationAllowed"], false);
+    assert_eq!(envelope["commandExecutionAllowed"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "sandbox-start",
+        "plugin-capability-dispatch",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "result-payload-read",
+        "report-read",
+        "report-write",
+        "artifact-read",
+        "artifact-write",
+        "command-execution",
+        "package-distribution",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sampleResultFixtureOnly"], true);
+    assert_eq!(safety["samplePluginImplemented"], false);
+    assert_eq!(safety["samplePluginExecuted"], false);
+    assert_eq!(safety["sampleResultProduced"], false);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["inputReaderImplemented"], false);
+    assert_eq!(safety["resultPayloadReaderImplemented"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["capabilityDispatchImplemented"], false);
+    assert_eq!(safety["pluginInvocationImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["compatibilityClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn plugin_capability_list_example_keeps_descriptor_only_boundary() {
     let value: serde_json::Value = parse_example("plugin-capability-list.example.json");
     let root = value

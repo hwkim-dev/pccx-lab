@@ -143,6 +143,8 @@ run_case \
     "[plugin-load-request] shape ok" \
     "[plugin-review-packet] shape ok" \
     "[plugin-boundary-plan] shape ok" \
+    "[plugin-sample-plan] shape ok" \
+    "[plugin-sample-result] shape ok" \
     "[plugin-dry-run-flow] shape ok" \
     "[plugin-input-contract] shape ok" \
     "[plugin-trace-summary-input] shape ok" \
