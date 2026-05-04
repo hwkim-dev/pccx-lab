@@ -3237,6 +3237,483 @@ def validate_mcp_evidence_manifest(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_evidence_detail(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-evidence-detail.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "evidenceDetailId",
+            "detailState",
+            "adapterState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    if root["detailState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.detailState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["hostMode"] != "cli_core_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_core_first_gui_second")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(ref, "$.sourceBoundaryRefs[]", ["refId", "schemaVersion", "examplePath", "state"])
+    if not any(
+        ref["refId"] == "mcp_evidence_manifest"
+        and ref.get("evidenceManifestAvailable") is True
+        and ref.get("evidenceDetailAvailable") is True
+        and ref.get("summaryOnly") is True
+        and ref.get("fileReaderAllowed") is False
+        and ref.get("artifactReaderAllowed") is False
+        and ref.get("reportReaderAllowed") is False
+        and ref.get("reportWriterAllowed") is False
+        and ref.get("toolInvocationAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_evidence_manifest disabled source reference")
+    if not any(
+        ref["refId"] == "mcp_review_packet"
+        and ref.get("summaryOnly") is True
+        and ref.get("toolInvocationAllowed") is False
+        and ref.get("reportWriterAllowed") is False
+        and ref.get("artifactWriteAllowed") is False
+        and ref.get("repositoryMutationAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_review_packet summary-only source reference")
+    if not any(
+        ref["refId"] == "mcp_audit_event"
+        and ref.get("summaryOnly") is True
+        and ref.get("auditLoggerAllowed") is False
+        and ref.get("pathEchoAllowed") is False
+        and ref.get("artifactWriteAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_audit_event redacted source reference")
+
+    request = expect_object(
+        require_field(root, "$", "evidenceDetailRequest"),
+        "$.evidenceDetailRequest",
+    )
+    require_string_fields(
+        request,
+        "$.evidenceDetailRequest",
+        [
+            "requestKind",
+            "commandKind",
+            "selectedEvidenceId",
+            "sourceReferenceKind",
+            "outputBoundary",
+            "summary",
+        ],
+    )
+    if request["requestKind"] != "planned_mcp_evidence_detail":
+        raise ShapeError(
+            "unexpected value at $.evidenceDetailRequest.requestKind: expected planned_mcp_evidence_detail"
+        )
+    if request["selectedEvidenceId"] != "lab_status_evidence_summary":
+        raise ShapeError(
+            "unexpected value at $.evidenceDetailRequest.selectedEvidenceId: "
+            "expected lab_status_evidence_summary"
+        )
+    require_string_array(
+        require_field(request, "$.evidenceDetailRequest", "fixedArgsPreview"),
+        "$.evidenceDetailRequest.fixedArgsPreview",
+        min_items=1,
+    )
+    request_true_flags = ["summaryOnly", "inputRefOnly"]
+    request_false_flags = [
+        "approvalRequired",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "evidenceArtifactReadAllowed",
+        "evidenceArtifactWriteAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "mcpServerAllowed",
+        "mcpClientAllowed",
+        "mcpRuntimeAllowed",
+        "mcpTransportAllowed",
+        "permissionExecutorAllowed",
+        "approvalExecutorAllowed",
+        "auditLoggerAllowed",
+        "toolInvocationAllowed",
+        "publicTextPublicationAllowed",
+        "providerCallAllowed",
+        "networkCallAllowed",
+        "launcherExecutionAllowed",
+        "editorExecutionAllowed",
+        "hardwareAccessAllowed",
+        "modelLoadAllowed",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(request, "$.evidenceDetailRequest", request_true_flags + request_false_flags)
+    for flag in request_true_flags:
+        if request[flag] is not True:
+            raise ShapeError(f"unexpected value at $.evidenceDetailRequest.{flag}: expected true")
+    for flag in request_false_flags:
+        if request[flag] is not False:
+            raise ShapeError(f"unexpected value at $.evidenceDetailRequest.{flag}: expected false")
+
+    selected = expect_object(require_field(root, "$", "selectedEvidence"), "$.selectedEvidence")
+    require_string_fields(
+        selected,
+        "$.selectedEvidence",
+        [
+            "evidenceId",
+            "displayName",
+            "evidenceKind",
+            "evidenceState",
+            "detailState",
+            "manifestState",
+            "sourceRef",
+            "reviewSource",
+            "commandPreviewKind",
+            "summary",
+            "evidencePolicy",
+        ],
+    )
+    if selected["evidenceId"] != request["selectedEvidenceId"]:
+        raise ShapeError("selected evidence id must match $.evidenceDetailRequest.selectedEvidenceId")
+    if selected["evidenceState"] != "approved_summary_only":
+        raise ShapeError("unexpected value at $.selectedEvidence.evidenceState: expected approved_summary_only")
+    if selected["detailState"] != "visible_descriptor":
+        raise ShapeError("unexpected value at $.selectedEvidence.detailState: expected visible_descriptor")
+
+    input_descriptor = expect_object(
+        require_field(selected, "$.selectedEvidence", "inputDescriptor"),
+        "$.selectedEvidence.inputDescriptor",
+    )
+    require_string_fields(
+        input_descriptor,
+        "$.selectedEvidence.inputDescriptor",
+        ["descriptorState", "acceptedInputKind", "acceptedInputSummary"],
+    )
+    input_false_flags = [
+        "userPathAccepted",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "reportReadAllowed",
+        "evidenceArtifactReadAllowed",
+        "providerConfigReadAllowed",
+        "environmentReadAllowed",
+        "secretsReadAllowed",
+        "tokensReadAllowed",
+        "hardwareDumpReadAllowed",
+        "boardDumpReadAllowed",
+        "modelWeightPathReadAllowed",
+    ]
+    require_bool_fields(input_descriptor, "$.selectedEvidence.inputDescriptor", input_false_flags)
+    for flag in input_false_flags:
+        if input_descriptor[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedEvidence.inputDescriptor.{flag}: expected false")
+
+    output_descriptor = expect_object(
+        require_field(selected, "$.selectedEvidence", "outputDescriptor"),
+        "$.selectedEvidence.outputDescriptor",
+    )
+    require_string_fields(output_descriptor, "$.selectedEvidence.outputDescriptor", ["descriptorState", "boundaryRef"])
+    output_true_flags = ["summaryOnly"]
+    output_false_flags = [
+        "payloadIncluded",
+        "responseBodyIncluded",
+        "reportContentIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "privatePathsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+        "hardwareDumpIncluded",
+        "boardDumpIncluded",
+        "modelPathsIncluded",
+    ]
+    require_bool_fields(output_descriptor, "$.selectedEvidence.outputDescriptor", output_true_flags + output_false_flags)
+    if output_descriptor["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.selectedEvidence.outputDescriptor.summaryOnly: expected true")
+    for flag in output_false_flags:
+        if output_descriptor[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedEvidence.outputDescriptor.{flag}: expected false")
+
+    field_descriptors = require_object_array(
+        require_field(selected, "$.selectedEvidence", "fieldDescriptors"),
+        "$.selectedEvidence.fieldDescriptors",
+        min_items=1,
+    )
+    for descriptor in field_descriptors:
+        path = "$.selectedEvidence.fieldDescriptors[]"
+        require_string_fields(descriptor, path, ["fieldName", "valueKind", "policy"])
+        require_bool_fields(descriptor, path, ["detailIncluded", "rawValueIncluded"])
+        if descriptor["detailIncluded"] is not True:
+            raise ShapeError("unexpected value at $.selectedEvidence.fieldDescriptors[].detailIncluded: expected true")
+        if descriptor["rawValueIncluded"] is not False:
+            raise ShapeError("unexpected value at $.selectedEvidence.fieldDescriptors[].rawValueIncluded: expected false")
+
+    access = expect_object(
+        require_field(selected, "$.selectedEvidence", "accessPolicy"),
+        "$.selectedEvidence.accessPolicy",
+    )
+    access_true_flags = [
+        "requiresSeparateArtifactReadBoundary",
+        "requiresSeparateReportReadBoundary",
+        "approvalRequiredBeforeArtifactRead",
+        "approvedForManifest",
+        "approvedForDetail",
+    ]
+    access_false_flags = [
+        "approvedForArtifactRead",
+        "approvedForReportRead",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "evidenceArtifactReadAllowed",
+        "evidenceArtifactWriteAllowed",
+        "toolInvocationAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "repositoryMutationAllowed",
+    ]
+    require_bool_fields(access, "$.selectedEvidence.accessPolicy", access_true_flags + access_false_flags)
+    for flag in access_true_flags:
+        if access[flag] is not True:
+            raise ShapeError(f"unexpected value at $.selectedEvidence.accessPolicy.{flag}: expected true")
+    for flag in access_false_flags:
+        if access[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedEvidence.accessPolicy.{flag}: expected false")
+
+    related = require_object_array(
+        require_field(root, "$", "relatedEvidenceRefs"),
+        "$.relatedEvidenceRefs",
+        min_items=1,
+    )
+    for evidence in related:
+        path = "$.relatedEvidenceRefs[]"
+        require_string_fields(evidence, path, ["evidenceId", "relationship"])
+        require_bool_fields(
+            evidence,
+            path,
+            ["detailIncluded", "approvedForDetail", "artifactReadAllowed", "reportReadAllowed"],
+        )
+        for flag in ["detailIncluded", "approvedForDetail", "artifactReadAllowed", "reportReadAllowed"]:
+            if evidence[flag] is not False:
+                raise ShapeError(f"unexpected value at $.relatedEvidenceRefs[].{flag}: expected false")
+
+    display = expect_object(require_field(root, "$", "displayPolicy"), "$.displayPolicy")
+    require_string_fields(display, "$.displayPolicy", ["surface", "guiPolicy"])
+    require_string_array(
+        require_field(display, "$.displayPolicy", "allowedFields"),
+        "$.displayPolicy.allowedFields",
+        min_items=1,
+    )
+    require_string_array(
+        require_field(display, "$.displayPolicy", "blockedFields"),
+        "$.displayPolicy.blockedFields",
+        min_items=1,
+    )
+    display_true_flags = ["summaryOnly"]
+    display_false_flags = [
+        "pathEchoAllowed",
+        "privatePathsIncluded",
+        "payloadIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+        "artifactPathsIncluded",
+        "reportContentIncluded",
+        "hardwareDumpIncluded",
+        "boardDumpIncluded",
+        "modelPathsIncluded",
+    ]
+    require_bool_fields(display, "$.displayPolicy", display_true_flags + display_false_flags)
+    if display["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.displayPolicy.summaryOnly: expected true")
+    for flag in display_false_flags:
+        if display[flag] is not False:
+            raise ShapeError(f"unexpected value at $.displayPolicy.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "evidenceArtifactReadAllowed",
+        "evidenceArtifactWriteAllowed",
+        "auditLogWriteAllowed",
+        "toolInvocationAllowed",
+        "commandExecutionAllowed",
+        "repositoryMutationAllowed",
+        "publicTextPublicationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-start",
+        "mcp-client-session",
+        "mcp-client-runtime",
+        "mcp-transport-start",
+        "tool-invocation",
+        "permission-executor",
+        "approval-executor",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "raw-log-read",
+        "artifact-read",
+        "artifact-write",
+        "report-read",
+        "report-write",
+        "evidence-artifact-read",
+        "evidence-artifact-write",
+        "audit-log-write",
+        "repository-write-back",
+        "public-text-publish",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "summaryOnly", "evidenceDetailFixtureOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "mcpTransportImplemented",
+        "toolInvocationPathImplemented",
+        "toolInvocationAttempted",
+        "permissionExecutorImplemented",
+        "approvalExecutorImplemented",
+        "auditLoggerImplemented",
+        "auditPersistence",
+        "reportReaderImplemented",
+        "reportWriterImplemented",
+        "evidenceArtifactReaderImplemented",
+        "evidenceArtifactWriterImplemented",
+        "diagnosticsProduced",
+        "reportProduced",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "rawLogRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+        "artifactPathsIncluded",
+        "hardwareDumpIncluded",
+        "boardDumpIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_permission_model(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-permission-model.v0")
@@ -8729,6 +9206,7 @@ SPECS = [
     BoundarySpec("mcp-pr-summary-handoff", "docs/examples/mcp-pr-summary-handoff.example.json", validate_mcp_pr_summary_handoff),
     BoundarySpec("mcp-review-packet", "docs/examples/mcp-review-packet.example.json", validate_mcp_review_packet),
     BoundarySpec("mcp-evidence-manifest", "docs/examples/mcp-evidence-manifest.example.json", validate_mcp_evidence_manifest),
+    BoundarySpec("mcp-evidence-detail", "docs/examples/mcp-evidence-detail.example.json", validate_mcp_evidence_detail),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-approval-request", "docs/examples/mcp-approval-request.example.json", validate_mcp_approval_request),
     BoundarySpec("mcp-approval-decision", "docs/examples/mcp-approval-decision.example.json", validate_mcp_approval_decision),

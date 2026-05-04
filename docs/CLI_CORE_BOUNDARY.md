@@ -35,6 +35,7 @@ separate workflow logic island.
 | `docs/examples/mcp-pr-summary-handoff.example.json` | planned PR handoff contract | Checked summary-only PR summary handoff shape for future MCP/tool review; no PR creator, comment writer, report writer, or repository mutation path is implemented. |
 | `docs/examples/mcp-review-packet.example.json` | planned review packet contract | Checked summary-only review packet shape over MCP permission, approval, blocked-result, comparison, and handoff summaries; no tool invocation, writer, or repository mutation path is implemented. |
 | `docs/examples/mcp-evidence-manifest.example.json` | planned evidence manifest contract | Checked summary-only evidence manifest shape over approved evidence summary references; no file reader, artifact reader, report writer, hardware probe, audit logger, or repository mutation path is implemented. |
+| `docs/examples/mcp-evidence-detail.example.json` | planned evidence detail | Checked descriptor-only detail view for one selected approved evidence reference; no file reader, artifact reader, report reader, report writer, hardware probe, audit logger, or repository mutation path is implemented. |
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-approval-decision.example.json` | planned approval decision | Checked denied approval-decision gate for a future MCP/tool adapter; no approval executor, tool invocation path, or write path is implemented. |
@@ -96,6 +97,7 @@ aligned.
 | `mcp-pr-summary-handoff` | `docs/examples/mcp-pr-summary-handoff.example.json` | Reader only; planned summary-only PR handoff shape over approved issue, change, and validation summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-review-packet` | `docs/examples/mcp-review-packet.example.json` | Reader only; planned summary-only review packet shape over approved permission, approval, blocked-result, comparison, and handoff summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-evidence-manifest` | `docs/examples/mcp-evidence-manifest.example.json` | Reader only; planned summary-only evidence manifest shape over approved evidence summary references | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-evidence-detail` | `docs/examples/mcp-evidence-detail.example.json` | Reader only; planned descriptor-only MCP evidence detail over one approved evidence summary reference | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-decision` | `docs/examples/mcp-approval-decision.example.json` | Reader only; planned denied approval-decision gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
@@ -673,6 +675,32 @@ repositories, read raw evidence artifacts, write reports, write
 artifacts, mutate repositories, call providers, use the network, touch
 hardware, access KV260, access FPGA repos, launch runtime code, load
 models, upload telemetry, push publicly, or control releases/tags.
+
+## MCP evidence-detail boundary
+
+[`docs/examples/mcp-evidence-detail.example.json`](examples/mcp-evidence-detail.example.json)
+defines the checked descriptor-only detail shape for one selected
+approved evidence summary reference from the evidence manifest. It links
+the evidence manifest, review packet, and audit-event summaries, then
+records selected-evidence metadata, field descriptors, display policy,
+and the blocked access policy without reading files, artifacts, reports,
+raw traces, raw reports, raw logs, hardware dumps, board dumps, or model
+paths.
+
+The fixture is summary-only metadata. It does not echo paths, include
+status payloads, include report bodies, include stdout or stderr, include
+raw logs, include artifact paths, read local files, read repositories,
+read raw evidence artifacts, start an MCP server/client/transport, invoke
+tools, execute commands, write reports, write artifacts, mutate
+repositories, publish public text, call providers, use the network, touch
+hardware, access KV260, access FPGA repos, launch runtime code, load
+models, upload telemetry, push publicly, or control releases/tags.
+
+The selected evidence reference is approved for manifest listing and
+descriptor detail only. It is not approved for artifact or report reads
+and still requires separate reviewed read boundaries before any raw
+evidence path can exist. No hardware, runtime, throughput, marketplace,
+release, or API/ABI stability claim is made.
 
 ## MCP permission model boundary
 

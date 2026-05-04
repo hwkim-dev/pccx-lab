@@ -412,6 +412,65 @@ create PRs, comment on issues or PRs, update project boards, publish
 public text, mutate repositories, call providers, use the network, touch
 hardware, or control release/tag actions.
 
+## MCP Evidence Detail
+
+Full fixture:
+[`mcp-evidence-detail.example.json`](examples/mcp-evidence-detail.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-evidence-detail.v0",
+  "detailState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "evidenceDetailRequest": {
+    "requestKind": "planned_mcp_evidence_detail",
+    "selectedEvidenceId": "lab_status_evidence_summary",
+    "summaryOnly": true,
+    "pathEchoAllowed": false,
+    "artifactReadAllowed": false,
+    "reportReadAllowed": false,
+    "toolInvocationAllowed": false,
+    "commandExecutionAllowed": false
+  },
+  "selectedEvidence": {
+    "evidenceId": "lab_status_evidence_summary",
+    "detailState": "visible_descriptor",
+    "inputDescriptor": {
+      "descriptorState": "metadata_only",
+      "localFileReadAllowed": false,
+      "artifactReadAllowed": false,
+      "secretsReadAllowed": false,
+      "tokensReadAllowed": false
+    },
+    "outputDescriptor": {
+      "summaryOnly": true,
+      "payloadIncluded": false,
+      "reportContentIncluded": false,
+      "stdoutIncluded": false,
+      "stderrIncluded": false,
+      "rawLogsIncluded": false
+    },
+    "accessPolicy": {
+      "requiresSeparateArtifactReadBoundary": true,
+      "approvedForDetail": true,
+      "approvedForArtifactRead": false,
+      "approvedForReportRead": false,
+      "artifactReadAllowed": false,
+      "reportReadAllowed": false
+    }
+  }
+}
+```
+
+Use this fixture to review descriptor-only detail metadata for one
+approved evidence summary reference before implementing any raw evidence
+reader. It does not read files, echo paths, read artifacts, read report
+bodies, include payloads, include stdout/stderr, execute commands,
+invoke tools, write reports, mutate repositories, call providers, use
+the network, touch hardware, or control release/tag actions. No runtime,
+marketplace, hardware, or API/ABI stability claim is made.
+
 ## MCP Invocation Request
 
 Full fixture:
