@@ -148,6 +148,7 @@ run_case \
     "[hybrid-strategy-plan] inventory ok" \
     "[hybrid-interface-boundary] inventory ok" \
     "[hybrid-review-packet] inventory ok" \
+    "[hybrid-evidence-manifest] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
     "[plugin-manifest-validation-result] inventory ok" \
     "[plugin-sample-catalog] inventory ok" \

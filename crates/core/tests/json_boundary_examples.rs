@@ -7386,6 +7386,236 @@ fn hybrid_review_packet_example_keeps_summary_only_boundary() {
 }
 
 #[test]
+fn hybrid_evidence_manifest_example_keeps_summary_only_boundary() {
+    let value: serde_json::Value = parse_example("hybrid-evidence-manifest.example.json");
+    let root = value
+        .as_object()
+        .expect("hybrid evidence manifest must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.hybrid-evidence-manifest.v0"
+    );
+    assert_eq!(root["manifestState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(
+        root["manifestKind"],
+        "approved_hybrid_summary_evidence_refs"
+    );
+    assert_eq!(root["automationPath"], "cli_core_first");
+
+    let sources = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "hybrid_strategy_plan"
+            && source["summaryReferenceAllowed"] == true
+            && source["sourceReadAllowed"] == false
+            && source["executionAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "hybrid_review_packet"
+            && source["summaryReferenceAllowed"] == true
+            && source["reportReadAllowed"] == false
+            && source["artifactWriteAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "verification_gate"
+            && source["verificationRunAllowed"] == false
+            && source["simulatorExecutionAllowed"] == false
+            && source["hardwareControlAllowed"] == false
+    }));
+
+    let evidence_refs = root["approvedEvidenceRefs"]
+        .as_array()
+        .expect("approved evidence refs must be an array");
+    assert!(
+        evidence_refs.len() >= 5,
+        "manifest should include strategy, interface, review, workflow, and verification summaries"
+    );
+    for evidence in evidence_refs {
+        assert_eq!(evidence["evidenceState"], "approved_summary_only");
+        assert_eq!(evidence["summaryOnly"], true);
+        assert_eq!(evidence["approvalRequired"], true);
+        assert_eq!(evidence["approvedSummaryRef"], true);
+        assert_eq!(evidence["cppSourceRead"], false);
+        assert_eq!(evidence["systemVerilogSourceRead"], false);
+        assert_eq!(evidence["scriptSourceRead"], false);
+        assert_eq!(evidence["grammarRead"], false);
+        assert_eq!(evidence["parserOutputRead"], false);
+        assert_eq!(evidence["compilerOutputRead"], false);
+        assert_eq!(evidence["runtimePlanRead"], false);
+        assert_eq!(evidence["scriptExecutionRead"], false);
+        assert_eq!(evidence["simulatorOutputRead"], false);
+        assert_eq!(evidence["verificationResultRead"], false);
+        assert_eq!(evidence["hardwareControlRead"], false);
+        assert_eq!(evidence["reportRead"], false);
+        assert_eq!(evidence["artifactRead"], false);
+        assert_eq!(evidence["localFileRead"], false);
+        assert_eq!(evidence["repositoryRead"], false);
+        assert_eq!(evidence["privatePathEchoAllowed"], false);
+        assert_eq!(evidence["stdoutIncluded"], false);
+        assert_eq!(evidence["stderrIncluded"], false);
+        assert_eq!(evidence["rawLogIncluded"], false);
+        assert_eq!(evidence["artifactPathIncluded"], false);
+        assert_eq!(evidence["hardwareDumpIncluded"], false);
+        assert_eq!(evidence["boardDumpIncluded"], false);
+        assert_eq!(evidence["modelWeightPathIncluded"], false);
+        assert!(evidence["fieldDescriptors"].as_array().is_some());
+    }
+
+    let policy = root["manifestPolicy"]
+        .as_object()
+        .expect("manifest policy must be an object");
+    assert_eq!(policy["summaryOnly"], true);
+    assert_eq!(policy["approvalRequired"], true);
+    assert_eq!(policy["auditRequired"], true);
+    assert_eq!(policy["cppSourceReadAllowed"], false);
+    assert_eq!(policy["systemVerilogSourceReadAllowed"], false);
+    assert_eq!(policy["scriptSourceReadAllowed"], false);
+    assert_eq!(policy["grammarReadAllowed"], false);
+    assert_eq!(policy["parserRequestAllowed"], false);
+    assert_eq!(policy["compilerRequestAllowed"], false);
+    assert_eq!(policy["runtimeRequestAllowed"], false);
+    assert_eq!(policy["runtimeExecutionAllowed"], false);
+    assert_eq!(policy["scriptExecutionAllowed"], false);
+    assert_eq!(policy["simulatorExecutionAllowed"], false);
+    assert_eq!(policy["verificationRunAllowed"], false);
+    assert_eq!(policy["hardwareControlAllowed"], false);
+    assert_eq!(policy["commandExecutionAllowed"], false);
+    assert_eq!(policy["localFileReadAllowed"], false);
+    assert_eq!(policy["repositoryReadAllowed"], false);
+    assert_eq!(policy["reportReadAllowed"], false);
+    assert_eq!(policy["reportWriteAllowed"], false);
+    assert_eq!(policy["artifactReadAllowed"], false);
+    assert_eq!(policy["artifactWriteAllowed"], false);
+    assert_eq!(policy["repositoryMutationAllowed"], false);
+    assert_eq!(policy["publicPushAllowed"], false);
+    assert_eq!(policy["releaseOrTagAllowed"], false);
+    assert_eq!(policy["providerCallAllowed"], false);
+    assert_eq!(policy["networkCallAllowed"], false);
+    assert_eq!(policy["hardwareAccessAllowed"], false);
+    assert_eq!(policy["kv260AccessAllowed"], false);
+    assert_eq!(policy["fpgaRepoAccessAllowed"], false);
+    assert_eq!(policy["modelLoadAllowed"], false);
+
+    let manifest = root["sampleManifest"]
+        .as_object()
+        .expect("sample manifest must be an object");
+    assert_eq!(manifest["manifestState"], "summary_only_fixture");
+    assert_eq!(manifest["summaryOnly"], true);
+    assert_eq!(manifest["pathIncluded"], false);
+    assert_eq!(manifest["privatePathsIncluded"], false);
+    assert_eq!(manifest["stdoutIncluded"], false);
+    assert_eq!(manifest["stderrIncluded"], false);
+    assert_eq!(manifest["rawLogsIncluded"], false);
+    assert_eq!(manifest["artifactPathsIncluded"], false);
+    assert_eq!(manifest["generatedArtifactsIncluded"], false);
+    assert_eq!(manifest["sourceIncluded"], false);
+    assert_eq!(manifest["grammarIncluded"], false);
+    assert_eq!(manifest["rawReportIncluded"], false);
+    assert_eq!(manifest["manifestPublished"], false);
+    assert_eq!(manifest["evidenceArtifactWritten"], false);
+    assert_eq!(manifest["projectUpdated"], false);
+
+    let rows = manifest["evidenceRows"]
+        .as_array()
+        .expect("evidence rows must be an array");
+    assert!(rows.iter().all(|row| {
+        row["summaryOnly"] == true
+            && row["pathIncluded"] == false
+            && row["sourceIncluded"] == false
+            && row["grammarIncluded"] == false
+            && row["rawReportIncluded"] == false
+    }));
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "cpp-source-read",
+        "systemverilog-source-read",
+        "custom-script-source-read",
+        "custom-language-grammar-read",
+        "custom-language-parser",
+        "custom-language-compiler",
+        "custom-script-runtime",
+        "custom-script-execution",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "report-read",
+        "artifact-read",
+        "command-execution",
+        "local-file-read",
+        "repository-read",
+        "kv260-access",
+        "fpga-repo-access",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["hybridEvidenceManifestFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["cliCoreFirst"], true);
+    assert_eq!(safety["cppSourceReaderImplemented"], false);
+    assert_eq!(safety["systemVerilogSourceReaderImplemented"], false);
+    assert_eq!(safety["scriptSourceReaderImplemented"], false);
+    assert_eq!(safety["customLanguageGrammarIncluded"], false);
+    assert_eq!(safety["customLanguageParserImplemented"], false);
+    assert_eq!(safety["customLanguageCompilerImplemented"], false);
+    assert_eq!(safety["customScriptRuntimeImplemented"], false);
+    assert_eq!(safety["customScriptExecution"], false);
+    assert_eq!(safety["simulatorExecution"], false);
+    assert_eq!(safety["verificationExecution"], false);
+    assert_eq!(safety["hardwareControl"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["reportReaderImplemented"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["artifactPathsIncluded"], false);
+    assert_eq!(safety["generatedArtifactsIncluded"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn plugin_host_session_state_example_keeps_host_session_blocked_boundary() {
     let value: serde_json::Value = parse_example("plugin-host-session-state.example.json");
     let root = value
