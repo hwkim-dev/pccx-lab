@@ -117,6 +117,10 @@ boundary. There is no private back channel into lab internals. See
   the summary-only result shape for a future approved plugin manifest
   validation request; it is not a manifest reader, validator command,
   plugin loader, runtime, sandbox, or package distribution flow.
+- `docs/examples/plugin-load-request.example.json` records a blocked
+  load-request gate for a future reviewed plugin loader path; it is not
+  a plugin loader, runtime, sandbox, manifest reader, package installer,
+  dynamic code loader, or compatibility promise.
 - `docs/examples/plugin-dry-run-flow.example.json` records a checked
   dry-run flow contract for future approved plugin manifest, capability,
   diagnostics, and report-panel summaries; it is not a plugin loader,

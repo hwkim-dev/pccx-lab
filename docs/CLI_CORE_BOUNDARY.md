@@ -46,6 +46,7 @@ separate workflow logic island.
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `docs/examples/plugin-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for future approved plugin metadata review; no logger, runtime, or plugin loader is implemented. |
 | `docs/examples/plugin-manifest-validation-result.example.json` | planned manifest validation result | Checked summary-only result shape for a future approved manifest validation request; no manifest reader, validator command, plugin runtime, or loader is implemented. |
+| `docs/examples/plugin-load-request.example.json` | planned load-request gate | Checked blocked load-request shape for a future reviewed plugin loader gate; no loader, runtime, sandbox, manifest reader, package install, or dynamic code loading is implemented. |
 | `docs/examples/plugin-review-packet.example.json` | planned review packet contract | Checked summary-only review packet shape over plugin permission, input, output, blocked-result, manifest-validation, and audit summaries; no plugin loader, runtime, writer, package, marketplace, or repository mutation path is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
@@ -90,6 +91,7 @@ aligned.
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-manifest-validation-result` | `docs/examples/plugin-manifest-validation-result.example.json` | Reader only; planned summary-only result shape for a future approved plugin manifest validation request | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-load-request` | `docs/examples/plugin-load-request.example.json` | Reader only; planned blocked load-request gate over approved plugin manifest, permission, validation, audit, and review summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-review-packet` | `docs/examples/plugin-review-packet.example.json` | Reader only; planned summary-only review packet shape over approved plugin permission, input, output, blocked-result, manifest-validation, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -740,6 +742,28 @@ ids, and redacted warning summaries. It is not a manifest reader,
 validator command, plugin loader, runtime, sandbox, permission executor,
 marketplace flow, package distribution flow, compatibility promise, or
 ABI promise.
+
+## plugin load request boundary
+
+[`docs/examples/plugin-load-request.example.json`](examples/plugin-load-request.example.json)
+defines the checked blocked load-request shape for a future reviewed
+plugin loader gate. It links the plugin boundary plan, permission model,
+manifest-validation result, audit event, and review-packet summaries,
+then records that no plugin has been approved or loaded.
+
+The fixture is summary-only metadata. It does not read manifest files,
+echo manifest paths, include manifest content, include package content,
+include source code, load plugin code, start a loader, start a runtime,
+start a sandbox, call a permission executor, run a validator command,
+execute commands, install packages, distribute packages, use a
+marketplace flow, call providers, use the network, touch hardware,
+access KV260, access FPGA repos, load models, upload telemetry, push
+publicly, or control releases/tags.
+
+The load decision intentionally keeps `approved` false and
+`state` set to `not_loaded`. No compatibility promise, plugin ABI
+stability promise, marketplace claim, runtime claim, or hardware claim
+is made.
 
 ## plugin review packet boundary
 
