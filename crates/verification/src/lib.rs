@@ -13,7 +13,7 @@ pub mod robust_reader;
 
 use pccx_core::trace::NpuTrace;
 
-// ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
+// ─── Experimental plugin surface (Phase 1 M1.2) ─────────────────────
 //
 // `VerificationGate` lets the pccx-ide Verify tab and CI pipelines plug
 // different correctness-gate backends (golden-diff today; Sail

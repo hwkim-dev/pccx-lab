@@ -21,8 +21,7 @@
 //     ``types`` table nor in the built-in C primitive set.
 //
 // Keeping ISA + API spec adjacent means a single TOML tree owns the
-// whole ``HW -> ISA -> API`` flow the Sail knowledge-base guidance
-// (knowledge/sail_language/CLAUDE.md §5) calls out.
+// whole ``HW -> ISA -> API`` flow.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -58,8 +57,8 @@ pub struct ApiSpec {
     /// the linter — e.g. "uca_" for the pccx driver.
     #[serde(default)]
     pub prefix: String,
-    /// Citation / paper URL — surfaces in the emitted header so LLMs
-    /// scraping the generated bindings still find the canonical site.
+    /// Citation / paper URL emitted into generated bindings so downstream
+    /// readers can find the canonical site.
     #[serde(default)]
     pub citation: Option<String>,
     /// User-defined types (opaque / struct / enum) — visible to every

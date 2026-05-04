@@ -133,7 +133,7 @@ pub struct Diagnostic {
     pub source: Option<String>,
 }
 
-// ─── Unstable plugin API (Phase 2 M2.1) ──────────────────────────────
+// ─── Experimental plugin surface (Phase 2 M2.1) ─────────────────────
 //
 // Backends land behind three trait objects so the IntelliSense pipeline
 // can swap providers per-language per-query without a rebuild.

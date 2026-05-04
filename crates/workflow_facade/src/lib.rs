@@ -87,18 +87,18 @@ pub fn get_available_extensions() -> Vec<Extension> {
         },
         // ─── Cloud Bridges ────────────────────────────────────────────────────
         Extension {
-            id:           "gemini-cloud-bridge".to_string(),
-            name:         "Cloud LLM Bridge".to_string(),
-            description:  "Lightweight API bridge to cloud LLM. Requires outbound HTTPS access.".to_string(),
+            id:           "managed-cloud-bridge".to_string(),
+            name:         "Managed Cloud LLM Bridge".to_string(),
+            description:  "Lightweight API bridge to a managed LLM runtime. Requires outbound HTTPS access.".to_string(),
             size_mb:      2,
             is_installed: true,
             category:     ExtensionCategory::CloudBridge,
             min_version:  "v0.1.0".to_string(),
         },
         Extension {
-            id:           "claude-cloud-bridge".to_string(),
-            name:         "Deep Cloud LLM Bridge".to_string(),
-            description:  "API bridge to a managed deep cloud LLM for superior code/SV generation.".to_string(),
+            id:           "managed-analysis-bridge".to_string(),
+            name:         "Managed Analysis Bridge".to_string(),
+            description:  "API bridge to a managed analysis runtime for reviewed SystemVerilog workflows.".to_string(),
             size_mb:      2,
             is_installed: false,
             category:     ExtensionCategory::CloudBridge,
@@ -261,7 +261,7 @@ pub fn list_uvm_strategies() -> Vec<&'static str> {
     ]
 }
 
-// ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
+// ─── Experimental plugin surface (Phase 1 M1.2) ─────────────────────
 //
 // Scaffolds for the Phase 2 IntelliSense + Phase 5 agent orchestration
 // work.  Today `pccx-workflow-facade` ships only static helpers for the

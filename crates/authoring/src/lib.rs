@@ -16,7 +16,7 @@ pub mod fsm_diagram;
 pub mod isa_spec;
 pub mod sv_parser;
 
-// ─── Unstable plugin API (Phase 1 M1.2) ──────────────────────────────
+// ─── Experimental plugin surface (Phase 1 M1.2) ─────────────────────
 //
 // `IsaCompiler` / `ApiCompiler` let Phase 5D swap codegen backends
 // (SV pkg, C header, Rust FFI, DSL interpreter for Sail refinement,

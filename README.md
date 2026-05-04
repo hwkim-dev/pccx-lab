@@ -124,7 +124,7 @@ boundary. There is no private back channel into lab internals. See
 - `docs/examples/plugin-input-contract.example.json` records the
   summary-only input shape for future approved plugin diagnostics and
   report previews; it is not a plugin loader, runtime, input reader,
-  command executor, artifact reader, or stable ABI.
+  command executor, artifact reader, or compatibility promise.
 - `docs/examples/plugin-trace-summary-input.example.json` records the
   summary-only trace metadata input gate for future plugin trace review;
   it is not a plugin loader, runtime, input reader, trace importer, raw
@@ -132,7 +132,7 @@ boundary. There is no private back channel into lab internals. See
 - `docs/examples/plugin-output-contract.example.json` records the
   summary-only output shape for future plugin diagnostic, report-panel,
   and report item previews; it is not a plugin loader, runtime, command
-  executor, artifact writer, or stable ABI.
+  executor, artifact writer, or compatibility promise.
 - `docs/examples/plugin-blocked-invocation-result.example.json` records a
   blocked, non-executed invocation result for a future plugin path; it
   is not a plugin loader, runtime, sandbox, permission executor, input
@@ -157,7 +157,7 @@ boundary. There is no private back channel into lab internals. See
 The GUI is a CLI-backed GUI surface, not a separate logic island. Theme
 work is experimental. Workflow descriptors, proposals, and result
 summaries do not execute anything, and the runner pilot is disabled by
-default. No stable plugin ABI is promised. No MCP runtime, provider
+default. No plugin compatibility promise is made. No MCP runtime, provider
 runtime, launcher runtime, or editor runtime integration is implemented
 by this foundation.
 

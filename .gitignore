@@ -9,28 +9,6 @@ dist/
 # ─── Sphinx ─────────────────────────────────────────────────────────
 docs/_build/
 docs/ko/_build/
-# AI tool / model related files - block by filename or folder name
-*GEMINI*
-*Gemini*
-*gemini*
-
-*CLAUDE*
-*Claude*
-*claude*
-
-*CODEX*
-*Codex*
-*codex*
-
-*JULES*
-*Jules*
-*jules*
-GEMINI_prompt.md
-my_gemini_notes.txt
-CLAUDE_CODE_GUIDE.md
-claude-output/
-Codex_test.py
-jules_result.md
 # ─── Python ─────────────────────────────────────────────────────────
 .venv/
 venv/
@@ -59,26 +37,6 @@ imgui.ini
 *.swp
 *.swo
 *~
-
-# ─── AI / Agent scratch ───────────────────────────────────────────
-.claude/
-.claudesignore
-.gemini/
-.grok/
-.cursor/
-.cursorrules
-.cursorignore
-.codex/
-.devin/
-.jules/
-.continue/
-CLAUDE.md
-AGENTS.md
-GEMINI.md
-CLAUDE_TASKS*.md
-*_Tasks_for_Claude*.md
-*-bootstrap-task.md
-knowledge/
 
 # ─── Task / TODO / schedule / prompt (never publish) ─────────────
 TODO.md
