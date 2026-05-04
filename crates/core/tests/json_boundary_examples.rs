@@ -1482,6 +1482,180 @@ fn plugin_output_contract_example_keeps_summary_only_boundary() {
 }
 
 #[test]
+fn plugin_blocked_invocation_result_example_keeps_non_executing_result_boundary() {
+    let value: serde_json::Value = parse_example("plugin-blocked-invocation-result.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin blocked invocation result must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.plugin-blocked-invocation-result.v0"
+    );
+    assert_eq!(root["resultState"], "blocked_by_policy");
+    assert_eq!(root["pluginRuntimeState"], "not_implemented");
+    assert_eq!(root["loaderState"], "not_implemented");
+    assert_eq!(root["sandboxState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "disabled");
+
+    let input_ref = root["sourceInputRef"]
+        .as_object()
+        .expect("source input ref must be an object");
+    assert_eq!(
+        input_ref["schemaVersion"],
+        "pccx.lab.plugin-input-contract.v0"
+    );
+    assert_eq!(input_ref["inputState"], "approved_summary_only");
+    assert_eq!(input_ref["pathEchoAllowed"], false);
+
+    let output_ref = root["sourceOutputRef"]
+        .as_object()
+        .expect("source output ref must be an object");
+    assert_eq!(
+        output_ref["schemaVersion"],
+        "pccx.lab.plugin-output-contract.v0"
+    );
+    assert_eq!(output_ref["artifactWriteAllowed"], false);
+
+    let request = root["pluginInvocationRequest"]
+        .as_object()
+        .expect("plugin invocation request must be an object");
+    assert_eq!(request["commandKind"], "planned-cli-fixed-args");
+    assert_eq!(
+        request["approvedInputReferenceKind"],
+        "approved-summary-reference"
+    );
+    assert_eq!(request["pathEchoAllowed"], false);
+    assert_eq!(request["rawShellCommandAllowed"], false);
+    assert_eq!(request["pluginCodeLoadAllowed"], false);
+    assert_eq!(request["packageInstallAllowed"], false);
+
+    let result = root["blockedResult"]
+        .as_object()
+        .expect("blocked result must be an object");
+    assert_eq!(result["state"], "not_executed");
+    assert_eq!(result["reason"], "plugin_runtime_not_implemented");
+    assert_eq!(result["summaryOnly"], true);
+    assert_eq!(result["pluginInvocationAttempted"], false);
+    assert_eq!(result["pluginCodeLoaded"], false);
+    assert_eq!(result["commandExecutionAttempted"], false);
+    assert_eq!(result["inputReaderAttempted"], false);
+    assert_eq!(result["artifactReadAttempted"], false);
+    assert_eq!(result["artifactWriteAttempted"], false);
+    assert_eq!(result["repositoryMutationAttempted"], false);
+    assert!(result["exitCode"].is_null());
+
+    let output = root["outputPreview"]
+        .as_object()
+        .expect("output preview must be an object");
+    assert_eq!(output["diagnosticsProduced"], false);
+    assert_eq!(output["panelProduced"], false);
+    assert_eq!(output["reportItemsProduced"], false);
+    assert_eq!(output["stdoutIncluded"], false);
+    assert_eq!(output["stderrIncluded"], false);
+    assert_eq!(output["rawLogsIncluded"], false);
+    assert_eq!(output["privatePathsIncluded"], false);
+    assert_eq!(output["artifactPathsIncluded"], false);
+
+    let mutation = root["noMutationEvidence"]
+        .as_object()
+        .expect("no mutation evidence must be an object");
+    assert_eq!(mutation["trackedFileMutationAllowed"], false);
+    assert_eq!(mutation["trackedFileDiffCaptured"], false);
+    assert_eq!(mutation["artifactReadAllowed"], false);
+    assert_eq!(mutation["artifactWriteAllowed"], false);
+    assert_eq!(mutation["publicPushAllowed"], false);
+    assert_eq!(mutation["releaseOrTagAllowed"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "sandbox-bypass",
+        "permission-executor",
+        "input-reader",
+        "output-writer",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "package-distribution",
+        "arbitrary-shell-command",
+        "command-execution",
+        "artifact-read",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["blockedResultFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginInvocationPathImplemented"], false);
+    assert_eq!(safety["pluginInvocationAttempted"], false);
+    assert_eq!(safety["pluginCodeLoaded"], false);
+    assert_eq!(safety["dynamicLibrariesLoaded"], false);
+    assert_eq!(safety["sandboxImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["inputReaderImplemented"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["stablePluginAbiPromised"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["diagnosticsProduced"], false);
+    assert_eq!(safety["panelProduced"], false);
+    assert_eq!(safety["reportItemsProduced"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}
+
+#[test]
 fn plugin_permission_model_example_keeps_permission_boundary_non_executing() {
     let value: serde_json::Value = parse_example("plugin-permission-model.example.json");
     let root = value

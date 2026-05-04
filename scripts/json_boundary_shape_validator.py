@@ -3170,6 +3170,235 @@ def validate_plugin_output_contract(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_blocked_invocation_result(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-blocked-invocation-result.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "resultId",
+            "pluginId",
+            "capabilityId",
+            "permissionProfile",
+            "resultState",
+            "pluginRuntimeState",
+            "loaderState",
+            "sandboxState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    if root["resultState"] != "blocked_by_policy":
+        raise ShapeError("unexpected value at $.resultState: expected blocked_by_policy")
+    if root["pluginRuntimeState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.pluginRuntimeState: expected not_implemented")
+    if root["loaderState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.loaderState: expected not_implemented")
+    if root["sandboxState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.sandboxState: expected not_implemented")
+    if root["defaultMode"] != "disabled":
+        raise ShapeError("unexpected value at $.defaultMode: expected disabled")
+    if root["hostMode"] != "cli_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_first_gui_second")
+
+    input_ref = expect_object(require_field(root, "$", "sourceInputRef"), "$.sourceInputRef")
+    require_string_fields(
+        input_ref,
+        "$.sourceInputRef",
+        ["schemaVersion", "examplePath", "inputState"],
+    )
+    if expect_bool(require_field(input_ref, "$.sourceInputRef", "pathEchoAllowed"), "$.sourceInputRef.pathEchoAllowed") is not False:
+        raise ShapeError("unexpected value at $.sourceInputRef.pathEchoAllowed: expected false")
+
+    output_ref = expect_object(require_field(root, "$", "sourceOutputRef"), "$.sourceOutputRef")
+    require_string_fields(
+        output_ref,
+        "$.sourceOutputRef",
+        ["schemaVersion", "examplePath", "outputState"],
+    )
+    if expect_bool(require_field(output_ref, "$.sourceOutputRef", "artifactWriteAllowed"), "$.sourceOutputRef.artifactWriteAllowed") is not False:
+        raise ShapeError("unexpected value at $.sourceOutputRef.artifactWriteAllowed: expected false")
+
+    audit_ref = expect_object(require_field(root, "$", "auditEventRef"), "$.auditEventRef")
+    require_string_fields(
+        audit_ref,
+        "$.auditEventRef",
+        ["schemaVersion", "examplePath", "eventState", "storageState"],
+    )
+
+    request = expect_object(require_field(root, "$", "pluginInvocationRequest"), "$.pluginInvocationRequest")
+    require_string_fields(
+        request,
+        "$.pluginInvocationRequest",
+        ["commandKind", "approvedInputReferenceKind"],
+    )
+    require_string_array(
+        require_field(request, "$.pluginInvocationRequest", "fixedArgsPreview"),
+        "$.pluginInvocationRequest.fixedArgsPreview",
+        min_items=1,
+    )
+    request_false_flags = [
+        "pathEchoAllowed",
+        "rawShellCommandAllowed",
+        "pluginCodeLoadAllowed",
+        "packageInstallAllowed",
+    ]
+    require_bool_fields(request, "$.pluginInvocationRequest", request_false_flags)
+    for flag in request_false_flags:
+        if request[flag] is not False:
+            raise ShapeError(f"unexpected value at $.pluginInvocationRequest.{flag}: expected false")
+
+    blocked = expect_object(require_field(root, "$", "blockedResult"), "$.blockedResult")
+    require_string_fields(blocked, "$.blockedResult", ["state", "reason", "summary"])
+    if blocked["state"] != "not_executed":
+        raise ShapeError("unexpected value at $.blockedResult.state: expected not_executed")
+    expect_nullable_integer(require_field(blocked, "$.blockedResult", "exitCode"), "$.blockedResult.exitCode")
+    blocked_true_flags = ["summaryOnly"]
+    blocked_false_flags = [
+        "pluginInvocationAttempted",
+        "pluginCodeLoaded",
+        "commandExecutionAttempted",
+        "inputReaderAttempted",
+        "artifactReadAttempted",
+        "artifactWriteAttempted",
+        "repositoryMutationAttempted",
+    ]
+    require_bool_fields(blocked, "$.blockedResult", blocked_true_flags + blocked_false_flags)
+    if blocked["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.blockedResult.summaryOnly: expected true")
+    for flag in blocked_false_flags:
+        if blocked[flag] is not False:
+            raise ShapeError(f"unexpected value at $.blockedResult.{flag}: expected false")
+
+    output = expect_object(require_field(root, "$", "outputPreview"), "$.outputPreview")
+    require_string_fields(output, "$.outputPreview", ["state", "resultFormat"])
+    output_false_flags = [
+        "diagnosticsProduced",
+        "panelProduced",
+        "reportItemsProduced",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "privatePathsIncluded",
+        "artifactPathsIncluded",
+    ]
+    require_bool_fields(output, "$.outputPreview", output_false_flags)
+    for flag in output_false_flags:
+        if output[flag] is not False:
+            raise ShapeError(f"unexpected value at $.outputPreview.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "sandbox-bypass",
+        "permission-executor",
+        "input-reader",
+        "output-writer",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "package-distribution",
+        "arbitrary-shell-command",
+        "command-execution",
+        "local-file-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "blockedResultFixtureOnly", "summaryOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginInvocationPathImplemented",
+        "pluginInvocationAttempted",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "sandboxImplemented",
+        "permissionExecutorImplemented",
+        "inputReaderImplemented",
+        "reportWriterImplemented",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "diagnosticsProduced",
+        "panelProduced",
+        "reportItemsProduced",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 SPECS = [
     BoundarySpec("diagnostics-envelope", "docs/examples/diagnostics-envelope.example.json", validate_diagnostics_envelope),
     BoundarySpec("lab-status", "docs/examples/run-status.example.json", validate_lab_status),
@@ -3194,6 +3423,7 @@ SPECS = [
     BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
     BoundarySpec("plugin-input-contract", "docs/examples/plugin-input-contract.example.json", validate_plugin_input_contract),
     BoundarySpec("plugin-output-contract", "docs/examples/plugin-output-contract.example.json", validate_plugin_output_contract),
+    BoundarySpec("plugin-blocked-invocation-result", "docs/examples/plugin-blocked-invocation-result.example.json", validate_plugin_blocked_invocation_result),
 ]
 
 

@@ -38,6 +38,7 @@ separate workflow logic island.
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
 | `docs/examples/plugin-input-contract.example.json` | planned input contract | Checked summary-only plugin input shape for approved diagnostics and workflow-result summaries; no plugin runtime or input reader is implemented. |
 | `docs/examples/plugin-output-contract.example.json` | planned output contract | Checked summary-only plugin output shape for diagnostic, report-panel, and report item previews; no plugin runtime or report writer is implemented. |
+| `docs/examples/plugin-blocked-invocation-result.example.json` | planned blocked result | Checked blocked, non-executed plugin invocation result; no plugin loader, runtime, sandbox, permission executor, input reader, or report writer is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `docs/examples/plugin-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for future approved plugin metadata review; no logger, runtime, or plugin loader is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
@@ -82,6 +83,7 @@ aligned.
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-output-contract` | `docs/examples/plugin-output-contract.example.json` | Reader only; planned summary-only plugin output shape for future diagnostic, report-panel, and report item previews | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-blocked-invocation-result` | `docs/examples/plugin-blocked-invocation-result.example.json` | Reader only; planned blocked, non-executed plugin invocation result over approved summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-audit-event` | `docs/examples/plugin-audit-event.example.json` | Reader only; planned redacted audit-event shape for future approved plugin metadata review | Shape validator, inventory test, Rust JSON-shape test |
 
@@ -706,6 +708,30 @@ commands, write artifacts, mutate repositories, call providers, use the
 network, touch hardware, access KV260, access FPGA repos, launch runtime
 code, load models, upload telemetry, push publicly, or control
 releases/tags.
+
+## plugin blocked invocation-result boundary
+
+[`docs/examples/plugin-blocked-invocation-result.example.json`](examples/plugin-blocked-invocation-result.example.json)
+defines the checked blocked-result shape for a future plugin invocation
+path. It is descriptor-only metadata over approved input and output
+summary contracts, not an execution boundary.
+
+The fixture links the plugin input contract, plugin output contract, and
+plugin audit-event shape, then records a planned fixed-argument preview
+for an example diagnostics-summary plugin invocation. The result stays
+`not_executed`: no plugin is invoked, no input reader runs, no output
+writer runs, no diagnostics or report items are produced, and no
+tracked files are mutated.
+
+This fixture is not a plugin loader, runtime, sandbox, permission
+executor, input reader, command executor, report writer, artifact
+reader, audit logger, or ABI promise. It does not load plugin code,
+install packages, load dynamic libraries, execute commands, read local
+files, read raw traces, read reports, read or write artifacts, mutate
+repositories, call providers, use the network, touch hardware, access
+KV260, access FPGA repos, launch runtime code, load models, upload
+telemetry, push publicly, or control releases/tags. No stable plugin
+ABI is promised.
 
 ## plugin permission model boundary
 
