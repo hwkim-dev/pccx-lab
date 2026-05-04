@@ -129,6 +129,10 @@ boundary. There is no private back channel into lab internals. See
   load-request gate for a future reviewed plugin loader path; it is not
   a plugin loader, runtime, sandbox, manifest reader, package installer,
   dynamic code loader, or compatibility promise.
+- `docs/examples/plugin-host-session-state.example.json` records a
+  blocked host/session state for a future reviewed plugin loader path;
+  it is not a plugin loader, runtime, sandbox, host API binding,
+  capability dispatcher, command executor, or compatibility promise.
 - `docs/examples/plugin-dry-run-flow.example.json` records a checked
   dry-run flow contract for future approved plugin manifest, capability,
   diagnostics, and report-panel summaries; it is not a plugin loader,
