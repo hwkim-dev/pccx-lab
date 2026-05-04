@@ -139,6 +139,13 @@ boundary. There is no private back channel into lab internals. See
   compiler, runtime, script execution path, simulator runner,
   verification run, report/artifact reader or writer, command runner,
   repository reader, marketplace flow, or hardware-control path.
+- `docs/examples/hybrid-implementation-readiness.example.json` records a
+  descriptor-only readiness gate for future hybrid C++/SystemVerilog and
+  custom-script work over approved hybrid boundary summaries; it is not
+  a source reader, grammar reader, parser, compiler, runtime, script
+  execution path, simulator runner, verification run, report/artifact
+  reader or writer, command runner, repository reader, marketplace flow,
+  or hardware-control path.
 - `docs/examples/mcp-read-only-tool-plan.example.json` maps a future
   MCP/tool adapter to read-only CLI/core commands; it is a checked plan,
   not a runtime implementation.

@@ -147,6 +147,7 @@ run_case \
     "[hybrid-review-packet] shape ok" \
     "[hybrid-evidence-manifest] shape ok" \
     "[hybrid-evidence-detail] shape ok" \
+    "[hybrid-implementation-readiness] shape ok" \
     "[plugin-permission-model] shape ok" \
     "[plugin-audit-event] shape ok" \
     "[plugin-manifest-validation-result] shape ok" \

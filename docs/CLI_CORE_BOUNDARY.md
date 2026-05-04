@@ -34,6 +34,7 @@ separate workflow logic island.
 | `docs/examples/hybrid-review-packet.example.json` | planned hybrid review packet | Checked summary-only hybrid review packet over approved strategy, interface, workflow, verification, and report-gate summaries; no source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, or hardware-control path is implemented. |
 | `docs/examples/hybrid-evidence-manifest.example.json` | planned hybrid evidence manifest | Checked summary-only hybrid evidence manifest over approved strategy, interface, review, workflow, and verification-gate summaries; no source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, command runner, repository reader, or hardware-control path is implemented. |
 | `docs/examples/hybrid-evidence-detail.example.json` | planned hybrid evidence detail | Checked descriptor-only hybrid evidence detail for one selected approved evidence summary reference; no source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, command runner, repository reader, marketplace flow, or hardware-control path is implemented. |
+| `docs/examples/hybrid-implementation-readiness.example.json` | planned hybrid implementation readiness | Checked descriptor-only hybrid implementation-readiness gate over approved hybrid boundary summaries; no source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, command runner, repository reader, marketplace flow, or hardware-control path is implemented. |
 | `pccx-lab analyze <file> --format json` | early scaffold | File-shape diagnostics only. |
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
@@ -116,6 +117,7 @@ aligned.
 | `hybrid-review-packet` | `docs/examples/hybrid-review-packet.example.json` | Reader only; planned summary-only hybrid review packet over approved strategy, interface, workflow, verification, and report-gate summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-evidence-manifest` | `docs/examples/hybrid-evidence-manifest.example.json` | Reader only; planned summary-only hybrid evidence manifest over approved strategy, interface, review, workflow, and verification-gate summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-evidence-detail` | `docs/examples/hybrid-evidence-detail.example.json` | Reader only; planned descriptor-only hybrid evidence detail over one approved evidence summary reference | Shape validator, inventory test, Rust JSON-shape test |
+| `hybrid-implementation-readiness` | `docs/examples/hybrid-implementation-readiness.example.json` | Reader only; planned descriptor-only hybrid implementation-readiness gate over approved hybrid boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
@@ -678,6 +680,36 @@ parser/compiler behavior, script execution, simulator or verification
 execution, hardware control, report output, artifact handling, evidence
 publication, and any marketplace-facing flow. No runtime, hardware,
 marketplace, release, or API/ABI stability claim is made.
+
+## Hybrid implementation-readiness boundary
+
+[`docs/examples/hybrid-implementation-readiness.example.json`](examples/hybrid-implementation-readiness.example.json)
+defines the checked descriptor-only readiness gate for future hybrid
+C++/SystemVerilog and custom-script work over the approved hybrid
+strategy, interface, review, evidence manifest, and evidence-detail
+summaries. It records prerequisite metadata and blocked action classes
+only. The fixture does not accept C++ source, SystemVerilog source,
+custom-script source, grammar text, parser output, compiler output,
+runtime plans, simulator output, verification output, hardware-control
+output, report bodies, artifacts, commands, logs, repository inputs,
+model paths, board dumps, or hardware dumps.
+
+The readiness fixture is metadata only. It does not read C++ sources,
+read SystemVerilog sources, read custom-script sources, read grammar
+text, run parsers, run compilers, execute runtimes, execute scripts, run
+simulators, run verification, read or write reports, read or write
+artifacts, execute commands, read repositories, mutate repositories,
+publish public text, call providers, use the network, touch hardware,
+access KV260, access FPGA repos, load models, upload telemetry, push
+publicly, or control releases/tags.
+
+The readiness boundary is approved for descriptor metadata only. A
+future implementation requires separate reviewed boundaries for source
+inputs, grammar inputs, parser/compiler behavior, runtime behavior,
+script execution, simulator execution, verification, hardware control,
+report output, artifact handling, evidence publication, and any
+marketplace-facing flow. No runtime, hardware, marketplace, release, or
+API/ABI stability claim is made.
 
 ## analyze command
 
