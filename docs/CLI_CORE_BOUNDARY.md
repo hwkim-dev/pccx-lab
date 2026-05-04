@@ -28,6 +28,7 @@ separate workflow logic island.
 | `pccx-lab device-session-status validate --file <path> --format json` | read-only validator | Launcher device/session status schema reader. |
 | `docs/examples/mcp-read-only-tool-plan.example.json` | planned boundary map | Checked future MCP/tool adapter plan over fixed CLI/core commands; no runtime is implemented. |
 | `docs/examples/mcp-tool-list.example.json` | planned tool list | Checked descriptor-only MCP tool listing over approved boundary summaries; no server, client, runtime, transport, command executor, tool invocation path, file reader, report writer, audit logger, or write path is implemented. |
+| `docs/examples/mcp-tool-detail.example.json` | planned tool detail | Checked descriptor-only detail view for one selected listed tool; no server, client, runtime, transport, command executor, tool invocation path, input reader, output payload reader, report writer, audit logger, or write path is implemented. |
 | `docs/examples/mcp-read-only-analysis-flow.example.json` | planned flow contract | Checked dry-run analysis-flow contract over existing CLI/core summaries; no runtime or command executor is implemented. |
 | `docs/examples/mcp-read-only-report-contract.example.json` | planned report contract | Checked summary-only report output shape for a future read-only tool adapter; no report writer is implemented. |
 | `docs/examples/mcp-verification-run-comparison.example.json` | planned comparison contract | Checked summary-only verification-run comparison shape for future MCP/tool review; no file reader, report writer, or command executor is implemented. |
@@ -87,6 +88,7 @@ aligned.
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-tool-list` | `docs/examples/mcp-tool-list.example.json` | Reader only; planned descriptor-only MCP tool listing over approved boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-tool-detail` | `docs/examples/mcp-tool-detail.example.json` | Reader only; planned descriptor-only MCP tool detail over one listed tool summary | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-analysis-flow` | `docs/examples/mcp-read-only-analysis-flow.example.json` | Reader only; planned dry-run read-only analysis-flow contract over existing CLI/core summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-report-contract` | `docs/examples/mcp-read-only-report-contract.example.json` | Reader only; planned summary-only report output shape for a future read-only tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-verification-run-comparison` | `docs/examples/mcp-verification-run-comparison.example.json` | Reader only; planned summary-only comparison shape over approved workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -494,6 +496,29 @@ The example tools are visible for listing only. They are not approved
 for invocation, and each entry requires a separate reviewed invocation
 boundary before any tool call can exist. No runtime, marketplace, or
 API/ABI stability claim is made.
+
+## MCP tool-detail boundary
+
+[`docs/examples/mcp-tool-detail.example.json`](examples/mcp-tool-detail.example.json)
+defines the checked descriptor-only detail shape for one selected tool
+from the MCP tool-list fixture. It links the tool list, permission
+model, and evidence manifest summaries, then records selected-tool
+metadata, input/output descriptors, and the blocked invocation policy
+without starting any MCP server, client, runtime, or transport.
+
+The fixture is summary-only metadata. It does not echo paths, include
+raw commands, read local files, read repositories, read raw traces, read
+raw reports, read raw logs, read artifacts, read provider config,
+environment values, secrets, or tokens, include stdout/stderr, include
+payload bodies, write reports, write artifacts, create audit logs,
+invoke tools, execute commands, mutate repositories, call providers, use
+the network, touch hardware, access KV260, access FPGA repos, load
+models, upload telemetry, push publicly, or control releases/tags.
+
+The selected tool is approved for descriptor listing and descriptor
+detail only. It is not approved for invocation and still requires a
+separate reviewed invocation boundary before any tool call can exist. No
+runtime, marketplace, or API/ABI stability claim is made.
 
 ## MCP read-only analysis flow
 

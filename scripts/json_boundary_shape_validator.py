@@ -1024,6 +1024,400 @@ def validate_mcp_tool_list(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_tool_detail(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-tool-detail.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "toolDetailId",
+            "detailState",
+            "adapterState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    if root["detailState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.detailState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["hostMode"] != "cli_core_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_core_first_gui_second")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(ref, "$.sourceBoundaryRefs[]", ["refId", "schemaVersion", "examplePath", "state"])
+    if not any(
+        ref["refId"] == "mcp_tool_list"
+        and ref.get("toolListAvailable") is True
+        and ref.get("toolDetailAvailable") is True
+        and ref.get("commandExecutorAllowed") is False
+        and ref.get("mcpRuntimeAllowed") is False
+        and ref.get("toolInvocationAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_tool_list disabled source reference")
+    if not any(
+        ref["refId"] == "mcp_permission_model"
+        and ref.get("permissionExecutorAllowed") is False
+        and ref.get("approvalExecutorAllowed") is False
+        and ref.get("toolInvocationAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_permission_model disabled source reference")
+    if not any(
+        ref["refId"] == "mcp_evidence_manifest"
+        and ref.get("summaryOnly") is True
+        and ref.get("fileReaderAllowed") is False
+        and ref.get("artifactReaderAllowed") is False
+        and ref.get("reportWriterAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing mcp_evidence_manifest summary-only source reference")
+
+    request = expect_object(require_field(root, "$", "toolDetailRequest"), "$.toolDetailRequest")
+    require_string_fields(
+        request,
+        "$.toolDetailRequest",
+        [
+            "requestKind",
+            "commandKind",
+            "selectedToolId",
+            "sourceReferenceKind",
+            "outputBoundary",
+            "summary",
+        ],
+    )
+    if request["requestKind"] != "planned_mcp_tool_detail":
+        raise ShapeError("unexpected value at $.toolDetailRequest.requestKind: expected planned_mcp_tool_detail")
+    if request["selectedToolId"] != "lab.status.read":
+        raise ShapeError("unexpected value at $.toolDetailRequest.selectedToolId: expected lab.status.read")
+    require_string_array(
+        require_field(request, "$.toolDetailRequest", "fixedArgsPreview"),
+        "$.toolDetailRequest.fixedArgsPreview",
+        min_items=1,
+    )
+    request_true_flags = ["summaryOnly", "inputRefOnly"]
+    request_false_flags = [
+        "approvalRequired",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "mcpServerAllowed",
+        "mcpClientAllowed",
+        "mcpRuntimeAllowed",
+        "mcpTransportAllowed",
+        "permissionExecutorAllowed",
+        "approvalExecutorAllowed",
+        "auditLoggerAllowed",
+        "toolInvocationAllowed",
+        "providerCallAllowed",
+        "networkCallAllowed",
+        "launcherExecutionAllowed",
+        "editorExecutionAllowed",
+        "hardwareAccessAllowed",
+        "modelLoadAllowed",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(request, "$.toolDetailRequest", request_true_flags + request_false_flags)
+    for flag in request_true_flags:
+        if request[flag] is not True:
+            raise ShapeError(f"unexpected value at $.toolDetailRequest.{flag}: expected true")
+    for flag in request_false_flags:
+        if request[flag] is not False:
+            raise ShapeError(f"unexpected value at $.toolDetailRequest.{flag}: expected false")
+
+    selected = expect_object(require_field(root, "$", "selectedTool"), "$.selectedTool")
+    require_string_fields(
+        selected,
+        "$.selectedTool",
+        [
+            "toolId",
+            "displayName",
+            "category",
+            "toolState",
+            "detailState",
+            "listState",
+            "permissionProfile",
+            "reviewSource",
+            "commandPreviewKind",
+            "summary",
+            "inputPolicy",
+            "outputPolicy",
+        ],
+    )
+    if selected["toolId"] != request["selectedToolId"]:
+        raise ShapeError("selected tool id must match $.toolDetailRequest.selectedToolId")
+    if selected["detailState"] != "visible_descriptor":
+        raise ShapeError("unexpected value at $.selectedTool.detailState: expected visible_descriptor")
+
+    input_descriptor = expect_object(
+        require_field(selected, "$.selectedTool", "inputDescriptor"),
+        "$.selectedTool.inputDescriptor",
+    )
+    require_string_fields(
+        input_descriptor,
+        "$.selectedTool.inputDescriptor",
+        ["descriptorState", "acceptedInputKind", "acceptedInputSummary"],
+    )
+    input_false_flags = [
+        "userPathAccepted",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "providerConfigReadAllowed",
+        "environmentReadAllowed",
+        "secretsReadAllowed",
+        "tokensReadAllowed",
+    ]
+    require_bool_fields(input_descriptor, "$.selectedTool.inputDescriptor", input_false_flags)
+    for flag in input_false_flags:
+        if input_descriptor[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedTool.inputDescriptor.{flag}: expected false")
+
+    output_descriptor = expect_object(
+        require_field(selected, "$.selectedTool", "outputDescriptor"),
+        "$.selectedTool.outputDescriptor",
+    )
+    require_string_fields(output_descriptor, "$.selectedTool.outputDescriptor", ["descriptorState", "boundaryRef"])
+    output_false_flags = [
+        "payloadIncluded",
+        "responseBodyIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "privatePathsIncluded",
+        "reportContentIncluded",
+    ]
+    require_bool_fields(output_descriptor, "$.selectedTool.outputDescriptor", output_false_flags)
+    for flag in output_false_flags:
+        if output_descriptor[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedTool.outputDescriptor.{flag}: expected false")
+
+    invocation = expect_object(
+        require_field(selected, "$.selectedTool", "invocationPolicy"),
+        "$.selectedTool.invocationPolicy",
+    )
+    invocation_true_flags = [
+        "requiresSeparateInvocationBoundary",
+        "approvalRequiredBeforeInvocation",
+        "approvedForListing",
+        "approvedForDetail",
+    ]
+    invocation_false_flags = [
+        "approvedForInvocation",
+        "toolInvocationAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "permissionExecutorAllowed",
+        "approvalExecutorAllowed",
+        "auditLoggerAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "artifactReadAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+    ]
+    require_bool_fields(
+        invocation,
+        "$.selectedTool.invocationPolicy",
+        invocation_true_flags + invocation_false_flags,
+    )
+    for flag in invocation_true_flags:
+        if invocation[flag] is not True:
+            raise ShapeError(f"unexpected value at $.selectedTool.invocationPolicy.{flag}: expected true")
+    for flag in invocation_false_flags:
+        if invocation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.selectedTool.invocationPolicy.{flag}: expected false")
+
+    related = require_object_array(
+        require_field(root, "$", "relatedToolRefs"),
+        "$.relatedToolRefs",
+        min_items=1,
+    )
+    for tool in related:
+        path = "$.relatedToolRefs[]"
+        require_string_fields(tool, path, ["toolId", "relationship"])
+        require_bool_fields(tool, path, ["detailIncluded", "approvedForDetail", "toolInvocationAllowed"])
+        for flag in ["detailIncluded", "approvedForDetail", "toolInvocationAllowed"]:
+            if tool[flag] is not False:
+                raise ShapeError(f"unexpected value at $.relatedToolRefs[].{flag}: expected false")
+
+    display = expect_object(require_field(root, "$", "displayPolicy"), "$.displayPolicy")
+    require_string_fields(display, "$.displayPolicy", ["surface", "guiPolicy"])
+    require_string_array(
+        require_field(display, "$.displayPolicy", "allowedFields"),
+        "$.displayPolicy.allowedFields",
+        min_items=1,
+    )
+    require_string_array(
+        require_field(display, "$.displayPolicy", "blockedFields"),
+        "$.displayPolicy.blockedFields",
+        min_items=1,
+    )
+    display_true_flags = ["summaryOnly"]
+    display_false_flags = [
+        "pathEchoAllowed",
+        "rawCommandIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "reportContentIncluded",
+    ]
+    require_bool_fields(display, "$.displayPolicy", display_true_flags + display_false_flags)
+    if display["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.displayPolicy.summaryOnly: expected true")
+    for flag in display_false_flags:
+        if display[flag] is not False:
+            raise ShapeError(f"unexpected value at $.displayPolicy.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "auditLogWriteAllowed",
+        "toolInvocationAllowed",
+        "commandExecutionAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-start",
+        "mcp-transport-start",
+        "tool-invocation",
+        "permission-executor",
+        "approval-executor",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "raw-log-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "audit-log-write",
+        "repository-write-back",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "launcher-execution",
+        "editor-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "summaryOnly", "toolDetailFixtureOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "mcpTransportImplemented",
+        "toolInvocationPathImplemented",
+        "toolInvocationAttempted",
+        "permissionExecutorImplemented",
+        "approvalExecutorImplemented",
+        "auditLoggerImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "rawLogRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "auditPersistence",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_read_only_analysis_flow(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-read-only-analysis-flow.v0")
@@ -7879,6 +8273,7 @@ SPECS = [
     BoundarySpec("launcher-device-session-status", "docs/examples/launcher-device-session-status.example.json", validate_launcher_device_session_status),
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
     BoundarySpec("mcp-tool-list", "docs/examples/mcp-tool-list.example.json", validate_mcp_tool_list),
+    BoundarySpec("mcp-tool-detail", "docs/examples/mcp-tool-detail.example.json", validate_mcp_tool_detail),
     BoundarySpec("mcp-read-only-analysis-flow", "docs/examples/mcp-read-only-analysis-flow.example.json", validate_mcp_read_only_analysis_flow),
     BoundarySpec("mcp-read-only-report-contract", "docs/examples/mcp-read-only-report-contract.example.json", validate_mcp_read_only_report_contract),
     BoundarySpec("mcp-verification-run-comparison", "docs/examples/mcp-verification-run-comparison.example.json", validate_mcp_verification_run_comparison),

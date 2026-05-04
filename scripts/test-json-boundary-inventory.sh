@@ -127,6 +127,7 @@ run_case \
     "[launcher-diagnostics-handoff] inventory ok" \
     "[mcp-read-only-tool-plan] inventory ok" \
     "[mcp-tool-list] inventory ok" \
+    "[mcp-tool-detail] inventory ok" \
     "[mcp-read-only-report-contract] inventory ok" \
     "[mcp-verification-run-comparison] inventory ok" \
     "[mcp-pr-summary-handoff] inventory ok" \

@@ -215,6 +215,58 @@ write reports, mutate repositories, call providers, use the network,
 touch hardware, or control releases/tags. No runtime, marketplace, or
 API/ABI stability claim is made.
 
+## MCP Tool Detail
+
+Full fixture:
+[`mcp-tool-detail.example.json`](examples/mcp-tool-detail.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-tool-detail.v0",
+  "detailState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "toolDetailRequest": {
+    "requestKind": "planned_mcp_tool_detail",
+    "selectedToolId": "lab.status.read",
+    "summaryOnly": true,
+    "pathEchoAllowed": false,
+    "toolInvocationAllowed": false,
+    "commandExecutionAllowed": false
+  },
+  "selectedTool": {
+    "toolId": "lab.status.read",
+    "detailState": "visible_descriptor",
+    "inputDescriptor": {
+      "descriptorState": "metadata_only",
+      "localFileReadAllowed": false,
+      "secretsReadAllowed": false,
+      "tokensReadAllowed": false
+    },
+    "outputDescriptor": {
+      "payloadIncluded": false,
+      "stdoutIncluded": false,
+      "stderrIncluded": false,
+      "rawLogsIncluded": false
+    },
+    "invocationPolicy": {
+      "requiresSeparateInvocationBoundary": true,
+      "approvedForDetail": true,
+      "approvedForInvocation": false,
+      "toolInvocationAllowed": false
+    }
+  }
+}
+```
+
+Use this fixture to review a descriptor-only detail surface for one
+listed MCP tool before implementing any server, client, transport,
+runtime, or invocation path. It does not read inputs, echo paths, expose
+payloads, include stdout/stderr, execute commands, write reports, mutate
+repositories, call providers, use the network, touch hardware, or
+control releases/tags. No runtime, marketplace, or API/ABI stability
+claim is made.
+
 ## MCP Read-Only Analysis Flow
 
 Full fixture:

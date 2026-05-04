@@ -79,6 +79,11 @@ boundary. There is no private back channel into lab internals. See
   MCP tool listing over approved boundary summaries; it is not an MCP
   server, client, runtime, transport, command executor, tool invocation
   path, file reader, report writer, audit logger, or write path.
+- `docs/examples/mcp-tool-detail.example.json` records a descriptor-only
+  MCP tool detail view for one selected listed tool; it is not an MCP
+  server, client, runtime, transport, command executor, tool invocation
+  path, input reader, output payload reader, report writer, audit logger,
+  or write path.
 - `docs/examples/mcp-read-only-analysis-flow.example.json` records a
   checked dry-run flow contract for composing existing CLI/core summaries
   into a future read-only report path; it is not a command executor or
