@@ -31,6 +31,7 @@ separate workflow logic island.
 | `docs/examples/mcp-read-only-report-contract.example.json` | planned report contract | Checked summary-only report output shape for a future read-only tool adapter; no report writer is implemented. |
 | `docs/examples/mcp-verification-run-comparison.example.json` | planned comparison contract | Checked summary-only verification-run comparison shape for future MCP/tool review; no file reader, report writer, or command executor is implemented. |
 | `docs/examples/mcp-pr-summary-handoff.example.json` | planned PR handoff contract | Checked summary-only PR summary handoff shape for future MCP/tool review; no PR creator, comment writer, report writer, or repository mutation path is implemented. |
+| `docs/examples/mcp-review-packet.example.json` | planned review packet contract | Checked summary-only review packet shape over MCP permission, approval, blocked-result, comparison, and handoff summaries; no tool invocation, writer, or repository mutation path is implemented. |
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-approval-decision.example.json` | planned approval decision | Checked denied approval-decision gate for a future MCP/tool adapter; no approval executor, tool invocation path, or write path is implemented. |
@@ -80,6 +81,7 @@ aligned.
 | `mcp-read-only-report-contract` | `docs/examples/mcp-read-only-report-contract.example.json` | Reader only; planned summary-only report output shape for a future read-only tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-verification-run-comparison` | `docs/examples/mcp-verification-run-comparison.example.json` | Reader only; planned summary-only comparison shape over approved workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-pr-summary-handoff` | `docs/examples/mcp-pr-summary-handoff.example.json` | Reader only; planned summary-only PR handoff shape over approved issue, change, and validation summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-review-packet` | `docs/examples/mcp-review-packet.example.json` | Reader only; planned summary-only review packet shape over approved permission, approval, blocked-result, comparison, and handoff summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-decision` | `docs/examples/mcp-approval-decision.example.json` | Reader only; planned denied approval-decision gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
@@ -550,6 +552,33 @@ PRs, comment on issues or PRs, update project boards, call providers,
 use the network, touch hardware, access KV260, access FPGA repos, launch
 runtime code, load models, upload telemetry, push publicly, or control
 releases/tags.
+
+## MCP review packet boundary
+
+[`docs/examples/mcp-review-packet.example.json`](examples/mcp-review-packet.example.json)
+defines the checked summary-only review packet shape for future MCP/tool
+review of the permission, approval, blocked-result, validation
+comparison, and PR handoff boundaries. It is descriptor-only fixture
+data over approved summaries, not a file reader, repository reader,
+report writer, command executor, tool invocation path, PR creator,
+comment writer, project updater, or repository mutation path.
+
+The fixture records bounded review sections, risk rows, checklist
+labels, and validation-line summaries. It excludes private paths, raw
+traces, raw reports, stdout, stderr, raw logs, secrets, tokens, model
+paths, generated artifacts, hardware evidence, artifact paths, and
+unpublished public text.
+
+This fixture is not an MCP runtime, server, client, approval executor,
+permission executor, tool invocation path, command executor, local file
+reader, repository reader, artifact reader, artifact writer, report
+writer, PR creator, issue or PR comment writer, project updater, or
+public text publisher. It does not execute commands, invoke tools, read
+local files, read repositories, write reports, write artifacts, mutate
+repositories, publish PR text, create PRs, comment on issues or PRs,
+update project boards, call providers, use the network, touch hardware,
+access KV260, access FPGA repos, launch runtime code, load models,
+upload telemetry, push publicly, or control releases/tags.
 
 ## MCP permission model boundary
 
