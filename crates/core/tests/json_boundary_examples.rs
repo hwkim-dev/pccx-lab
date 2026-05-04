@@ -563,6 +563,127 @@ fn mcp_permission_model_example_keeps_permission_boundary_non_executing() {
 }
 
 #[test]
+fn mcp_approval_request_example_keeps_approval_boundary_non_executing() {
+    let value: serde_json::Value = parse_example("mcp-approval-request.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP approval request must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.mcp-approval-request.v0");
+    assert_eq!(root["requestState"], "approval_required");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let requested = root["requestedTool"]
+        .as_object()
+        .expect("requested tool must be an object");
+    assert_eq!(requested["approvalRequired"], true);
+    assert_eq!(requested["sideEffectPolicy"], "no_repository_mutation");
+    assert!(requested["fixedArgsPreview"].as_array().is_some());
+
+    let approval = root["approvalPolicy"]
+        .as_object()
+        .expect("approval policy must be an object");
+    assert_eq!(approval["userApprovalRequired"], true);
+    assert_eq!(approval["writeActionAllowed"], false);
+    assert_eq!(approval["artifactWriteAllowed"], false);
+    assert_eq!(approval["repositoryMutationAllowed"], false);
+    assert_eq!(approval["pathEchoAllowed"], false);
+    assert_eq!(approval["rawShellCommandsAllowed"], false);
+    assert_eq!(approval["backgroundMutationAllowed"], false);
+    assert_eq!(approval["publicPushAllowed"], false);
+    assert_eq!(approval["releaseOrTagAllowed"], false);
+
+    let mutation = root["repositoryMutationBoundary"]
+        .as_object()
+        .expect("repository mutation boundary must be an object");
+    assert_eq!(mutation["trackedFileMutationAllowed"], false);
+    assert_eq!(mutation["artifactWriteAllowed"], false);
+    assert_eq!(mutation["writeBackAllowed"], false);
+    assert_eq!(mutation["publicPushAllowed"], false);
+    assert_eq!(mutation["releaseOrTagAllowed"], false);
+
+    let redaction = root["redactionPolicy"]
+        .as_object()
+        .expect("redaction policy must be an object");
+    assert_eq!(redaction["approvedInputRefOnly"], true);
+    assert_eq!(redaction["privatePathsIncluded"], false);
+    assert_eq!(redaction["secretsIncluded"], false);
+    assert_eq!(redaction["tokensIncluded"], false);
+    assert_eq!(redaction["stdoutIncluded"], false);
+    assert_eq!(redaction["stderrIncluded"], false);
+
+    let checklist = root["approvalChecklist"]
+        .as_array()
+        .expect("approval checklist must be an array");
+    assert!(checklist.iter().any(|item| {
+        item["checkId"] == "approved_input_reference_required"
+            && item["state"] == "approval_required"
+    }));
+    assert!(checklist
+        .iter()
+        .any(|item| { item["checkId"] == "no_mutation_guard" && item["state"] == "blocked" }));
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "permission-executor",
+        "arbitrary-shell-command",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["approvalFixtureOnly"], true);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["mcpServerImplemented"], false);
+    assert_eq!(safety["mcpClientImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+}
+
+#[test]
 fn mcp_audit_event_example_keeps_redacted_read_only_boundary() {
     let value: serde_json::Value = parse_example("mcp-audit-event.example.json");
     let root = value

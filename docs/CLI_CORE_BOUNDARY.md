@@ -30,6 +30,7 @@ separate workflow logic island.
 | `docs/examples/mcp-read-only-analysis-flow.example.json` | planned flow contract | Checked dry-run analysis-flow contract over existing CLI/core summaries; no runtime or command executor is implemented. |
 | `docs/examples/mcp-read-only-report-contract.example.json` | planned report contract | Checked summary-only report output shape for a future read-only tool adapter; no report writer is implemented. |
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
+| `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
@@ -70,6 +71,7 @@ aligned.
 | `mcp-read-only-analysis-flow` | `docs/examples/mcp-read-only-analysis-flow.example.json` | Reader only; planned dry-run read-only analysis-flow contract over existing CLI/core summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-report-contract` | `docs/examples/mcp-read-only-report-contract.example.json` | Reader only; planned summary-only report output shape for a future read-only tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -511,6 +513,29 @@ The audit policy is still a planned shape. It requires future allowed
 profiles to produce redacted audit metadata, but this fixture does not
 create an audit log file, capture stdout or stderr, echo private paths,
 or execute any command.
+
+## MCP approval request boundary
+
+[`docs/examples/mcp-approval-request.example.json`](examples/mcp-approval-request.example.json)
+defines the checked approval-request shape for a future MCP/tool
+adapter. It is data-only and records the requested tool id, structured
+argument preview, permission profile, redaction policy, approval
+checklist, audit-event reference, and repository-mutation gate that
+would have to be reviewed before a future adapter invokes a tool.
+
+The fixture keeps the decision state as `not_approved`, requires user
+approval for the local input reference, and blocks write actions,
+artifact writes, repository mutation, public push, release/tag control,
+raw shell commands, silent fallback, and background mutation. It also
+keeps input references summary-only and does not echo private paths,
+stdout, stderr, raw logs, secrets, tokens, or model weight paths.
+
+This fixture is not an MCP runtime, server, client, permission executor,
+command executor, audit logger, or write path. It does not approve
+inputs, read files, execute commands, write reports, mutate
+repositories, call providers, use the network, touch hardware, access
+KV260, access FPGA repos, launch runtime code, load models, upload
+telemetry, push publicly, or control releases/tags.
 
 ## MCP audit event boundary
 

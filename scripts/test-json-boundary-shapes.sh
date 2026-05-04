@@ -121,6 +121,7 @@ run_case \
     "[mcp-read-only-analysis-flow] shape ok" \
     "[mcp-read-only-report-contract] shape ok" \
     "[mcp-permission-model] shape ok" \
+    "[mcp-approval-request] shape ok" \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
     "[plugin-audit-event] shape ok" \

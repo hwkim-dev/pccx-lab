@@ -1245,6 +1245,193 @@ def validate_mcp_permission_model(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_approval_request(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-approval-request.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "requestId",
+            "requestState",
+            "adapterState",
+            "defaultMode",
+            "automationPath",
+        ],
+    )
+    if root["requestState"] != "approval_required":
+        raise ShapeError("unexpected value at $.requestState: expected approval_required")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+
+    requested = expect_object(require_field(root, "$", "requestedTool"), "$.requestedTool")
+    require_string_fields(
+        requested,
+        "$.requestedTool",
+        [
+            "toolId",
+            "commandKind",
+            "permissionProfile",
+            "inputReferenceKind",
+            "outputBoundary",
+            "sideEffectPolicy",
+        ],
+    )
+    if expect_bool(require_field(requested, "$.requestedTool", "approvalRequired"), "$.requestedTool.approvalRequired") is not True:
+        raise ShapeError("unexpected value at $.requestedTool.approvalRequired: expected true")
+    require_string_array(
+        require_field(requested, "$.requestedTool", "fixedArgsPreview"),
+        "$.requestedTool.fixedArgsPreview",
+        min_items=1,
+    )
+
+    approval = expect_object(require_field(root, "$", "approvalPolicy"), "$.approvalPolicy")
+    require_string_fields(approval, "$.approvalPolicy", ["state", "decisionState"])
+    approval_true_flags = ["userApprovalRequired"]
+    approval_false_flags = [
+        "writeActionAllowed",
+        "artifactWriteAllowed",
+        "repositoryMutationAllowed",
+        "pathEchoAllowed",
+        "rawShellCommandsAllowed",
+        "silentFallbackAllowed",
+        "backgroundMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(approval, "$.approvalPolicy", approval_true_flags + approval_false_flags)
+    if approval["userApprovalRequired"] is not True:
+        raise ShapeError("unexpected value at $.approvalPolicy.userApprovalRequired: expected true")
+    for flag in approval_false_flags:
+        if approval[flag] is not False:
+            raise ShapeError(f"unexpected value at $.approvalPolicy.{flag}: expected false")
+
+    mutation = expect_object(
+        require_field(root, "$", "repositoryMutationBoundary"),
+        "$.repositoryMutationBoundary",
+    )
+    require_string_fields(mutation, "$.repositoryMutationBoundary", ["state", "requiredBeforeWrite"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "artifactWriteAllowed",
+        "writeBackAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.repositoryMutationBoundary", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.repositoryMutationBoundary.{flag}: expected false")
+
+    redaction = expect_object(require_field(root, "$", "redactionPolicy"), "$.redactionPolicy")
+    require_string_field(redaction, "$.redactionPolicy", "state")
+    redaction_true_flags = ["approvedInputRefOnly"]
+    redaction_false_flags = [
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "modelWeightPathsIncluded",
+    ]
+    require_bool_fields(redaction, "$.redactionPolicy", redaction_true_flags + redaction_false_flags)
+    if redaction["approvedInputRefOnly"] is not True:
+        raise ShapeError("unexpected value at $.redactionPolicy.approvedInputRefOnly: expected true")
+    for flag in redaction_false_flags:
+        if redaction[flag] is not False:
+            raise ShapeError(f"unexpected value at $.redactionPolicy.{flag}: expected false")
+
+    checks = require_object_array(
+        require_field(root, "$", "approvalChecklist"),
+        "$.approvalChecklist",
+        min_items=1,
+    )
+    for check in checks:
+        require_string_fields(
+            check,
+            "$.approvalChecklist[]",
+            ["checkId", "state", "requiredBefore", "summary"],
+        )
+
+    audit_ref = expect_object(require_field(root, "$", "auditEventRef"), "$.auditEventRef")
+    require_string_fields(
+        audit_ref,
+        "$.auditEventRef",
+        ["schemaVersion", "examplePath", "eventState", "storageState"],
+    )
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "permission-executor",
+        "arbitrary-shell-command",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "approvalFixtureOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "permissionExecutorImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "writesArtifacts",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_audit_event(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-audit-event.v0")
@@ -2346,6 +2533,7 @@ SPECS = [
     BoundarySpec("mcp-read-only-analysis-flow", "docs/examples/mcp-read-only-analysis-flow.example.json", validate_mcp_read_only_analysis_flow),
     BoundarySpec("mcp-read-only-report-contract", "docs/examples/mcp-read-only-report-contract.example.json", validate_mcp_read_only_report_contract),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
+    BoundarySpec("mcp-approval-request", "docs/examples/mcp-approval-request.example.json", validate_mcp_approval_request),
     BoundarySpec("mcp-audit-event", "docs/examples/mcp-audit-event.example.json", validate_mcp_audit_event),
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
     BoundarySpec("plugin-audit-event", "docs/examples/plugin-audit-event.example.json", validate_plugin_audit_event),

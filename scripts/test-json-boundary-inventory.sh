@@ -128,6 +128,7 @@ run_case \
     "[mcp-read-only-tool-plan] inventory ok" \
     "[mcp-read-only-report-contract] inventory ok" \
     "[mcp-permission-model] inventory ok" \
+    "[mcp-approval-request] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
     "[plugin-output-contract] inventory ok" \

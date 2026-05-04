@@ -86,6 +86,10 @@ boundary. There is no private back channel into lab internals. See
 - `docs/examples/mcp-permission-model.example.json` records the
   descriptor-only permission profiles and approval gates for a future
   MCP/tool adapter; it is not a permission runtime or command executor.
+- `docs/examples/mcp-approval-request.example.json` records the
+  approval-request and repository-mutation gate for a future MCP/tool
+  adapter; it is not an MCP runtime, permission executor, command
+  executor, audit logger, or write path.
 - `docs/examples/mcp-audit-event.example.json` records the redacted
   audit-event shape for a future read-only MCP/tool adapter; it is not
   an audit logger or runtime implementation.
