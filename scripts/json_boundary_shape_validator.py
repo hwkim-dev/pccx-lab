@@ -3531,6 +3531,414 @@ def validate_plugin_manifest_validation_result(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_review_packet(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-review-packet.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "reviewPacketId",
+            "reviewState",
+            "adapterState",
+            "defaultMode",
+            "packetKind",
+            "automationPath",
+        ],
+    )
+    if root["reviewState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.reviewState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["packetKind"] != "summary_only_plugin_review_packet":
+        raise ShapeError("unexpected value at $.packetKind: expected summary_only_plugin_review_packet")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        for field in [
+            "capabilityGrantAllowed",
+            "sandboxStartAllowed",
+            "artifactWriteAllowed",
+            "pluginInvocationAllowed",
+            "inputReaderAllowed",
+            "rawTraceAllowed",
+            "artifactReadAllowed",
+            "traceImporterAllowed",
+            "reportWriteAllowed",
+            "pathEchoAllowed",
+            "commandExecutionAllowed",
+            "manifestReaderAllowed",
+            "validatorCommandAllowed",
+            "loggerAllowed",
+        ]:
+            if field in ref and expect_bool(require_field(ref, path, field), child(path, field)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{field}: expected false")
+
+    inputs = require_object_array(
+        require_field(root, "$", "reviewInputs"),
+        "$.reviewInputs",
+        min_items=5,
+    )
+    input_ids = set()
+    allowed_input_kinds = {
+        "permission_summary",
+        "input_summary",
+        "output_summary",
+        "blocked_result_summary",
+        "manifest_validation_summary",
+        "audit_summary",
+    }
+    for input_item in inputs:
+        path = "$.reviewInputs[]"
+        require_string_fields(
+            input_item,
+            path,
+            [
+                "inputId",
+                "inputKind",
+                "inputState",
+                "sourceRef",
+                "summary",
+            ],
+        )
+        input_id = input_item["inputId"]
+        if input_id in input_ids:
+            raise ShapeError(f"duplicate value at $.reviewInputs[].inputId: {input_id}")
+        input_ids.add(input_id)
+        if input_item["inputKind"] not in allowed_input_kinds:
+            raise ShapeError(
+                "unexpected value at $.reviewInputs[].inputKind: "
+                f"expected one of {sorted(allowed_input_kinds)}"
+            )
+        if input_item["inputState"] != "approved_summary_only":
+            raise ShapeError("unexpected value at $.reviewInputs[].inputState: expected approved_summary_only")
+        true_fields = ["summaryOnly", "approvalRequired"]
+        false_fields = [
+            "localFileRead",
+            "repositoryRead",
+            "rawTraceRead",
+            "rawReportRead",
+            "artifactRead",
+            "privatePathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "artifactPathIncluded",
+        ]
+        require_bool_fields(input_item, path, true_fields + false_fields)
+        for field in true_fields:
+            if input_item[field] is not True:
+                raise ShapeError(f"unexpected value at $.reviewInputs[].{field}: expected true")
+        for field in false_fields:
+            if input_item[field] is not False:
+                raise ShapeError(f"unexpected value at $.reviewInputs[].{field}: expected false")
+        fields = require_object_array(
+            require_field(input_item, path, "fieldDescriptors"),
+            child(path, "fieldDescriptors"),
+            min_items=1,
+        )
+        for field in fields:
+            require_string_fields(
+                field,
+                "$.reviewInputs[].fieldDescriptors[]",
+                ["fieldName", "valueKind", "policy"],
+            )
+
+    policy = expect_object(require_field(root, "$", "reviewPolicy"), "$.reviewPolicy")
+    require_string_fields(policy, "$.reviewPolicy", ["state", "packetKind", "redactionRule"])
+    if policy["state"] != "planned":
+        raise ShapeError("unexpected value at $.reviewPolicy.state: expected planned")
+    if policy["packetKind"] != "summary_only_plugin_review_packet":
+        raise ShapeError("unexpected value at $.reviewPolicy.packetKind: expected summary_only_plugin_review_packet")
+    expect_integer(require_field(policy, "$.reviewPolicy", "maxSections"), "$.reviewPolicy.maxSections")
+    true_policy_flags = ["summaryOnly", "approvalRequired", "auditRequired"]
+    false_policy_flags = [
+        "pluginInvocationAllowed",
+        "pluginLoaderAllowed",
+        "pluginRuntimeAllowed",
+        "sandboxStartAllowed",
+        "permissionExecutionAllowed",
+        "inputReaderAllowed",
+        "traceImporterAllowed",
+        "manifestReaderAllowed",
+        "validatorCommandAllowed",
+        "commandExecutionAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+        "packageInstallAllowed",
+        "packageDistributionAllowed",
+        "marketplaceFlowAllowed",
+        "dynamicCodeLoadAllowed",
+        "untrustedExecutionAllowed",
+        "pathEchoAllowed",
+        "stdoutAllowed",
+        "stderrAllowed",
+        "rawLogAllowed",
+        "privatePathsAllowed",
+        "generatedArtifactsAllowed",
+    ]
+    require_bool_fields(policy, "$.reviewPolicy", true_policy_flags + false_policy_flags)
+    for flag in true_policy_flags:
+        if policy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.reviewPolicy.{flag}: expected true")
+    for flag in false_policy_flags:
+        if policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.reviewPolicy.{flag}: expected false")
+
+    packet = expect_object(require_field(root, "$", "sampleReviewPacket"), "$.sampleReviewPacket")
+    require_string_fields(
+        packet,
+        "$.sampleReviewPacket",
+        ["reviewPacketState", "targetRepository", "titlePreview"],
+    )
+    if packet["reviewPacketState"] != "summary_only_fixture":
+        raise ShapeError("unexpected value at $.sampleReviewPacket.reviewPacketState: expected summary_only_fixture")
+
+    section_false_fields = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+    ]
+    sections = require_object_array(
+        require_field(packet, "$.sampleReviewPacket", "reviewSections"),
+        "$.sampleReviewPacket.reviewSections",
+        min_items=2,
+    )
+    for section in sections:
+        path = "$.sampleReviewPacket.reviewSections[]"
+        require_string_fields(section, path, ["sectionId", "sectionKind", "heading", "summary"])
+        require_bool_fields(section, path, ["summaryOnly"] + section_false_fields)
+        if section["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleReviewPacket.reviewSections[].summaryOnly: expected true")
+        for field in section_false_fields:
+            if section[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleReviewPacket.reviewSections[].{field}: expected false")
+
+    for list_name in ["riskRows", "checklistItems"]:
+        rows = require_object_array(
+            require_field(packet, "$.sampleReviewPacket", list_name),
+            f"$.sampleReviewPacket.{list_name}",
+            min_items=1,
+        )
+        for row in rows:
+            path = f"$.sampleReviewPacket.{list_name}[]"
+            required = ["rowId", "severity", "sourceRef", "summary", "mitigation"] if list_name == "riskRows" else ["itemId", "state", "label"]
+            require_string_fields(row, path, required)
+            require_bool_fields(
+                row,
+                path,
+                ["summaryOnly", "commandIncluded", "pathIncluded", "artifactPathIncluded"],
+            )
+            if row["summaryOnly"] is not True:
+                raise ShapeError(f"unexpected value at {path}.summaryOnly: expected true")
+            for field in ["commandIncluded", "pathIncluded", "artifactPathIncluded"]:
+                if row[field] is not False:
+                    raise ShapeError(f"unexpected value at {path}.{field}: expected false")
+
+    validation_lines = require_object_array(
+        require_field(packet, "$.sampleReviewPacket", "validationLines"),
+        "$.sampleReviewPacket.validationLines",
+        min_items=1,
+    )
+    for line in validation_lines:
+        path = "$.sampleReviewPacket.validationLines[]"
+        require_string_fields(line, path, ["lineId", "result", "summary"])
+        require_bool_fields(
+            line,
+            path,
+            [
+                "summaryOnly",
+                "commandIncluded",
+                "stdoutIncluded",
+                "stderrIncluded",
+                "rawLogsIncluded",
+                "artifactPathIncluded",
+            ],
+        )
+        if line["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleReviewPacket.validationLines[].summaryOnly: expected true")
+        for field in [
+            "commandIncluded",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogsIncluded",
+            "artifactPathIncluded",
+        ]:
+            if line[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleReviewPacket.validationLines[].{field}: expected false")
+
+    packet_true_fields = ["summaryOnly"]
+    packet_false_fields = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+        "pluginInvoked",
+        "manifestRead",
+        "packageInstalled",
+        "marketplacePublished",
+        "projectUpdated",
+        "publicTextPublished",
+    ]
+    require_bool_fields(packet, "$.sampleReviewPacket", packet_true_fields + packet_false_fields)
+    if packet["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.sampleReviewPacket.summaryOnly: expected true")
+    for field in packet_false_fields:
+        if packet[field] is not False:
+            raise ShapeError(f"unexpected value at $.sampleReviewPacket.{field}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_fields = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "pluginInvocationAllowed",
+        "commandExecutionAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+        "projectMutationAllowed",
+        "marketplacePublicationAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_fields)
+    for field in mutation_false_fields:
+        if mutation[field] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{field}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "plugin-sandbox-start",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "trace-importer",
+        "manifest-reader",
+        "validator-command",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "package-install",
+        "package-distribution",
+        "marketplace-flow",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "pluginReviewPacketFixtureOnly", "summaryOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginSandboxImplemented",
+        "permissionExecutorImplemented",
+        "inputReaderImplemented",
+        "traceImporterImplemented",
+        "toolInvocationPathImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "packageInstall",
+        "packageDistribution",
+        "marketplaceFlow",
+        "dynamicCodeLoad",
+        "untrustedExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "compatibilityClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_boundary_plan(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-boundary-plan.v0")
@@ -4933,6 +5341,7 @@ SPECS = [
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
     BoundarySpec("plugin-audit-event", "docs/examples/plugin-audit-event.example.json", validate_plugin_audit_event),
     BoundarySpec("plugin-manifest-validation-result", "docs/examples/plugin-manifest-validation-result.example.json", validate_plugin_manifest_validation_result),
+    BoundarySpec("plugin-review-packet", "docs/examples/plugin-review-packet.example.json", validate_plugin_review_packet),
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
     BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
     BoundarySpec("plugin-input-contract", "docs/examples/plugin-input-contract.example.json", validate_plugin_input_contract),

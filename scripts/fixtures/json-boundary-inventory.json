@@ -376,6 +376,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-manifest-validation-result-boundary"
     },
     {
+      "boundaryKind": "plugin-review-packet",
+      "examplePath": "docs/examples/plugin-review-packet.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-review-packet-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-review-packet",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_review_packet_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-review-packet-boundary"
+    },
+    {
       "boundaryKind": "plugin-dry-run-flow",
       "examplePath": "docs/examples/plugin-dry-run-flow.example.json",
       "producingCommand": null,

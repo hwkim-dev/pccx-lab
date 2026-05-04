@@ -2879,3 +2879,218 @@ fn plugin_manifest_validation_result_example_keeps_summary_only_boundary() {
     assert_eq!(safety["publicPush"], false);
     assert_eq!(safety["releaseOrTag"], false);
 }
+
+#[test]
+fn plugin_review_packet_example_keeps_summary_only_boundary() {
+    let value: serde_json::Value = parse_example("plugin-review-packet.example.json");
+    let root = value
+        .as_object()
+        .expect("plugin review packet must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.plugin-review-packet.v0");
+    assert_eq!(root["reviewState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(root["packetKind"], "summary_only_plugin_review_packet");
+
+    let sources = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "plugin_permission_model"
+            && source["sandboxStartAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "plugin_blocked_invocation_result"
+            && source["commandExecutionAllowed"] == false
+            && source["pluginInvocationAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "plugin_manifest_validation_result"
+            && source["manifestReaderAllowed"] == false
+            && source["validatorCommandAllowed"] == false
+    }));
+
+    let inputs = root["reviewInputs"]
+        .as_array()
+        .expect("review inputs must be an array");
+    assert!(
+        inputs.len() >= 6,
+        "plugin review packet should include permission, input, output, blocked result, manifest validation, and audit summaries"
+    );
+    for input in inputs {
+        assert_eq!(input["inputState"], "approved_summary_only");
+        assert_eq!(input["summaryOnly"], true);
+        assert_eq!(input["approvalRequired"], true);
+        assert_eq!(input["localFileRead"], false);
+        assert_eq!(input["repositoryRead"], false);
+        assert_eq!(input["rawTraceRead"], false);
+        assert_eq!(input["rawReportRead"], false);
+        assert_eq!(input["artifactRead"], false);
+        assert_eq!(input["privatePathEchoAllowed"], false);
+        assert_eq!(input["stdoutIncluded"], false);
+        assert_eq!(input["stderrIncluded"], false);
+        assert_eq!(input["rawLogIncluded"], false);
+        assert_eq!(input["artifactPathIncluded"], false);
+        assert!(input["fieldDescriptors"].as_array().is_some());
+    }
+
+    let policy = root["reviewPolicy"]
+        .as_object()
+        .expect("review policy must be an object");
+    assert_eq!(policy["summaryOnly"], true);
+    assert_eq!(policy["approvalRequired"], true);
+    assert_eq!(policy["auditRequired"], true);
+    assert_eq!(policy["pluginInvocationAllowed"], false);
+    assert_eq!(policy["pluginLoaderAllowed"], false);
+    assert_eq!(policy["pluginRuntimeAllowed"], false);
+    assert_eq!(policy["sandboxStartAllowed"], false);
+    assert_eq!(policy["permissionExecutionAllowed"], false);
+    assert_eq!(policy["inputReaderAllowed"], false);
+    assert_eq!(policy["traceImporterAllowed"], false);
+    assert_eq!(policy["manifestReaderAllowed"], false);
+    assert_eq!(policy["validatorCommandAllowed"], false);
+    assert_eq!(policy["commandExecutionAllowed"], false);
+    assert_eq!(policy["localFileReadAllowed"], false);
+    assert_eq!(policy["repositoryReadAllowed"], false);
+    assert_eq!(policy["rawTraceReadAllowed"], false);
+    assert_eq!(policy["rawReportReadAllowed"], false);
+    assert_eq!(policy["artifactReadAllowed"], false);
+    assert_eq!(policy["artifactWriteAllowed"], false);
+    assert_eq!(policy["reportWriteAllowed"], false);
+    assert_eq!(policy["repositoryMutationAllowed"], false);
+    assert_eq!(policy["packageInstallAllowed"], false);
+    assert_eq!(policy["packageDistributionAllowed"], false);
+    assert_eq!(policy["marketplaceFlowAllowed"], false);
+    assert_eq!(policy["dynamicCodeLoadAllowed"], false);
+    assert_eq!(policy["untrustedExecutionAllowed"], false);
+
+    let packet = root["sampleReviewPacket"]
+        .as_object()
+        .expect("sample review packet must be an object");
+    assert_eq!(packet["reviewPacketState"], "summary_only_fixture");
+    assert_eq!(packet["summaryOnly"], true);
+    assert_eq!(packet["pathIncluded"], false);
+    assert_eq!(packet["privatePathsIncluded"], false);
+    assert_eq!(packet["stdoutIncluded"], false);
+    assert_eq!(packet["stderrIncluded"], false);
+    assert_eq!(packet["rawLogsIncluded"], false);
+    assert_eq!(packet["artifactPathsIncluded"], false);
+    assert_eq!(packet["generatedArtifactsIncluded"], false);
+    assert_eq!(packet["rawTraceIncluded"], false);
+    assert_eq!(packet["rawReportIncluded"], false);
+    assert_eq!(packet["pluginInvoked"], false);
+    assert_eq!(packet["manifestRead"], false);
+    assert_eq!(packet["packageInstalled"], false);
+    assert_eq!(packet["marketplacePublished"], false);
+
+    let sections = packet["reviewSections"]
+        .as_array()
+        .expect("sample review sections must be an array");
+    assert!(sections.iter().all(|section| {
+        section["summaryOnly"] == true
+            && section["pathIncluded"] == false
+            && section["stdoutIncluded"] == false
+            && section["stderrIncluded"] == false
+            && section["rawLogsIncluded"] == false
+            && section["rawTraceIncluded"] == false
+            && section["rawReportIncluded"] == false
+    }));
+
+    let mutation = root["noMutationEvidence"]
+        .as_object()
+        .expect("no mutation evidence must be an object");
+    assert_eq!(mutation["trackedFileMutationAllowed"], false);
+    assert_eq!(mutation["trackedFileDiffCaptured"], false);
+    assert_eq!(mutation["artifactReadAllowed"], false);
+    assert_eq!(mutation["artifactWriteAllowed"], false);
+    assert_eq!(mutation["reportWriteAllowed"], false);
+    assert_eq!(mutation["repositoryMutationAllowed"], false);
+    assert_eq!(mutation["pluginInvocationAllowed"], false);
+    assert_eq!(mutation["commandExecutionAllowed"], false);
+    assert_eq!(mutation["marketplacePublicationAllowed"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "plugin-loader-start",
+        "plugin-runtime-start",
+        "plugin-sandbox-start",
+        "plugin-invocation",
+        "permission-executor",
+        "input-reader",
+        "trace-importer",
+        "manifest-reader",
+        "validator-command",
+        "command-execution",
+        "package-install",
+        "package-distribution",
+        "marketplace-flow",
+        "dynamic-code-load",
+        "untrusted-execution",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["pluginReviewPacketFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["pluginRuntimeImplemented"], false);
+    assert_eq!(safety["pluginLoaderImplemented"], false);
+    assert_eq!(safety["pluginSandboxImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["inputReaderImplemented"], false);
+    assert_eq!(safety["traceImporterImplemented"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["packageInstall"], false);
+    assert_eq!(safety["packageDistribution"], false);
+    assert_eq!(safety["marketplaceFlow"], false);
+    assert_eq!(safety["dynamicCodeLoad"], false);
+    assert_eq!(safety["untrustedExecution"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["compatibilityClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+}
