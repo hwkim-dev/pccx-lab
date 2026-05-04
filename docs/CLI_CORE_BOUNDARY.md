@@ -28,6 +28,7 @@ separate workflow logic island.
 | `docs/examples/sail-review-packet.example.json` | planned Sail review packet | Checked summary-only Sail review packet over approved adoption, interface, workflow, verification, and report-gate summaries; no Sail source reader, RTL source reader, AST reader, parser, compiler, model generator, model execution, refinement check, proof path, report reader/writer, artifact reader/writer, or hardware path is implemented. |
 | `docs/examples/sail-evidence-manifest.example.json` | planned Sail evidence manifest | Checked summary-only Sail evidence manifest over approved adoption, interface, review, workflow, and verification-gate summaries; no Sail source reader, RTL source reader, AST reader, parser, compiler, model generator, model execution, refinement check, proof path, report reader/writer, artifact reader/writer, command runner, repository reader, or hardware path is implemented. |
 | `docs/examples/sail-evidence-detail.example.json` | planned Sail evidence detail | Checked descriptor-only Sail evidence detail for one selected approved evidence summary reference; no Sail source reader, RTL source reader, AST reader, generated-model reader, parser, compiler, model generator, model execution, refinement check, proof path, verification run, report reader/writer, artifact reader/writer, command runner, repository reader, marketplace flow, or hardware path is implemented. |
+| `docs/examples/sail-model-readiness.example.json` | planned Sail model readiness | Checked descriptor-only Sail model readiness gate over approved Sail boundary summaries; no Sail source reader, RTL source reader, AST reader, generated-model reader, parser, compiler, model generator, model execution, refinement check, proof path, verification run, report reader/writer, artifact reader/writer, command runner, repository reader, marketplace flow, or hardware path is implemented. |
 | `docs/examples/hybrid-strategy-plan.example.json` | planned hybrid strategy boundary | Checked descriptor-only C++/SystemVerilog and custom-script control plan; no source reader, grammar reader, parser, compiler, runtime, simulator runner, verification run, report writer, artifact writer, or hardware-control path is implemented. |
 | `docs/examples/hybrid-interface-boundary.example.json` | planned hybrid interface boundary | Checked descriptor-only hybrid CLI/core handoff boundary over approved summaries; no C++/SystemVerilog/custom-script source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, or hardware-control path is implemented. |
 | `docs/examples/hybrid-review-packet.example.json` | planned hybrid review packet | Checked summary-only hybrid review packet over approved strategy, interface, workflow, verification, and report-gate summaries; no source reader, grammar reader, parser, compiler, runtime, script execution, simulator runner, verification run, report reader/writer, artifact reader/writer, or hardware-control path is implemented. |
@@ -109,6 +110,7 @@ aligned.
 | `sail-review-packet` | `docs/examples/sail-review-packet.example.json` | Reader only; planned summary-only Sail review packet over approved adoption, interface, workflow, verification, and report-gate summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `sail-evidence-manifest` | `docs/examples/sail-evidence-manifest.example.json` | Reader only; planned summary-only Sail evidence manifest over approved adoption, interface, review, workflow, and verification-gate summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `sail-evidence-detail` | `docs/examples/sail-evidence-detail.example.json` | Reader only; planned descriptor-only Sail evidence detail over one approved evidence summary reference | Shape validator, inventory test, Rust JSON-shape test |
+| `sail-model-readiness` | `docs/examples/sail-model-readiness.example.json` | Reader only; planned descriptor-only Sail model-readiness gate over approved Sail boundary summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-strategy-plan` | `docs/examples/hybrid-strategy-plan.example.json` | Reader only; planned descriptor-only hybrid C++/SystemVerilog and custom-script boundary over approved CLI/core planning summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-interface-boundary` | `docs/examples/hybrid-interface-boundary.example.json` | Reader only; planned descriptor-only hybrid CLI/core handoff boundary over approved summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-review-packet` | `docs/examples/hybrid-review-packet.example.json` | Reader only; planned summary-only hybrid review packet over approved strategy, interface, workflow, verification, and report-gate summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -510,6 +512,36 @@ behavior, model generation, execution, refinement, proof, verification,
 hardware control, report output, artifact handling, evidence
 publication, and any marketplace-facing flow. No runtime, hardware,
 marketplace, release, or API/ABI stability claim is made.
+
+## Sail model-readiness boundary
+
+[`docs/examples/sail-model-readiness.example.json`](examples/sail-model-readiness.example.json)
+defines the checked descriptor-only readiness gate for future Sail model
+work over the approved Sail adoption, interface, review, evidence
+manifest, and evidence-detail summaries. It records prerequisite
+metadata and blocked action classes only. The fixture does not accept
+Sail source, RTL source, Sail ASTs, generated models, parser output,
+compiler output, model execution results, refinement results, proof
+results, verification output, hardware-control output, report bodies,
+artifacts, commands, logs, repository inputs, model paths, board dumps,
+or hardware dumps.
+
+The readiness fixture is metadata only. It does not read Sail sources,
+read RTL sources, read ASTs, read generated models, generate models,
+execute models, run refinement checks, run proofs, run simulators, run
+verification, read or write reports, read or write artifacts, execute
+commands, read repositories, mutate repositories, publish public text,
+call providers, use the network, touch hardware, access KV260, access
+FPGA repos, load models, upload telemetry, push publicly, or control
+releases/tags.
+
+The readiness boundary is approved for descriptor metadata only. A
+future implementation requires separate reviewed boundaries for source
+inputs, parser/compiler behavior, model generation, execution,
+refinement, proof, verification, hardware control, report output,
+artifact handling, evidence publication, and any marketplace-facing
+flow. No runtime, hardware, marketplace, release, or API/ABI stability
+claim is made.
 
 ## Hybrid strategy plan boundary
 

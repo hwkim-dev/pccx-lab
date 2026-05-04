@@ -206,6 +206,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-evidence-detail-boundary"
     },
     {
+      "boundaryKind": "sail-model-readiness",
+      "examplePath": "docs/examples/sail-model-readiness.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#sail-model-readiness-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "sail-model-readiness",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "sail_model_readiness_example_keeps_descriptor_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-model-readiness-boundary"
+    },
+    {
       "boundaryKind": "hybrid-strategy-plan",
       "examplePath": "docs/examples/hybrid-strategy-plan.example.json",
       "producingCommand": null,

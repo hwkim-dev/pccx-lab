@@ -14372,6 +14372,410 @@ def validate_sail_evidence_detail(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_sail_model_readiness(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.sail-model-readiness.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "readinessId",
+            "readinessState",
+            "adapterState",
+            "defaultMode",
+            "hostMode",
+            "gateKind",
+        ],
+    )
+    expected_states = {
+        "readinessState": "descriptor_only",
+        "adapterState": "not_implemented",
+        "defaultMode": "read_only",
+        "hostMode": "cli_core_first_gui_second",
+        "gateKind": "future_sail_model_readiness_gate",
+    }
+    for field, expected in expected_states.items():
+        if root[field] != expected:
+            raise ShapeError(f"unexpected value at $.{field}: expected {expected}")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=5,
+    )
+    ref_ids = set()
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        ref_ids.add(ref["refId"])
+        if ref.get("summaryOnly") is not True:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].summaryOnly: expected true")
+        if ref.get("readinessInput") is not True:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].readinessInput: expected true")
+        for flag in [
+            "sourceReadAllowed",
+            "rtlSourceReadAllowed",
+            "astReadAllowed",
+            "generatedModelReadAllowed",
+            "executionAllowed",
+            "artifactWriteAllowed",
+            "hardwareControlAllowed",
+            "commandExecutionAllowed",
+            "modelExecutionAllowed",
+            "repositoryMutationAllowed",
+            "sourceReaderAllowed",
+            "rtlSourceReaderAllowed",
+            "astReaderAllowed",
+            "generatedModelReaderAllowed",
+            "artifactReaderAllowed",
+            "reportReaderAllowed",
+        ]:
+            if flag in ref and ref[flag] is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{flag}: expected false")
+    for ref_id in [
+        "sail_adoption_plan",
+        "sail_interface_boundary",
+        "sail_review_packet",
+        "sail_evidence_manifest",
+        "sail_evidence_detail",
+    ]:
+        if ref_id not in ref_ids:
+            raise ShapeError(f"missing source boundary ref: {ref_id}")
+
+    request = expect_object(require_field(root, "$", "readinessRequest"), "$.readinessRequest")
+    require_string_fields(
+        request,
+        "$.readinessRequest",
+        [
+            "requestKind",
+            "commandKind",
+            "sourceReferenceKind",
+            "outputBoundary",
+            "summary",
+        ],
+    )
+    if request["requestKind"] != "planned_sail_model_readiness":
+        raise ShapeError("unexpected value at $.readinessRequest.requestKind: expected planned_sail_model_readiness")
+    if request["outputBoundary"] != "pccx.lab.sail-model-readiness.v0":
+        raise ShapeError("unexpected value at $.readinessRequest.outputBoundary")
+    fixed_args = require_field(request, "$.readinessRequest", "fixedArgsPreview")
+    require_string_array(fixed_args, "$.readinessRequest.fixedArgsPreview", min_items=4)
+    if fixed_args[:4] != ["sail-model", "readiness", "--format", "json"]:
+        raise ShapeError("unexpected value at $.readinessRequest.fixedArgsPreview")
+    request_true_flags = ["summaryOnly", "inputRefOnly"]
+    request_false_flags = [
+        "approvalRequired",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "sailSourceReadAllowed",
+        "rtlSourceReadAllowed",
+        "sailAstReadAllowed",
+        "generatedModelReadAllowed",
+        "parserOutputReadAllowed",
+        "compilerOutputReadAllowed",
+        "modelExecutionReadAllowed",
+        "refinementResultReadAllowed",
+        "proofResultReadAllowed",
+        "verificationResultReadAllowed",
+        "hardwareControlReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "evidenceArtifactReadAllowed",
+        "evidenceArtifactWriteAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "parserExecutionAllowed",
+        "compilerExecutionAllowed",
+        "modelGenerationAllowed",
+        "modelExecutionAllowed",
+        "refinementCheckAllowed",
+        "formalProofAllowed",
+        "simulatorExecutionAllowed",
+        "verificationRunAllowed",
+        "hardwareControlAllowed",
+        "publicTextPublicationAllowed",
+        "providerCallAllowed",
+        "networkCallAllowed",
+        "launcherExecutionAllowed",
+        "editorExecutionAllowed",
+        "hardwareAccessAllowed",
+        "kv260AccessAllowed",
+        "fpgaRepoAccessAllowed",
+        "modelLoadAllowed",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(request, "$.readinessRequest", request_true_flags + request_false_flags)
+    for flag in request_true_flags:
+        if request[flag] is not True:
+            raise ShapeError(f"unexpected value at $.readinessRequest.{flag}: expected true")
+    for flag in request_false_flags:
+        if request[flag] is not False:
+            raise ShapeError(f"unexpected value at $.readinessRequest.{flag}: expected false")
+
+    checklist = require_object_array(
+        require_field(root, "$", "readinessChecklist"),
+        "$.readinessChecklist",
+        min_items=3,
+    )
+    checklist_ids = set()
+    checklist_true_flags = [
+        "required",
+        "summaryAvailable",
+        "summaryOnly",
+        "requiresSeparateSourceBoundary",
+        "requiresSeparateParserBoundary",
+        "requiresSeparateExecutionBoundary",
+    ]
+    checklist_false_flags = [
+        "sourceReadAllowed",
+        "parserExecutionAllowed",
+        "compilerExecutionAllowed",
+        "modelGenerationAllowed",
+        "modelExecutionAllowed",
+        "refinementCheckAllowed",
+        "formalProofAllowed",
+        "verificationRunAllowed",
+        "hardwareControlAllowed",
+    ]
+    for item in checklist:
+        path = "$.readinessChecklist[]"
+        require_string_fields(
+            item,
+            path,
+            ["checkId", "sourceRef", "readinessContribution", "checkState"],
+        )
+        checklist_ids.add(item["checkId"])
+        if item["checkState"] != "metadata_ready":
+            raise ShapeError("unexpected value at $.readinessChecklist[].checkState: expected metadata_ready")
+        require_bool_fields(item, path, checklist_true_flags + checklist_false_flags)
+        for flag in checklist_true_flags:
+            if item[flag] is not True:
+                raise ShapeError(f"unexpected value at $.readinessChecklist[].{flag}: expected true")
+        for flag in checklist_false_flags:
+            if item[flag] is not False:
+                raise ShapeError(f"unexpected value at $.readinessChecklist[].{flag}: expected false")
+    for check_id in [
+        "sail_adoption_boundary_available",
+        "sail_interface_boundary_available",
+        "sail_evidence_summary_available",
+    ]:
+        if check_id not in checklist_ids:
+            raise ShapeError(f"missing readiness checklist item: {check_id}")
+
+    result = expect_object(require_field(root, "$", "readinessResult"), "$.readinessResult")
+    require_string_fields(
+        result,
+        "$.readinessResult",
+        ["resultState", "modelReadiness", "cliCoreGate", "guiGate", "summary"],
+    )
+    if result["resultState"] != "metadata_only":
+        raise ShapeError("unexpected value at $.readinessResult.resultState: expected metadata_only")
+    if result["modelReadiness"] != "not_ready_for_execution":
+        raise ShapeError("unexpected value at $.readinessResult.modelReadiness: expected not_ready_for_execution")
+    result_true_flags = ["summaryOnly"]
+    result_false_flags = [
+        "readyForSourceIntake",
+        "readyForParser",
+        "readyForCompiler",
+        "readyForModelGeneration",
+        "readyForModelExecution",
+        "readyForRefinementCheck",
+        "readyForFormalProof",
+        "readyForVerificationRun",
+        "readyForHardwareControl",
+        "readyForReportRead",
+        "readyForArtifactRead",
+        "readyForRepositoryRead",
+        "readyForRelease",
+        "readyForMarketplace",
+        "runtimeClaim",
+        "hardwareClaim",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(result, "$.readinessResult", result_true_flags + result_false_flags)
+    if result["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.readinessResult.summaryOnly: expected true")
+    for flag in result_false_flags:
+        if result[flag] is not False:
+            raise ShapeError(f"unexpected value at $.readinessResult.{flag}: expected false")
+
+    display = expect_object(require_field(root, "$", "displayPolicy"), "$.displayPolicy")
+    require_string_fields(display, "$.displayPolicy", ["surface", "guiPolicy"])
+    require_string_array(require_field(display, "$.displayPolicy", "allowedFields"), "$.displayPolicy.allowedFields", min_items=1)
+    require_string_array(require_field(display, "$.displayPolicy", "blockedFields"), "$.displayPolicy.blockedFields", min_items=1)
+    display_true_flags = ["summaryOnly"]
+    display_false_flags = [
+        "pathEchoAllowed",
+        "privatePathsIncluded",
+        "payloadIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "rawReportIncluded",
+        "artifactPathsIncluded",
+        "reportContentIncluded",
+        "sourceIncluded",
+        "rtlSourceIncluded",
+        "sailAstIncluded",
+        "generatedModelIncluded",
+        "hardwareDumpIncluded",
+        "boardDumpIncluded",
+        "modelPathsIncluded",
+    ]
+    require_bool_fields(display, "$.displayPolicy", display_true_flags + display_false_flags)
+    if display["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.displayPolicy.summaryOnly: expected true")
+    for flag in display_false_flags:
+        if display[flag] is not False:
+            raise ShapeError(f"unexpected value at $.displayPolicy.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "sailSourceReadAllowed",
+        "rtlSourceReadAllowed",
+        "sailAstReadAllowed",
+        "generatedModelReadAllowed",
+        "rawReportReadAllowed",
+        "rawLogReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportReadAllowed",
+        "reportWriteAllowed",
+        "evidenceArtifactReadAllowed",
+        "evidenceArtifactWriteAllowed",
+        "commandExecutionAllowed",
+        "repositoryMutationAllowed",
+        "publicTextPublicationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "sail-source-read",
+        "rtl-source-read",
+        "sail-ast-read",
+        "generated-model-read",
+        "sail-parser",
+        "sail-compiler",
+        "sail-model-generation",
+        "sail-model-execution",
+        "refinement-check",
+        "formal-proof",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "command-execution",
+        "local-file-read",
+        "repository-read",
+        "raw-report-read",
+        "raw-log-read",
+        "artifact-read",
+        "report-read",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "model-load",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    safety_true_flags = ["dataOnly", "descriptorOnly", "readOnly", "summaryOnly", "sailModelReadinessFixtureOnly"]
+    safety_false_flags = [
+        "sailSourceReaderImplemented",
+        "rtlSourceReaderImplemented",
+        "sailAstReaderImplemented",
+        "generatedModelReaderImplemented",
+        "sailParserImplemented",
+        "sailCompilerImplemented",
+        "sailModelGeneratorImplemented",
+        "sailModelExecution",
+        "refinementExecution",
+        "formalProofExecution",
+        "simulatorExecution",
+        "verificationExecution",
+        "hardwareControl",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawReportRead",
+        "rawLogRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportReaderImplemented",
+        "reportWriterImplemented",
+        "evidenceArtifactReaderImplemented",
+        "evidenceArtifactWriterImplemented",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "modelWeightsIncluded",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "rawReportIncluded",
+        "artifactPathsIncluded",
+        "hardwareDumpIncluded",
+        "boardDumpIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+        "marketplaceClaim",
+        "runtimeClaim",
+        "hardwareClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", safety_true_flags + safety_false_flags)
+    for flag in safety_true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in safety_false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_hybrid_strategy_plan(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.hybrid-strategy-plan.v0")
@@ -16255,6 +16659,7 @@ SPECS = [
     BoundarySpec("sail-review-packet", "docs/examples/sail-review-packet.example.json", validate_sail_review_packet),
     BoundarySpec("sail-evidence-manifest", "docs/examples/sail-evidence-manifest.example.json", validate_sail_evidence_manifest),
     BoundarySpec("sail-evidence-detail", "docs/examples/sail-evidence-detail.example.json", validate_sail_evidence_detail),
+    BoundarySpec("sail-model-readiness", "docs/examples/sail-model-readiness.example.json", validate_sail_model_readiness),
     BoundarySpec("hybrid-strategy-plan", "docs/examples/hybrid-strategy-plan.example.json", validate_hybrid_strategy_plan),
     BoundarySpec("hybrid-interface-boundary", "docs/examples/hybrid-interface-boundary.example.json", validate_hybrid_interface_boundary),
     BoundarySpec("hybrid-review-packet", "docs/examples/hybrid-review-packet.example.json", validate_hybrid_review_packet),
