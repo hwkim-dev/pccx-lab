@@ -392,6 +392,42 @@ any plugin loader. It does not load plugin code, execute untrusted code,
 define a package distribution flow, or grant approval to write files or
 mutate repositories.
 
+## Plugin Capability List
+
+Full fixture:
+[`plugin-capability-list.example.json`](examples/plugin-capability-list.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-capability-list.v0",
+  "listState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "capabilityListRequest": {
+    "requestKind": "planned_plugin_capability_listing",
+    "summaryOnly": true,
+    "manifestContentIncluded": false,
+    "pluginLoaderAllowed": false,
+    "capabilityDispatchAllowed": false
+  },
+  "capabilities": [
+    {
+      "capabilityId": "plugin.diagnostics.summary",
+      "approvedForListing": true,
+      "approvedForLoad": false,
+      "approvedForDispatch": false
+    }
+  ]
+}
+```
+
+Use this fixture to review the descriptor-only capability listing
+surface before implementing a plugin loader or dispatcher. It does not
+read manifests or packages, load plugin code, dispatch capabilities,
+execute commands, write reports, mutate repositories, call providers,
+use the network, touch hardware, or control releases/tags. No stable
+plugin ABI, compatibility, or marketplace claim is made.
+
 ## Plugin Dry-Run Flow
 
 Full fixture:

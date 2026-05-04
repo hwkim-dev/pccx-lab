@@ -4483,6 +4483,311 @@ def validate_plugin_manifest_validation_result(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_capability_list(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-capability-list.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "capabilityListId",
+            "listState",
+            "adapterState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    if root["listState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.listState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["hostMode"] != "cli_core_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_core_first_gui_second")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        require_string_fields(ref, "$.sourceBoundaryRefs[]", ["refId", "schemaVersion", "examplePath", "state"])
+    if not any(
+        ref["refId"] == "plugin_boundary_plan"
+        and ref.get("manifestReaderAllowed") is False
+        and ref.get("packageReaderAllowed") is False
+        and ref.get("pluginLoaderAllowed") is False
+        and ref.get("pluginRuntimeAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing plugin_boundary_plan disabled source reference")
+    if not any(
+        ref["refId"] == "plugin_manifest_validation_result"
+        and ref.get("summaryOnly") is True
+        and ref.get("manifestReaderAllowed") is False
+        and ref.get("validatorCommandAllowed") is False
+        and ref.get("pluginCodeLoadAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing plugin_manifest_validation_result summary-only source reference")
+    if not any(
+        ref["refId"] == "plugin_permission_model"
+        and ref.get("permissionExecutorAllowed") is False
+        and ref.get("sandboxStartAllowed") is False
+        and ref.get("pluginInvocationAllowed") is False
+        for ref in refs
+    ):
+        raise ShapeError("missing plugin_permission_model disabled source reference")
+
+    request = expect_object(
+        require_field(root, "$", "capabilityListRequest"),
+        "$.capabilityListRequest",
+    )
+    require_string_fields(
+        request,
+        "$.capabilityListRequest",
+        [
+            "requestKind",
+            "commandKind",
+            "sourceReferenceKind",
+            "outputBoundary",
+            "summary",
+        ],
+    )
+    require_string_array(
+        require_field(request, "$.capabilityListRequest", "fixedArgsPreview"),
+        "$.capabilityListRequest.fixedArgsPreview",
+        min_items=1,
+    )
+    request_true_flags = ["summaryOnly", "inputRefOnly"]
+    request_false_flags = [
+        "approvalRequired",
+        "pathEchoAllowed",
+        "privatePathEchoAllowed",
+        "manifestContentIncluded",
+        "packageContentIncluded",
+        "sourceCodeIncluded",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "artifactReadAllowed",
+        "commandExecutionAllowed",
+        "shellExecutionAllowed",
+        "runtimeExecutionAllowed",
+        "pluginLoaderAllowed",
+        "pluginRuntimeAllowed",
+        "sandboxStartAllowed",
+        "hostApiBindAllowed",
+        "capabilityDispatchAllowed",
+        "pluginInvocationAllowed",
+        "packageInstallAllowed",
+        "packageDistributionAllowed",
+        "marketplaceFlowAllowed",
+        "dynamicCodeLoadAllowed",
+        "providerCallAllowed",
+        "networkCallAllowed",
+        "launcherExecutionAllowed",
+        "editorExecutionAllowed",
+        "hardwareAccessAllowed",
+        "modelLoadAllowed",
+        "stableApiAbiClaim",
+        "compatibilityClaim",
+        "marketplaceClaim",
+    ]
+    require_bool_fields(request, "$.capabilityListRequest", request_true_flags + request_false_flags)
+    for flag in request_true_flags:
+        if request[flag] is not True:
+            raise ShapeError(f"unexpected value at $.capabilityListRequest.{flag}: expected true")
+    for flag in request_false_flags:
+        if request[flag] is not False:
+            raise ShapeError(f"unexpected value at $.capabilityListRequest.{flag}: expected false")
+
+    capabilities = require_object_array(
+        require_field(root, "$", "capabilities"),
+        "$.capabilities",
+        min_items=1,
+    )
+    capability_ids = set()
+    for capability in capabilities:
+        path = "$.capabilities[]"
+        require_string_fields(
+            capability,
+            path,
+            [
+                "capabilityId",
+                "displayName",
+                "capabilityState",
+                "listState",
+                "permissionProfile",
+                "inputPolicy",
+                "outputPolicy",
+                "reviewSource",
+            ],
+        )
+        capability_ids.add(capability["capabilityId"])
+        capability_true_flags = ["approvedForListing"]
+        capability_false_flags = [
+            "approvedForLoad",
+            "approvedForDispatch",
+            "pluginLoaderAllowed",
+            "pluginRuntimeAllowed",
+            "sandboxStartAllowed",
+            "capabilityDispatchAllowed",
+            "pluginInvocationAllowed",
+            "inputReaderAllowed",
+            "traceImporterAllowed",
+            "reportWriteAllowed",
+            "artifactWriteAllowed",
+            "stableAbiRequired",
+        ]
+        require_bool_fields(capability, path, capability_true_flags + capability_false_flags)
+        for flag in capability_true_flags:
+            if capability[flag] is not True:
+                raise ShapeError(f"unexpected value at {path}.{flag}: expected true")
+        for flag in capability_false_flags:
+            if capability[flag] is not False:
+                raise ShapeError(f"unexpected value at {path}.{flag}: expected false")
+    for capability_id in [
+        "plugin.diagnostics.summary",
+        "plugin.report.panel",
+        "plugin.trace.importer",
+    ]:
+        if capability_id not in capability_ids:
+            raise ShapeError(f"missing capability id in $.capabilities: {capability_id}")
+
+    display = expect_object(require_field(root, "$", "displayPolicy"), "$.displayPolicy")
+    require_string_fields(display, "$.displayPolicy", ["surface", "guiPolicy"])
+    require_string_array(
+        require_field(display, "$.displayPolicy", "allowedFields"),
+        "$.displayPolicy.allowedFields",
+        min_items=1,
+    )
+    require_string_array(
+        require_field(display, "$.displayPolicy", "blockedFields"),
+        "$.displayPolicy.blockedFields",
+        min_items=1,
+    )
+    display_true_flags = ["summaryOnly"]
+    display_false_flags = [
+        "pathEchoAllowed",
+        "manifestContentIncluded",
+        "packageContentIncluded",
+        "sourceCodeIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+    ]
+    require_bool_fields(display, "$.displayPolicy", display_true_flags + display_false_flags)
+    for flag in display_true_flags:
+        if display[flag] is not True:
+            raise ShapeError(f"unexpected value at $.displayPolicy.{flag}: expected true")
+    for flag in display_false_flags:
+        if display[flag] is not False:
+            raise ShapeError(f"unexpected value at $.displayPolicy.{flag}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_flags = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "pluginLoadAllowed",
+        "pluginInvocationAllowed",
+        "commandExecutionAllowed",
+        "packageInstallAllowed",
+        "packageDistributionAllowed",
+        "marketplacePublicationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_flags)
+    for flag in mutation_false_flags:
+        if mutation[flag] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "blockedActions"), "$.blockedActions", min_items=1)
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = [
+        "dataOnly",
+        "descriptorOnly",
+        "readOnly",
+        "summaryOnly",
+        "capabilityListFixtureOnly",
+    ]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "sandboxImplemented",
+        "permissionExecutorImplemented",
+        "manifestReaderImplemented",
+        "packageReaderImplemented",
+        "inputReaderImplemented",
+        "traceImporterImplemented",
+        "capabilityDispatchImplemented",
+        "pluginInvocationImplemented",
+        "stablePluginAbiPromised",
+        "stableApiAbiClaim",
+        "compatibilityClaim",
+        "marketplaceClaim",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "manifestContentIncluded",
+        "packageContentIncluded",
+        "sourceCodeIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_load_request(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-load-request.v0")
@@ -7248,6 +7553,7 @@ SPECS = [
     BoundarySpec("plugin-permission-model", "docs/examples/plugin-permission-model.example.json", validate_plugin_permission_model),
     BoundarySpec("plugin-audit-event", "docs/examples/plugin-audit-event.example.json", validate_plugin_audit_event),
     BoundarySpec("plugin-manifest-validation-result", "docs/examples/plugin-manifest-validation-result.example.json", validate_plugin_manifest_validation_result),
+    BoundarySpec("plugin-capability-list", "docs/examples/plugin-capability-list.example.json", validate_plugin_capability_list),
     BoundarySpec("plugin-load-request", "docs/examples/plugin-load-request.example.json", validate_plugin_load_request),
     BoundarySpec("plugin-host-session-state", "docs/examples/plugin-host-session-state.example.json", validate_plugin_host_session_state),
     BoundarySpec("plugin-invocation-request", "docs/examples/plugin-invocation-request.example.json", validate_plugin_invocation_request),
