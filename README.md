@@ -104,6 +104,10 @@ boundary. There is no private back channel into lab internals. See
   dry-run flow contract for future approved plugin manifest, capability,
   diagnostics, and report-panel summaries; it is not a plugin loader,
   runtime, sandbox, command executor, or report writer.
+- `docs/examples/plugin-input-contract.example.json` records the
+  summary-only input shape for future approved plugin diagnostics and
+  report previews; it is not a plugin loader, runtime, input reader,
+  command executor, artifact reader, or stable ABI.
 - `docs/examples/plugin-output-contract.example.json` records the
   summary-only output shape for future plugin diagnostic, report-panel,
   and report item previews; it is not a plugin loader, runtime, command

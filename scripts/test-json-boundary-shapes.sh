@@ -128,6 +128,7 @@ run_case \
     "[plugin-audit-event] shape ok" \
     "[plugin-boundary-plan] shape ok" \
     "[plugin-dry-run-flow] shape ok" \
+    "[plugin-input-contract] shape ok" \
     "[plugin-output-contract] shape ok"
 
 run_case \

@@ -308,6 +308,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-dry-run-flow-boundary"
     },
     {
+      "boundaryKind": "plugin-input-contract",
+      "examplePath": "docs/examples/plugin-input-contract.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-input-contract-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-input-contract",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_input_contract_example_keeps_summary_input_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-input-contract-boundary"
+    },
+    {
       "boundaryKind": "plugin-output-contract",
       "examplePath": "docs/examples/plugin-output-contract.example.json",
       "producingCommand": null,
