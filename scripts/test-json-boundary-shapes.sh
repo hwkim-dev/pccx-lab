@@ -137,6 +137,7 @@ run_case \
     "[mcp-invocation-request] shape ok" \
     "[mcp-blocked-invocation-result] shape ok" \
     "[mcp-audit-event] shape ok" \
+    "[sail-interface-boundary] shape ok" \
     "[hybrid-strategy-plan] shape ok" \
     "[plugin-permission-model] shape ok" \
     "[plugin-audit-event] shape ok" \

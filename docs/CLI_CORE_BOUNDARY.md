@@ -24,6 +24,7 @@ separate workflow logic island.
 | `pccx-lab workflow-results --format json` | available | Summary-only workflow result metadata from `pccx-core`. |
 | `pccx-lab run-approved-workflow <proposal-id> --format json` | disabled-by-default pilot | Fixed allowlisted runner pilot; blocked unless explicitly enabled. |
 | `docs/examples/sail-adoption-plan.example.json` | planned Sail adoption boundary | Checked descriptor-only Sail adoption plan for future reference-model review; no Sail source reader, parser, compiler, model execution, refinement check, proof path, report writer, artifact writer, or hardware path is implemented. |
+| `docs/examples/sail-interface-boundary.example.json` | planned Sail interface boundary | Checked descriptor-only Sail CLI/core handoff boundary over approved summaries; no Sail source reader, parser, compiler, AST reader, model execution, refinement check, proof path, report reader/writer, artifact reader/writer, or hardware path is implemented. |
 | `docs/examples/hybrid-strategy-plan.example.json` | planned hybrid strategy boundary | Checked descriptor-only C++/SystemVerilog and custom-script control plan; no source reader, grammar reader, parser, compiler, runtime, simulator runner, verification run, report writer, artifact writer, or hardware-control path is implemented. |
 | `pccx-lab analyze <file> --format json` | early scaffold | File-shape diagnostics only. |
 | `pccx-lab diagnostics-handoff validate --file <path> --format json` | read-only validator | Launcher diagnostics handoff schema reader. |
@@ -97,6 +98,7 @@ aligned.
 | `workflow-results` | `docs/examples/workflow-results.example.json` | `pccx-lab workflow-results --format json`; `pccx_core::results::workflow_result_summaries` | Shape validator, inventory test, Rust deserialize test |
 | `workflow-runner-result` | `docs/examples/workflow-runner-blocked.example.json` | `pccx-lab run-approved-workflow <proposal-id> --format json`; `pccx_core::runner::blocked_workflow_result` | Shape validator, inventory test, Rust deserialize test |
 | `sail-adoption-plan` | `docs/examples/sail-adoption-plan.example.json` | Reader only; planned descriptor-only Sail adoption boundary over approved CLI/core planning summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `sail-interface-boundary` | `docs/examples/sail-interface-boundary.example.json` | Reader only; planned descriptor-only Sail CLI/core handoff boundary over approved summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `hybrid-strategy-plan` | `docs/examples/hybrid-strategy-plan.example.json` | Reader only; planned descriptor-only hybrid C++/SystemVerilog and custom-script boundary over approved CLI/core planning summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `launcher-diagnostics-handoff` | `docs/examples/launcher-diagnostics-handoff.example.json` | Reader only; `pccx_core::diagnostics_handoff::validate_diagnostics_handoff_json` | Shape validator, inventory test, Rust reader validation test |
 | `launcher-device-session-status` | `docs/examples/launcher-device-session-status.example.json` | Reader only; `pccx_core::device_session_status::validate_device_session_status_json` | Shape validator, inventory test, Rust reader validation test |
@@ -391,6 +393,31 @@ implementation requires separate reviewed boundaries for source inputs,
 model generation, execution, refinement, report output, and artifacts.
 No runtime, hardware, marketplace, release, or API/ABI stability claim
 is made.
+
+## Sail interface boundary
+
+[`docs/examples/sail-interface-boundary.example.json`](examples/sail-interface-boundary.example.json)
+defines the checked descriptor-only interface handoff for future Sail
+CLI/core metadata. It records approved summary references, blocked
+interface endpoints, input and output policies, and review gates needed
+before any Sail source intake, parse request, compile request, model
+generation, execution, refinement, proof, report, or artifact path can
+be handled.
+
+The fixture is metadata only. It does not read Sail sources, read RTL
+sources, read ASTs, import traces, read reports, read artifacts, include
+private paths, start a parser, start a compiler, generate an ISA model,
+execute a Sail model, run a refinement check, run a formal proof, read
+or write reports, read or write artifacts, execute commands, mutate
+repositories, call providers, use the network, touch hardware, access
+KV260, access FPGA repos, load models, upload telemetry, push publicly,
+or control releases/tags.
+
+The interface is approved for descriptor metadata only. A future
+implementation requires separate reviewed boundaries for source inputs,
+parser/compiler behavior, model generation, execution, refinement,
+proof, report output, and artifacts. No runtime, hardware, marketplace,
+release, or API/ABI stability claim is made.
 
 ## Hybrid strategy plan boundary
 

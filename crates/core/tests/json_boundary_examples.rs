@@ -6166,6 +6166,184 @@ fn sail_adoption_plan_example_keeps_descriptor_only_boundary() {
 }
 
 #[test]
+fn sail_interface_boundary_example_keeps_descriptor_only_boundary() {
+    let value: serde_json::Value = parse_example("sail-interface-boundary.example.json");
+    let root = value
+        .as_object()
+        .expect("Sail interface boundary must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.sail-interface-boundary.v0");
+    assert_eq!(root["boundaryState"], "descriptor_only");
+    assert_eq!(root["sourceState"], "not_read");
+    assert_eq!(root["parserState"], "not_implemented");
+    assert_eq!(root["compilerState"], "not_implemented");
+    assert_eq!(root["modelState"], "not_implemented");
+    assert_eq!(root["refinementState"], "blocked");
+    assert_eq!(root["proofState"], "blocked");
+    assert_eq!(root["reportState"], "summary_only");
+    assert_eq!(root["artifactState"], "not_read");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(root["hostMode"], "cli_core_first_gui_second");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "sail_adoption_plan"
+            && item["interfaceSource"] == true
+            && item["sourceReadAllowed"] == false
+            && item["executionAllowed"] == false
+    }));
+    assert!(refs.iter().any(|item| {
+        item["refId"] == "verification_gate"
+            && item["summaryReferenceAllowed"] == true
+            && item["refinementExecutionAllowed"] == false
+            && item["formalProofAllowed"] == false
+    }));
+
+    let contract = root["interfaceContract"]
+        .as_object()
+        .expect("interface contract must be an object");
+    assert_eq!(contract["summaryOnly"], true);
+    assert_eq!(contract["descriptorOnly"], true);
+    assert_eq!(contract["interfaceOnly"], true);
+    assert_eq!(contract["cliCoreFirst"], true);
+    assert_eq!(contract["sailSourceReadAllowed"], false);
+    assert_eq!(contract["parserRequestAllowed"], false);
+    assert_eq!(contract["compilerRequestAllowed"], false);
+    assert_eq!(contract["modelGenerationAllowed"], false);
+    assert_eq!(contract["modelExecutionAllowed"], false);
+    assert_eq!(contract["refinementExecutionAllowed"], false);
+    assert_eq!(contract["formalProofAllowed"], false);
+    assert_eq!(contract["reportReadAllowed"], false);
+    assert_eq!(contract["reportWriteAllowed"], false);
+    assert_eq!(contract["artifactReadAllowed"], false);
+    assert_eq!(contract["artifactWriteAllowed"], false);
+
+    let endpoints = root["interfaceEndpoints"]
+        .as_array()
+        .expect("interface endpoints must be an array");
+    for endpoint in [
+        "sail_source_intake",
+        "sail_parse_request",
+        "sail_model_summary",
+        "sail_refinement_gate",
+        "sail_report_summary",
+    ] {
+        assert!(
+            endpoints.iter().any(|item| {
+                item["endpointId"] == endpoint
+                    && item["sailSourceReadAllowed"] == false
+                    && item["parserAllowed"] == false
+                    && item["compilerAllowed"] == false
+                    && item["modelExecutionAllowed"] == false
+                    && item["refinementExecutionAllowed"] == false
+                    && item["formalProofAllowed"] == false
+                    && item["commandExecutionAllowed"] == false
+                    && item["repositoryMutationAllowed"] == false
+            }),
+            "interfaceEndpoints must include blocked endpoint {endpoint}"
+        );
+    }
+
+    let input = root["inputPolicy"]
+        .as_object()
+        .expect("input policy must be an object");
+    assert_eq!(input["sailSourceReadAllowed"], false);
+    assert_eq!(input["rtlSourceReadAllowed"], false);
+    assert_eq!(input["traceReadAllowed"], false);
+    assert_eq!(input["reportReadAllowed"], false);
+    assert_eq!(input["artifactReadAllowed"], false);
+    assert_eq!(input["repositoryReadAllowed"], false);
+    assert_eq!(input["secretsReadAllowed"], false);
+    assert_eq!(input["tokensReadAllowed"], false);
+
+    let output = root["outputPolicy"]
+        .as_object()
+        .expect("output policy must be an object");
+    assert_eq!(output["sailSourceIncluded"], false);
+    assert_eq!(output["sailAstIncluded"], false);
+    assert_eq!(output["generatedModelIncluded"], false);
+    assert_eq!(output["compiledArtifactIncluded"], false);
+    assert_eq!(output["proofArtifactIncluded"], false);
+    assert_eq!(output["reportContentIncluded"], false);
+    assert_eq!(output["artifactPathsIncluded"], false);
+    assert_eq!(output["stdoutIncluded"], false);
+    assert_eq!(output["stderrIncluded"], false);
+    assert_eq!(output["rawLogsIncluded"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "sail-source-read",
+        "sail-parser",
+        "sail-compiler",
+        "sail-ast-read",
+        "sail-model-generation",
+        "sail-model-execution",
+        "rtl-refinement-check",
+        "formal-proof",
+        "report-read",
+        "report-write",
+        "artifact-read",
+        "artifact-write",
+        "command-execution",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["interfaceOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sailSourceRead"], false);
+    assert_eq!(safety["sailParserImplemented"], false);
+    assert_eq!(safety["sailCompilerImplemented"], false);
+    assert_eq!(safety["sailModelImplemented"], false);
+    assert_eq!(safety["sailExecution"], false);
+    assert_eq!(safety["sailAstIncluded"], false);
+    assert_eq!(safety["rtlRefinementExecution"], false);
+    assert_eq!(safety["formalVerificationExecution"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn hybrid_strategy_plan_example_keeps_descriptor_only_boundary() {
     let value: serde_json::Value = parse_example("hybrid-strategy-plan.example.json");
     let root = value
