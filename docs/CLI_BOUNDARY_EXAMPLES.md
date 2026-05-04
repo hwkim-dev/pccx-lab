@@ -19,7 +19,7 @@ wrappers backed by `pccx-core`.
 | CI or headless worker | `pccx-lab ... --format json` | Parse deterministic JSON and keep logs bounded. |
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
-| Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, and report-contract JSON | Consume descriptor-only contracts until a controlled adapter exists. |
+| Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, report-contract, comparison, and PR handoff JSON | Consume descriptor-only contracts until a controlled adapter exists. |
 | Future plugin consumer | Plugin boundary-plan, permission-model, input, trace-summary, audit-event, and output-contract JSON | Treat manifest, capability, trace-summary, audit, and output data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
@@ -285,6 +285,43 @@ runtime, execute commands, read local files, read raw traces, read raw
 reports, write reports, write artifacts, mutate repositories, call
 providers, use the network, touch hardware, or control release/tag
 actions.
+
+## MCP PR Summary Handoff
+
+Full fixture:
+[`mcp-pr-summary-handoff.example.json`](examples/mcp-pr-summary-handoff.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-pr-summary-handoff.v0",
+  "handoffState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "handoffInputs": [
+    {
+      "inputKind": "issue_summary",
+      "inputState": "approved_summary_only",
+      "summaryOnly": true,
+      "localFileRead": false,
+      "repositoryRead": false
+    }
+  ],
+  "sampleHandoff": {
+    "handoffState": "summary_only_fixture",
+    "summaryOnly": true,
+    "prCreated": false,
+    "prCommentCreated": false,
+    "publicTextPublished": false
+  }
+}
+```
+
+Use this fixture to review how a future read-only tool adapter could
+prepare bounded pull-request summary metadata from approved issue,
+change, and validation summaries. It does not start an MCP runtime,
+execute commands, read local files, read repositories, write reports,
+create PRs, comment on issues or PRs, update project boards, publish
+public text, mutate repositories, call providers, use the network, touch
+hardware, or control release/tag actions.
 
 ## Plugin Boundary Plan
 

@@ -223,6 +223,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-verification-run-comparison-boundary"
     },
     {
+      "boundaryKind": "mcp-pr-summary-handoff",
+      "examplePath": "docs/examples/mcp-pr-summary-handoff.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-pr-summary-handoff-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-pr-summary-handoff",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_pr_summary_handoff_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-pr-summary-handoff-boundary"
+    },
+    {
       "boundaryKind": "mcp-permission-model",
       "examplePath": "docs/examples/mcp-permission-model.example.json",
       "producingCommand": null,

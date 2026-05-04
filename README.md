@@ -87,6 +87,11 @@ boundary. There is no private back channel into lab internals. See
   summary-only comparison shape for approved workflow-result summaries;
   it is not an MCP runtime, command executor, file reader, trace reader,
   report writer, artifact writer, or repository mutation path.
+- `docs/examples/mcp-pr-summary-handoff.example.json` records the
+  summary-only PR handoff shape for approved issue, change, and
+  validation summaries; it is not an MCP runtime, command executor, file
+  reader, repository reader, PR creator, comment writer, or repository
+  mutation path.
 - `docs/examples/mcp-permission-model.example.json` records the
   descriptor-only permission profiles and approval gates for a future
   MCP/tool adapter; it is not a permission runtime or command executor.

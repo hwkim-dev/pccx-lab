@@ -1346,6 +1346,377 @@ def validate_mcp_verification_run_comparison(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_pr_summary_handoff(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-pr-summary-handoff.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "handoffId",
+            "handoffState",
+            "adapterState",
+            "defaultMode",
+            "handoffKind",
+        ],
+    )
+    if root["handoffState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.handoffState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+    if root["handoffKind"] != "pr_summary_packet":
+        raise ShapeError("unexpected value at $.handoffKind: expected pr_summary_packet")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        for field in [
+            "pathEchoAllowed",
+            "artifactWriteAllowed",
+            "rawReportAllowed",
+            "writeActionAllowed",
+        ]:
+            if field in ref and expect_bool(require_field(ref, path, field), child(path, field)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{field}: expected false")
+
+    inputs = require_object_array(
+        require_field(root, "$", "handoffInputs"),
+        "$.handoffInputs",
+        min_items=2,
+    )
+    input_ids = set()
+    allowed_input_kinds = {"issue_summary", "change_summary", "validation_summary"}
+    for input_item in inputs:
+        path = "$.handoffInputs[]"
+        require_string_fields(
+            input_item,
+            path,
+            [
+                "inputId",
+                "inputKind",
+                "inputState",
+                "sourceRef",
+                "summary",
+            ],
+        )
+        input_id = input_item["inputId"]
+        if input_id in input_ids:
+            raise ShapeError(f"duplicate value at $.handoffInputs[].inputId: {input_id}")
+        input_ids.add(input_id)
+        if input_item["inputKind"] not in allowed_input_kinds:
+            raise ShapeError(
+                "unexpected value at $.handoffInputs[].inputKind: "
+                f"expected one of {sorted(allowed_input_kinds)}"
+            )
+        if input_item["inputState"] != "approved_summary_only":
+            raise ShapeError("unexpected value at $.handoffInputs[].inputState: expected approved_summary_only")
+        true_fields = ["summaryOnly", "approvalRequired"]
+        false_fields = [
+            "localFileRead",
+            "repositoryRead",
+            "rawTraceRead",
+            "rawReportRead",
+            "artifactRead",
+            "privatePathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "artifactPathIncluded",
+        ]
+        require_bool_fields(input_item, path, true_fields + false_fields)
+        for field in true_fields:
+            if input_item[field] is not True:
+                raise ShapeError(f"unexpected value at $.handoffInputs[].{field}: expected true")
+        for field in false_fields:
+            if input_item[field] is not False:
+                raise ShapeError(f"unexpected value at $.handoffInputs[].{field}: expected false")
+        fields = require_object_array(
+            require_field(input_item, path, "fieldDescriptors"),
+            child(path, "fieldDescriptors"),
+            min_items=1,
+        )
+        for field in fields:
+            require_string_fields(
+                field,
+                "$.handoffInputs[].fieldDescriptors[]",
+                ["fieldName", "valueKind", "policy"],
+            )
+
+    policy = expect_object(require_field(root, "$", "handoffPolicy"), "$.handoffPolicy")
+    require_string_fields(policy, "$.handoffPolicy", ["state", "handoffKind", "redactionRule"])
+    if policy["state"] != "planned":
+        raise ShapeError("unexpected value at $.handoffPolicy.state: expected planned")
+    if policy["handoffKind"] != "summary_only_pr_metadata":
+        raise ShapeError(
+            "unexpected value at $.handoffPolicy.handoffKind: expected summary_only_pr_metadata"
+        )
+    expect_integer(require_field(policy, "$.handoffPolicy", "maxSections"), "$.handoffPolicy.maxSections")
+    true_policy_flags = ["summaryOnly", "approvalRequired", "auditRequired"]
+    false_policy_flags = [
+        "commandExecutionAllowed",
+        "localFileReadAllowed",
+        "repositoryReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+        "prCreationAllowed",
+        "prCommentAllowed",
+        "issueCommentAllowed",
+        "projectMutationAllowed",
+        "publicTextPublicationAllowed",
+        "pathEchoAllowed",
+        "stdoutAllowed",
+        "stderrAllowed",
+        "rawLogAllowed",
+        "privatePathsAllowed",
+        "generatedArtifactsAllowed",
+    ]
+    require_bool_fields(policy, "$.handoffPolicy", true_policy_flags + false_policy_flags)
+    for flag in true_policy_flags:
+        if policy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.handoffPolicy.{flag}: expected true")
+    for flag in false_policy_flags:
+        if policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.handoffPolicy.{flag}: expected false")
+
+    handoff = expect_object(require_field(root, "$", "sampleHandoff"), "$.sampleHandoff")
+    require_string_fields(
+        handoff,
+        "$.sampleHandoff",
+        ["handoffState", "targetRepository", "titlePreview"],
+    )
+    if handoff["handoffState"] != "summary_only_fixture":
+        raise ShapeError("unexpected value at $.sampleHandoff.handoffState: expected summary_only_fixture")
+
+    section_false_fields = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+    ]
+    sections = require_object_array(
+        require_field(handoff, "$.sampleHandoff", "bodySections"),
+        "$.sampleHandoff.bodySections",
+        min_items=2,
+    )
+    for section in sections:
+        path = "$.sampleHandoff.bodySections[]"
+        require_string_fields(section, path, ["sectionId", "sectionKind", "heading", "summary"])
+        require_bool_fields(section, path, ["summaryOnly"] + section_false_fields)
+        if section["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleHandoff.bodySections[].summaryOnly: expected true")
+        for field in section_false_fields:
+            if section[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleHandoff.bodySections[].{field}: expected false")
+
+    checklist = require_object_array(
+        require_field(handoff, "$.sampleHandoff", "checklistItems"),
+        "$.sampleHandoff.checklistItems",
+        min_items=1,
+    )
+    for item in checklist:
+        path = "$.sampleHandoff.checklistItems[]"
+        require_string_fields(item, path, ["itemId", "state", "label"])
+        require_bool_fields(
+            item,
+            path,
+            ["summaryOnly", "commandIncluded", "pathIncluded", "artifactPathIncluded"],
+        )
+        if item["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleHandoff.checklistItems[].summaryOnly: expected true")
+        for field in ["commandIncluded", "pathIncluded", "artifactPathIncluded"]:
+            if item[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleHandoff.checklistItems[].{field}: expected false")
+
+    validation_lines = require_object_array(
+        require_field(handoff, "$.sampleHandoff", "validationLines"),
+        "$.sampleHandoff.validationLines",
+        min_items=1,
+    )
+    for line in validation_lines:
+        path = "$.sampleHandoff.validationLines[]"
+        require_string_fields(line, path, ["lineId", "result", "summary"])
+        require_bool_fields(
+            line,
+            path,
+            [
+                "summaryOnly",
+                "commandIncluded",
+                "stdoutIncluded",
+                "stderrIncluded",
+                "rawLogsIncluded",
+                "artifactPathIncluded",
+            ],
+        )
+        if line["summaryOnly"] is not True:
+            raise ShapeError("unexpected value at $.sampleHandoff.validationLines[].summaryOnly: expected true")
+        for field in [
+            "commandIncluded",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogsIncluded",
+            "artifactPathIncluded",
+        ]:
+            if line[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleHandoff.validationLines[].{field}: expected false")
+
+    handoff_true_fields = ["summaryOnly"]
+    handoff_false_fields = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+        "prCreated",
+        "prCommentCreated",
+        "issueCommentCreated",
+        "projectUpdated",
+        "publicTextPublished",
+    ]
+    require_bool_fields(handoff, "$.sampleHandoff", handoff_true_fields + handoff_false_fields)
+    if handoff["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.sampleHandoff.summaryOnly: expected true")
+    for field in handoff_false_fields:
+        if handoff[field] is not False:
+            raise ShapeError(f"unexpected value at $.sampleHandoff.{field}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_fields = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+        "prCreationAllowed",
+        "prCommentAllowed",
+        "issueCommentAllowed",
+        "projectMutationAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_fields)
+    for field in mutation_false_fields:
+        if mutation[field] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{field}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "pr-create",
+        "pr-comment",
+        "issue-comment",
+        "project-update",
+        "public-text-publish",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "handoffFixtureOnly", "summaryOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "permissionExecutorImplemented",
+        "toolInvocationPathImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "repositoryRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "prCreation",
+        "prComment",
+        "issueComment",
+        "projectMutation",
+        "publicTextPublication",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_permission_model(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-permission-model.v0")
@@ -3927,6 +4298,7 @@ SPECS = [
     BoundarySpec("mcp-read-only-analysis-flow", "docs/examples/mcp-read-only-analysis-flow.example.json", validate_mcp_read_only_analysis_flow),
     BoundarySpec("mcp-read-only-report-contract", "docs/examples/mcp-read-only-report-contract.example.json", validate_mcp_read_only_report_contract),
     BoundarySpec("mcp-verification-run-comparison", "docs/examples/mcp-verification-run-comparison.example.json", validate_mcp_verification_run_comparison),
+    BoundarySpec("mcp-pr-summary-handoff", "docs/examples/mcp-pr-summary-handoff.example.json", validate_mcp_pr_summary_handoff),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-approval-request", "docs/examples/mcp-approval-request.example.json", validate_mcp_approval_request),
     BoundarySpec("mcp-approval-decision", "docs/examples/mcp-approval-decision.example.json", validate_mcp_approval_decision),
