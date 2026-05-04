@@ -35,6 +35,7 @@ separate workflow logic island.
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-approval-decision.example.json` | planned approval decision | Checked denied approval-decision gate for a future MCP/tool adapter; no approval executor, tool invocation path, or write path is implemented. |
+| `docs/examples/mcp-invocation-request.example.json` | planned invocation request | Checked blocked invocation-request gate for a future MCP/tool adapter; no server, client, executor, tool invocation path, file reader, or write path is implemented. |
 | `docs/examples/mcp-blocked-invocation-result.example.json` | planned blocked result | Checked blocked, non-executed invocation result for a future MCP/tool adapter; no command executor or tool invocation path is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
@@ -87,6 +88,7 @@ aligned.
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-decision` | `docs/examples/mcp-approval-decision.example.json` | Reader only; planned denied approval-decision gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-invocation-request` | `docs/examples/mcp-invocation-request.example.json` | Reader only; planned blocked invocation-request gate over approved MCP permission, approval, review, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-blocked-invocation-result` | `docs/examples/mcp-blocked-invocation-result.example.json` | Reader only; planned blocked, non-executed invocation result for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
@@ -657,6 +659,27 @@ commands, write reports, mutate repositories, call providers, use the
 network, touch hardware, access KV260, access FPGA repos, launch runtime
 code, load models, upload telemetry, push publicly, or control
 releases/tags.
+
+## MCP invocation request boundary
+
+[`docs/examples/mcp-invocation-request.example.json`](examples/mcp-invocation-request.example.json)
+defines the checked blocked invocation-request shape for a future
+MCP/tool adapter gate. It links permission, approval-request,
+approval-decision, review-packet, and audit-event summaries, then
+records that no tool invocation has been approved or attempted.
+
+The fixture is summary-only metadata. It does not approve inputs, echo
+private paths, read local files, read repositories, read artifacts,
+start an MCP server or client session, call an approval executor, call a
+permission executor, invoke tools, execute commands, start runtimes,
+produce diagnostics, write reports, write artifacts, mutate
+repositories, call providers, use the network, touch hardware, access
+KV260, access FPGA repos, load models, upload telemetry, push publicly,
+or control releases/tags.
+
+The invocation decision intentionally keeps `approved` false and
+`state` set to `not_invoked`. No stable API/ABI claim, marketplace
+claim, runtime claim, or hardware claim is made.
 
 ## MCP blocked invocation result boundary
 

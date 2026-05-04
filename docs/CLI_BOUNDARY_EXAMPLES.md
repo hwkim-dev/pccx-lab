@@ -19,7 +19,7 @@ wrappers backed by `pccx-core`.
 | CI or headless worker | `pccx-lab ... --format json` | Parse deterministic JSON and keep logs bounded. |
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
-| Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, report-contract, comparison, and PR handoff JSON | Consume descriptor-only contracts until a controlled adapter exists. |
+| Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, invocation-request, report-contract, comparison, and PR handoff JSON | Consume descriptor-only and blocked-gate contracts until a controlled adapter exists. |
 | Future plugin consumer | Plugin boundary-plan, permission-model, load-request, input, trace-summary, audit-event, and output-contract JSON | Treat manifest, capability, load-gate, trace-summary, audit, and output data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
@@ -322,6 +322,40 @@ execute commands, read local files, read repositories, write reports,
 create PRs, comment on issues or PRs, update project boards, publish
 public text, mutate repositories, call providers, use the network, touch
 hardware, or control release/tag actions.
+
+## MCP Invocation Request
+
+Full fixture:
+[`mcp-invocation-request.example.json`](examples/mcp-invocation-request.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-invocation-request.v0",
+  "requestState": "blocked_by_policy",
+  "adapterState": "not_implemented",
+  "defaultMode": "read_only",
+  "invocationRequest": {
+    "requestKind": "planned_mcp_tool_invocation_gate",
+    "toolId": "pccx-lab.analyze",
+    "summaryOnly": true,
+    "approvalRequired": true,
+    "approved": false,
+    "toolInvocationAllowed": false
+  },
+  "invocationDecision": {
+    "state": "not_invoked",
+    "approved": false,
+    "toolInvocationStarted": false
+  }
+}
+```
+
+Use this fixture to review the blocked invocation-request gate a future
+MCP/tool adapter must pass through after permission, approval, review,
+and audit summaries are checked. It does not start an MCP runtime,
+invoke tools, execute commands, read files, write reports, mutate
+repositories, call providers, use the network, touch hardware, or
+control release/tag actions.
 
 ## Plugin Boundary Plan
 
@@ -648,6 +682,9 @@ this summary contract.
   audit-plan alignment before implementing any adapter.
 - Use the MCP report-contract fixture for summary-only report output
   alignment before implementing any adapter runtime or report writer.
+- Use the MCP invocation-request fixture for blocked tool-invocation
+  gate alignment before implementing any MCP runtime, executor, or tool
+  invocation path.
 - Use the plugin boundary-plan fixture for manifest and host API
   alignment before implementing any loader.
 - Use the plugin load-request fixture for blocked loader-gate alignment

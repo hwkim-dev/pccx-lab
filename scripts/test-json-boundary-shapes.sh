@@ -126,6 +126,7 @@ run_case \
     "[mcp-permission-model] shape ok" \
     "[mcp-approval-request] shape ok" \
     "[mcp-approval-decision] shape ok" \
+    "[mcp-invocation-request] shape ok" \
     "[mcp-blocked-invocation-result] shape ok" \
     "[mcp-audit-event] shape ok" \
     "[plugin-permission-model] shape ok" \
