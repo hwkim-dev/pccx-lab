@@ -893,6 +893,270 @@ fn mcp_pr_summary_handoff_example_keeps_summary_only_boundary() {
 }
 
 #[test]
+fn mcp_review_packet_example_keeps_summary_only_boundary() {
+    let value: serde_json::Value = parse_example("mcp-review-packet.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP review packet must be an object");
+
+    assert_eq!(root["schemaVersion"], "pccx.lab.mcp-review-packet.v0");
+    assert_eq!(root["reviewState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(root["packetKind"], "summary_only_review_packet");
+
+    let sources = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "mcp_permission_model"
+            && source["writeActionAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "mcp_blocked_invocation_result"
+            && source["commandExecutionAllowed"] == false
+            && source["toolInvocationAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "mcp_pr_summary_handoff"
+            && source["publicTextPublicationAllowed"] == false
+            && source["artifactWriteAllowed"] == false
+    }));
+
+    let inputs = root["reviewInputs"]
+        .as_array()
+        .expect("review inputs must be an array");
+    assert!(
+        inputs.len() >= 5,
+        "review packet boundary should include permission, approval, blocked result, validation, and handoff summaries"
+    );
+    for input in inputs {
+        assert_eq!(input["inputState"], "approved_summary_only");
+        assert_eq!(input["summaryOnly"], true);
+        assert_eq!(input["approvalRequired"], true);
+        assert_eq!(input["localFileRead"], false);
+        assert_eq!(input["repositoryRead"], false);
+        assert_eq!(input["rawTraceRead"], false);
+        assert_eq!(input["rawReportRead"], false);
+        assert_eq!(input["artifactRead"], false);
+        assert_eq!(input["privatePathEchoAllowed"], false);
+        assert_eq!(input["stdoutIncluded"], false);
+        assert_eq!(input["stderrIncluded"], false);
+        assert_eq!(input["rawLogIncluded"], false);
+        assert_eq!(input["artifactPathIncluded"], false);
+        assert!(input["fieldDescriptors"].as_array().is_some());
+    }
+
+    let policy = root["reviewPolicy"]
+        .as_object()
+        .expect("review policy must be an object");
+    assert_eq!(policy["summaryOnly"], true);
+    assert_eq!(policy["approvalRequired"], true);
+    assert_eq!(policy["auditRequired"], true);
+    assert_eq!(policy["commandExecutionAllowed"], false);
+    assert_eq!(policy["localFileReadAllowed"], false);
+    assert_eq!(policy["repositoryReadAllowed"], false);
+    assert_eq!(policy["rawTraceReadAllowed"], false);
+    assert_eq!(policy["rawReportReadAllowed"], false);
+    assert_eq!(policy["artifactReadAllowed"], false);
+    assert_eq!(policy["artifactWriteAllowed"], false);
+    assert_eq!(policy["reportWriteAllowed"], false);
+    assert_eq!(policy["repositoryMutationAllowed"], false);
+    assert_eq!(policy["publicPushAllowed"], false);
+    assert_eq!(policy["releaseOrTagAllowed"], false);
+    assert_eq!(policy["prCreationAllowed"], false);
+    assert_eq!(policy["prCommentAllowed"], false);
+    assert_eq!(policy["issueCommentAllowed"], false);
+    assert_eq!(policy["projectMutationAllowed"], false);
+    assert_eq!(policy["publicTextPublicationAllowed"], false);
+    assert_eq!(policy["toolInvocationAllowed"], false);
+    assert_eq!(policy["permissionExecutionAllowed"], false);
+    assert_eq!(policy["approvalExecutionAllowed"], false);
+    assert_eq!(policy["pathEchoAllowed"], false);
+    assert_eq!(policy["stdoutAllowed"], false);
+    assert_eq!(policy["stderrAllowed"], false);
+    assert_eq!(policy["rawLogAllowed"], false);
+    assert_eq!(policy["privatePathsAllowed"], false);
+    assert_eq!(policy["generatedArtifactsAllowed"], false);
+
+    let packet = root["sampleReviewPacket"]
+        .as_object()
+        .expect("sample review packet must be an object");
+    assert_eq!(packet["reviewPacketState"], "summary_only_fixture");
+    assert_eq!(packet["summaryOnly"], true);
+    assert_eq!(packet["pathIncluded"], false);
+    assert_eq!(packet["privatePathsIncluded"], false);
+    assert_eq!(packet["stdoutIncluded"], false);
+    assert_eq!(packet["stderrIncluded"], false);
+    assert_eq!(packet["rawLogsIncluded"], false);
+    assert_eq!(packet["artifactPathsIncluded"], false);
+    assert_eq!(packet["generatedArtifactsIncluded"], false);
+    assert_eq!(packet["rawTraceIncluded"], false);
+    assert_eq!(packet["rawReportIncluded"], false);
+    assert_eq!(packet["toolInvoked"], false);
+    assert_eq!(packet["prCreated"], false);
+    assert_eq!(packet["prCommentCreated"], false);
+    assert_eq!(packet["issueCommentCreated"], false);
+    assert_eq!(packet["projectUpdated"], false);
+    assert_eq!(packet["publicTextPublished"], false);
+
+    let sections = packet["reviewSections"]
+        .as_array()
+        .expect("sample review sections must be an array");
+    assert!(sections.iter().all(|section| {
+        section["summaryOnly"] == true
+            && section["pathIncluded"] == false
+            && section["stdoutIncluded"] == false
+            && section["stderrIncluded"] == false
+            && section["rawLogsIncluded"] == false
+            && section["rawTraceIncluded"] == false
+            && section["rawReportIncluded"] == false
+    }));
+
+    let risk_rows = packet["riskRows"]
+        .as_array()
+        .expect("sample risk rows must be an array");
+    assert!(risk_rows.iter().all(|row| {
+        row["summaryOnly"] == true
+            && row["commandIncluded"] == false
+            && row["pathIncluded"] == false
+            && row["artifactPathIncluded"] == false
+    }));
+
+    let checklist = packet["checklistItems"]
+        .as_array()
+        .expect("sample review checklist items must be an array");
+    assert!(checklist.iter().all(|item| {
+        item["summaryOnly"] == true
+            && item["commandIncluded"] == false
+            && item["pathIncluded"] == false
+            && item["artifactPathIncluded"] == false
+    }));
+
+    let validation_lines = packet["validationLines"]
+        .as_array()
+        .expect("sample review validation lines must be an array");
+    assert!(validation_lines.iter().all(|line| {
+        line["summaryOnly"] == true
+            && line["commandIncluded"] == false
+            && line["stdoutIncluded"] == false
+            && line["stderrIncluded"] == false
+            && line["rawLogsIncluded"] == false
+            && line["artifactPathIncluded"] == false
+    }));
+
+    let mutation = root["noMutationEvidence"]
+        .as_object()
+        .expect("no mutation evidence must be an object");
+    assert_eq!(mutation["trackedFileMutationAllowed"], false);
+    assert_eq!(mutation["trackedFileDiffCaptured"], false);
+    assert_eq!(mutation["artifactReadAllowed"], false);
+    assert_eq!(mutation["artifactWriteAllowed"], false);
+    assert_eq!(mutation["reportWriteAllowed"], false);
+    assert_eq!(mutation["repositoryMutationAllowed"], false);
+    assert_eq!(mutation["toolInvocationAllowed"], false);
+    assert_eq!(mutation["commandExecutionAllowed"], false);
+    assert_eq!(mutation["publicPushAllowed"], false);
+    assert_eq!(mutation["releaseOrTagAllowed"], false);
+    assert_eq!(mutation["prCreationAllowed"], false);
+    assert_eq!(mutation["prCommentAllowed"], false);
+    assert_eq!(mutation["issueCommentAllowed"], false);
+    assert_eq!(mutation["projectMutationAllowed"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "approval-executor",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "repository-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "pr-create",
+        "pr-comment",
+        "issue-comment",
+        "project-update",
+        "public-text-publish",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["reviewPacketFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["mcpServerImplemented"], false);
+    assert_eq!(safety["mcpClientImplemented"], false);
+    assert_eq!(safety["approvalExecutorImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["toolInvocationPathImplemented"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["prCreation"], false);
+    assert_eq!(safety["prComment"], false);
+    assert_eq!(safety["issueComment"], false);
+    assert_eq!(safety["projectMutation"], false);
+    assert_eq!(safety["publicTextPublication"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["artifactPathsIncluded"], false);
+    assert_eq!(safety["generatedArtifactsIncluded"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+}
+
+#[test]
 fn mcp_permission_model_example_keeps_permission_boundary_non_executing() {
     let value: serde_json::Value = parse_example("mcp-permission-model.example.json");
     let root = value
