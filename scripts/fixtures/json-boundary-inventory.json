@@ -342,6 +342,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-input-contract-boundary"
     },
     {
+      "boundaryKind": "plugin-trace-summary-input",
+      "examplePath": "docs/examples/plugin-trace-summary-input.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#plugin-trace-summary-input-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "plugin-trace-summary-input",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "plugin_trace_summary_input_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#plugin-trace-summary-input-boundary"
+    },
+    {
       "boundaryKind": "plugin-output-contract",
       "examplePath": "docs/examples/plugin-output-contract.example.json",
       "producingCommand": null,

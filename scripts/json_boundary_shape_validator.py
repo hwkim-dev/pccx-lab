@@ -2927,6 +2927,249 @@ def validate_plugin_input_contract(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_plugin_trace_summary_input(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.plugin-trace-summary-input.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "contractId",
+            "contractState",
+            "pluginRuntimeState",
+            "loaderState",
+            "defaultMode",
+            "hostMode",
+        ],
+    )
+    if root["contractState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.contractState: expected descriptor_only")
+    if root["pluginRuntimeState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.pluginRuntimeState: expected not_implemented")
+    if root["loaderState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.loaderState: expected not_implemented")
+    if root["defaultMode"] != "disabled":
+        raise ShapeError("unexpected value at $.defaultMode: expected disabled")
+    if root["hostMode"] != "cli_first_gui_second":
+        raise ShapeError("unexpected value at $.hostMode: expected cli_first_gui_second")
+
+    sample = expect_object(require_field(root, "$", "samplePluginRef"), "$.samplePluginRef")
+    require_string_fields(sample, "$.samplePluginRef", ["pluginId", "manifestState", "entryKind"])
+    require_bool_fields(
+        sample,
+        "$.samplePluginRef",
+        ["codeLoaded", "packageInstalled", "dynamicLibrariesLoaded"],
+    )
+    for field in ["codeLoaded", "packageInstalled", "dynamicLibrariesLoaded"]:
+        if sample[field] is not False:
+            raise ShapeError(f"unexpected value at $.samplePluginRef.{field}: expected false")
+
+    source_refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in source_refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(
+            ref,
+            path,
+            ["refId", "schemaVersion", "examplePath", "approvalState"],
+        )
+        if expect_bool(require_field(ref, path, "pathEchoAllowed"), child(path, "pathEchoAllowed")) is not False:
+            raise ShapeError("unexpected value at $.sourceBoundaryRefs[].pathEchoAllowed: expected false")
+
+    inputs = require_object_array(
+        require_field(root, "$", "traceSummaryInputs"),
+        "$.traceSummaryInputs",
+        min_items=1,
+    )
+    for input_item in inputs:
+        path = "$.traceSummaryInputs[]"
+        require_string_fields(
+            input_item,
+            path,
+            [
+                "inputId",
+                "schemaVersion",
+                "capabilityId",
+                "inputKind",
+                "inputState",
+                "permissionProfile",
+                "sourceRef",
+                "summary",
+            ],
+        )
+        if input_item["inputKind"] != "trace_summary":
+            raise ShapeError("unexpected value at $.traceSummaryInputs[].inputKind: expected trace_summary")
+        true_fields = ["summaryOnly", "approvalRequired"]
+        false_fields = [
+            "localFileRead",
+            "rawTraceRead",
+            "rawReportRead",
+            "artifactRead",
+            "privatePathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "rawTraceIncluded",
+        ]
+        require_bool_fields(input_item, path, true_fields + false_fields)
+        for field in true_fields:
+            if input_item[field] is not True:
+                raise ShapeError(f"unexpected value at $.traceSummaryInputs[].{field}: expected true")
+        for field in false_fields:
+            if input_item[field] is not False:
+                raise ShapeError(f"unexpected value at $.traceSummaryInputs[].{field}: expected false")
+        fields = require_object_array(
+            require_field(input_item, path, "fieldDescriptors"),
+            child(path, "fieldDescriptors"),
+            min_items=1,
+        )
+        for field in fields:
+            require_string_fields(
+                field,
+                "$.traceSummaryInputs[].fieldDescriptors[]",
+                ["fieldName", "valueKind", "policy"],
+            )
+
+    summary = expect_object(require_field(root, "$", "sampleTraceSummary"), "$.sampleTraceSummary")
+    require_string_fields(summary, "$.sampleTraceSummary", ["sourceRef", "traceSummaryId"])
+    for field in ["eventCount", "signalCount", "cycleStart", "cycleEnd"]:
+        expect_integer(require_field(summary, "$.sampleTraceSummary", field), f"$.sampleTraceSummary.{field}")
+    counts = expect_object(
+        require_field(summary, "$.sampleTraceSummary", "eventKindCounts"),
+        "$.sampleTraceSummary.eventKindCounts",
+    )
+    if not counts:
+        raise ShapeError("expected at least 1 item(s) at $.sampleTraceSummary.eventKindCounts")
+    for key, count in counts.items():
+        expect_string(key, "$.sampleTraceSummary.eventKindCounts{}")
+        expect_integer(count, "$.sampleTraceSummary.eventKindCounts{}")
+    summary_false_fields = [
+        "pathIncluded",
+        "signalNamesIncluded",
+        "rawTraceIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+    ]
+    require_bool_fields(summary, "$.sampleTraceSummary", summary_false_fields)
+    for field in summary_false_fields:
+        if summary[field] is not False:
+            raise ShapeError(f"unexpected value at $.sampleTraceSummary.{field}: expected false")
+
+    input_policy = expect_object(require_field(root, "$", "inputPolicy"), "$.inputPolicy")
+    require_string_fields(input_policy, "$.inputPolicy", ["state", "noMutationRule", "redactionRule"])
+    true_policy_flags = ["summaryOnly", "approvalRequired", "auditRequired"]
+    false_policy_flags = [
+        "trackedFileMutationAllowed",
+        "localFileReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "artifactReadAllowed",
+        "pathEchoAllowed",
+        "stdoutAllowed",
+        "stderrAllowed",
+        "rawLogAllowed",
+        "privatePathsAllowed",
+        "generatedArtifactsAllowed",
+    ]
+    require_bool_fields(input_policy, "$.inputPolicy", true_policy_flags + false_policy_flags)
+    for flag in true_policy_flags:
+        if input_policy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.inputPolicy.{flag}: expected true")
+    for flag in false_policy_flags:
+        if input_policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.inputPolicy.{flag}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "dynamic-code-load",
+        "untrusted-execution",
+        "plugin-package-install",
+        "marketplace-flow",
+        "sandbox-bypass",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "inputFixtureOnly", "summaryOnly", "traceSummaryOnly"]
+    false_flags = [
+        "pluginRuntimeImplemented",
+        "pluginLoaderImplemented",
+        "pluginCodeLoaded",
+        "dynamicLibrariesLoaded",
+        "sandboxImplemented",
+        "permissionExecutorImplemented",
+        "inputReaderImplemented",
+        "traceImporterImplemented",
+        "rawTraceRead",
+        "rawReportRead",
+        "localFileRead",
+        "stablePluginAbiPromised",
+        "marketplaceFlow",
+        "packageDistribution",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "signalNamesIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "telemetry",
+        "writeBack",
+        "readsArtifacts",
+        "writesArtifacts",
+        "publicPush",
+        "releaseOrTag",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_plugin_output_contract(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.plugin-output-contract.v0")
@@ -3422,6 +3665,7 @@ SPECS = [
     BoundarySpec("plugin-boundary-plan", "docs/examples/plugin-boundary-plan.example.json", validate_plugin_boundary_plan),
     BoundarySpec("plugin-dry-run-flow", "docs/examples/plugin-dry-run-flow.example.json", validate_plugin_dry_run_flow),
     BoundarySpec("plugin-input-contract", "docs/examples/plugin-input-contract.example.json", validate_plugin_input_contract),
+    BoundarySpec("plugin-trace-summary-input", "docs/examples/plugin-trace-summary-input.example.json", validate_plugin_trace_summary_input),
     BoundarySpec("plugin-output-contract", "docs/examples/plugin-output-contract.example.json", validate_plugin_output_contract),
     BoundarySpec("plugin-blocked-invocation-result", "docs/examples/plugin-blocked-invocation-result.example.json", validate_plugin_blocked_invocation_result),
 ]

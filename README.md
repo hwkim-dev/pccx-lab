@@ -112,6 +112,10 @@ boundary. There is no private back channel into lab internals. See
   summary-only input shape for future approved plugin diagnostics and
   report previews; it is not a plugin loader, runtime, input reader,
   command executor, artifact reader, or stable ABI.
+- `docs/examples/plugin-trace-summary-input.example.json` records the
+  summary-only trace metadata input gate for future plugin trace review;
+  it is not a plugin loader, runtime, input reader, trace importer, raw
+  trace reader, command executor, artifact reader, or ABI promise.
 - `docs/examples/plugin-output-contract.example.json` records the
   summary-only output shape for future plugin diagnostic, report-panel,
   and report item previews; it is not a plugin loader, runtime, command

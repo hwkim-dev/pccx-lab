@@ -37,6 +37,7 @@ separate workflow logic island.
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
 | `docs/examples/plugin-input-contract.example.json` | planned input contract | Checked summary-only plugin input shape for approved diagnostics and workflow-result summaries; no plugin runtime or input reader is implemented. |
+| `docs/examples/plugin-trace-summary-input.example.json` | planned trace-summary input gate | Checked summary-only trace metadata input shape for future plugin trace review; no trace importer, raw trace reader, plugin runtime, or input reader is implemented. |
 | `docs/examples/plugin-output-contract.example.json` | planned output contract | Checked summary-only plugin output shape for diagnostic, report-panel, and report item previews; no plugin runtime or report writer is implemented. |
 | `docs/examples/plugin-blocked-invocation-result.example.json` | planned blocked result | Checked blocked, non-executed plugin invocation result; no plugin loader, runtime, sandbox, permission executor, input reader, or report writer is implemented. |
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
@@ -82,6 +83,7 @@ aligned.
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-trace-summary-input` | `docs/examples/plugin-trace-summary-input.example.json` | Reader only; planned summary-only trace metadata input gate for future plugin trace review | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-output-contract` | `docs/examples/plugin-output-contract.example.json` | Reader only; planned summary-only plugin output shape for future diagnostic, report-panel, and report item previews | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-blocked-invocation-result` | `docs/examples/plugin-blocked-invocation-result.example.json` | Reader only; planned blocked, non-executed plugin invocation result over approved summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-permission-model` | `docs/examples/plugin-permission-model.example.json` | Reader only; planned plugin permission profiles, sandbox requirements, and approval gates | Shape validator, inventory test, Rust JSON-shape test |
@@ -666,17 +668,43 @@ summaries to bounded input contracts:
 - `diagnostics_envelope_summary` for diagnostics panel summary input.
 - `workflow_result_summary` for report-panel metadata input.
 
-Raw trace input remains blocked until a separate trace summary boundary
-exists. The sample input preview records only counts, states, and source
-references. It does not echo private paths, stdout, stderr, raw logs,
-generated artifact paths, raw trace contents, secrets, tokens, model
-paths, or hardware evidence.
+Raw trace input remains blocked. Future trace-facing plugin work must
+enter through a separate trace-summary input boundary before any raw
+trace importer is reviewed. The sample input preview records only
+counts, states, and source references. It does not echo private paths,
+stdout, stderr, raw logs, generated artifact paths, raw trace contents,
+secrets, tokens, model paths, or hardware evidence.
 
 This fixture is not a plugin loader, runtime, sandbox, permission
 executor, input reader, command executor, artifact reader, report
 writer, or ABI promise. It does not load plugin code, install packages,
 load dynamic libraries, execute commands, read local files, read raw
 traces, read artifacts, write artifacts, mutate repositories, call
+providers, use the network, touch hardware, access KV260, access FPGA
+repos, launch runtime code, load models, upload telemetry, push
+publicly, or control releases/tags.
+
+## plugin trace-summary input boundary
+
+[`docs/examples/plugin-trace-summary-input.example.json`](examples/plugin-trace-summary-input.example.json)
+defines the checked summary-only trace metadata input shape for future
+plugin trace review. It is descriptor-only metadata over an approved
+trace-summary reference, not a trace importer, input reader, or execution
+boundary.
+
+The fixture links the plugin input contract and plugin permission model,
+then records a bounded trace summary with event counts, signal counts,
+cycle range, and event-kind counters only. It excludes signal names,
+waveform values, raw trace rows, raw reports, private paths, stdout,
+stderr, raw logs, generated artifact paths, secrets, tokens, model
+paths, and hardware evidence.
+
+This fixture is not a plugin loader, runtime, sandbox, permission
+executor, input reader, trace importer, command executor, artifact
+reader, report writer, marketplace flow, package distribution flow, or
+ABI promise. It does not load plugin code, install packages, load
+dynamic libraries, execute commands, read local files, read raw traces,
+read reports, read or write artifacts, mutate repositories, call
 providers, use the network, touch hardware, access KV260, access FPGA
 repos, launch runtime code, load models, upload telemetry, push
 publicly, or control releases/tags.

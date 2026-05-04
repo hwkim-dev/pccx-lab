@@ -20,7 +20,7 @@ wrappers backed by `pccx-core`.
 | Future editor consumer | CLI JSON, then reviewed IPC if needed | Do not bypass pccx-lab or read private GUI state. |
 | Future launcher consumer | Status, diagnostics handoff, proposals, summaries | Treat runtime bridges as separate reviewed work. |
 | Future MCP/tool consumer | Descriptor, proposal, read-only tool-plan, and report-contract JSON | Consume descriptor-only contracts until a controlled adapter exists. |
-| Future plugin consumer | Plugin boundary-plan, permission-model, audit-event, and output-contract JSON | Treat manifest, capability, audit, and output data as planning metadata until a loader boundary exists. |
+| Future plugin consumer | Plugin boundary-plan, permission-model, input, trace-summary, audit-event, and output-contract JSON | Treat manifest, capability, trace-summary, audit, and output data as planning metadata until a loader boundary exists. |
 
 No stable plugin ABI is promised. No provider, launcher, editor, or MCP
 runtime is implemented by these examples.
@@ -318,6 +318,42 @@ bounded dry-run flow. It does not load plugin code, install packages,
 execute commands, implement a sandbox, write reports, mutate
 repositories, call providers, use the network, touch hardware, or
 control releases/tags. No stable plugin ABI is promised.
+
+## Plugin Trace-Summary Input
+
+Full fixture:
+[`plugin-trace-summary-input.example.json`](examples/plugin-trace-summary-input.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.plugin-trace-summary-input.v0",
+  "contractState": "descriptor_only",
+  "pluginRuntimeState": "not_implemented",
+  "loaderState": "not_implemented",
+  "traceSummaryInputs": [
+    {
+      "inputKind": "trace_summary",
+      "inputState": "approved_summary_only",
+      "summaryOnly": true,
+      "rawTraceRead": false,
+      "privatePathEchoAllowed": false
+    }
+  ],
+  "sampleTraceSummary": {
+    "eventCount": 128,
+    "signalCount": 12,
+    "pathIncluded": false,
+    "signalNamesIncluded": false,
+    "rawTraceIncluded": false
+  }
+}
+```
+
+Use this fixture to review bounded trace-summary metadata before any
+future plugin trace path is considered. It does not load plugin code,
+execute commands, read local files, read raw traces, read reports, echo
+paths, write artifacts, mutate repositories, call providers, use the
+network, touch hardware, or create an ABI stability commitment.
 
 ## Plugin Output Contract
 

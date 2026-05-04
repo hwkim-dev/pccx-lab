@@ -130,6 +130,7 @@ run_case \
     "[plugin-boundary-plan] shape ok" \
     "[plugin-dry-run-flow] shape ok" \
     "[plugin-input-contract] shape ok" \
+    "[plugin-trace-summary-input] shape ok" \
     "[plugin-output-contract] shape ok" \
     "[plugin-blocked-invocation-result] shape ok"
 

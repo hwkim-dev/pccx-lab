@@ -135,6 +135,7 @@ run_case \
     "[plugin-boundary-plan] inventory ok" \
     "[plugin-dry-run-flow] inventory ok" \
     "[plugin-input-contract] inventory ok" \
+    "[plugin-trace-summary-input] inventory ok" \
     "[plugin-output-contract] inventory ok" \
     "[plugin-blocked-invocation-result] inventory ok" \
     "[plugin-permission-model] inventory ok"
