@@ -29,6 +29,7 @@ separate workflow logic island.
 | `docs/examples/mcp-read-only-tool-plan.example.json` | planned boundary map | Checked future MCP/tool adapter plan over fixed CLI/core commands; no runtime is implemented. |
 | `docs/examples/mcp-read-only-analysis-flow.example.json` | planned flow contract | Checked dry-run analysis-flow contract over existing CLI/core summaries; no runtime or command executor is implemented. |
 | `docs/examples/mcp-read-only-report-contract.example.json` | planned report contract | Checked summary-only report output shape for a future read-only tool adapter; no report writer is implemented. |
+| `docs/examples/mcp-verification-run-comparison.example.json` | planned comparison contract | Checked summary-only verification-run comparison shape for future MCP/tool review; no file reader, report writer, or command executor is implemented. |
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-approval-decision.example.json` | planned approval decision | Checked denied approval-decision gate for a future MCP/tool adapter; no approval executor, tool invocation path, or write path is implemented. |
@@ -75,6 +76,7 @@ aligned.
 | `mcp-read-only-tool-plan` | `docs/examples/mcp-read-only-tool-plan.example.json` | Reader only; planned future MCP/tool adapter boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-analysis-flow` | `docs/examples/mcp-read-only-analysis-flow.example.json` | Reader only; planned dry-run read-only analysis-flow contract over existing CLI/core summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-read-only-report-contract` | `docs/examples/mcp-read-only-report-contract.example.json` | Reader only; planned summary-only report output shape for a future read-only tool adapter | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-verification-run-comparison` | `docs/examples/mcp-verification-run-comparison.example.json` | Reader only; planned summary-only comparison shape over approved workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-decision` | `docs/examples/mcp-approval-decision.example.json` | Reader only; planned denied approval-decision gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
@@ -494,6 +496,30 @@ report writer. It does not execute commands, write reports, mutate
 repositories, call providers, use the network, touch hardware, access
 KV260, access FPGA repos, launch runtime code, load models, upload
 telemetry, push publicly, or control releases/tags.
+
+## MCP verification-run comparison boundary
+
+[`docs/examples/mcp-verification-run-comparison.example.json`](examples/mcp-verification-run-comparison.example.json)
+defines the checked summary-only comparison shape for future MCP/tool
+review of verification run summaries. It is descriptor-only fixture data
+over approved workflow-result summary references, not a file reader,
+trace reader, report reader, command executor, or report writer.
+
+The fixture compares a baseline and candidate run using bounded metadata:
+workflow id, status, diagnostic counts, warning counts, error counts,
+duration, and diagnostic-kind deltas. It excludes private paths,
+artifact paths, raw traces, raw reports, stdout, stderr, raw logs,
+secrets, tokens, model paths, generated artifacts, and hardware
+evidence.
+
+This fixture is not an MCP runtime, server, client, permission executor,
+tool invocation path, command executor, local file reader, artifact
+reader, artifact writer, or repository mutation path. It does not
+execute commands, read local files, read raw traces, read raw reports,
+write reports, write artifacts, mutate repositories, call providers, use
+the network, touch hardware, access KV260, access FPGA repos, launch
+runtime code, load models, upload telemetry, push publicly, or control
+releases/tags.
 
 ## MCP permission model boundary
 

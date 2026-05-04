@@ -250,6 +250,42 @@ read-only analysis flow. It does not start an MCP runtime, execute
 commands, write report artifacts, mutate repositories, echo private
 paths, include full logs, or create release/tag output.
 
+## MCP Verification-Run Comparison
+
+Full fixture:
+[`mcp-verification-run-comparison.example.json`](examples/mcp-verification-run-comparison.example.json)
+
+```json
+{
+  "schemaVersion": "pccx.lab.mcp-verification-run-comparison.v0",
+  "comparisonState": "descriptor_only",
+  "adapterState": "not_implemented",
+  "comparisonInputs": [
+    {
+      "inputKind": "workflow_result_summary",
+      "inputState": "approved_summary_only",
+      "summaryOnly": true,
+      "artifactRead": false,
+      "privatePathEchoAllowed": false
+    }
+  ],
+  "sampleComparison": {
+    "comparisonState": "summary_only_fixture",
+    "summaryOnly": true,
+    "pathIncluded": false,
+    "rawTraceIncluded": false,
+    "rawReportIncluded": false
+  }
+}
+```
+
+Use this fixture to review how a future read-only tool adapter could
+compare two approved workflow-result summaries. It does not start an MCP
+runtime, execute commands, read local files, read raw traces, read raw
+reports, write reports, write artifacts, mutate repositories, call
+providers, use the network, touch hardware, or control release/tag
+actions.
+
 ## Plugin Boundary Plan
 
 Full fixture:

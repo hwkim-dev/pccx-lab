@@ -206,6 +206,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-read-only-report-contract"
     },
     {
+      "boundaryKind": "mcp-verification-run-comparison",
+      "examplePath": "docs/examples/mcp-verification-run-comparison.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#mcp-verification-run-comparison-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "mcp-verification-run-comparison",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "mcp_verification_run_comparison_example_keeps_summary_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#mcp-verification-run-comparison-boundary"
+    },
+    {
       "boundaryKind": "mcp-permission-model",
       "examplePath": "docs/examples/mcp-permission-model.example.json",
       "producingCommand": null,

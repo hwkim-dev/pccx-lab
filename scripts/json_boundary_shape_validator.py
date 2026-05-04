@@ -1075,6 +1075,277 @@ def validate_mcp_read_only_report_contract(value: Any) -> None:
     require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
 
 
+def validate_mcp_verification_run_comparison(value: Any) -> None:
+    root = expect_object(value, "$")
+    require_schema(root, "$", "pccx.lab.mcp-verification-run-comparison.v0")
+    require_string_fields(
+        root,
+        "$",
+        [
+            "tool",
+            "comparisonId",
+            "comparisonState",
+            "adapterState",
+            "defaultMode",
+            "automationPath",
+        ],
+    )
+    if root["comparisonState"] != "descriptor_only":
+        raise ShapeError("unexpected value at $.comparisonState: expected descriptor_only")
+    if root["adapterState"] != "not_implemented":
+        raise ShapeError("unexpected value at $.adapterState: expected not_implemented")
+    if root["defaultMode"] != "read_only":
+        raise ShapeError("unexpected value at $.defaultMode: expected read_only")
+
+    refs = require_object_array(
+        require_field(root, "$", "sourceBoundaryRefs"),
+        "$.sourceBoundaryRefs",
+        min_items=1,
+    )
+    for ref in refs:
+        path = "$.sourceBoundaryRefs[]"
+        require_string_fields(ref, path, ["refId", "schemaVersion", "examplePath", "state"])
+        for field in ["pathEchoAllowed", "artifactWriteAllowed"]:
+            if field in ref and expect_bool(require_field(ref, path, field), child(path, field)) is not False:
+                raise ShapeError(f"unexpected value at $.sourceBoundaryRefs[].{field}: expected false")
+
+    inputs = require_object_array(
+        require_field(root, "$", "comparisonInputs"),
+        "$.comparisonInputs",
+        min_items=2,
+    )
+    run_ids = set()
+    for input_item in inputs:
+        path = "$.comparisonInputs[]"
+        require_string_fields(
+            input_item,
+            path,
+            [
+                "inputId",
+                "runId",
+                "schemaVersion",
+                "inputKind",
+                "inputState",
+                "sourceRef",
+                "summary",
+            ],
+        )
+        run_id = input_item["runId"]
+        if run_id in run_ids:
+            raise ShapeError(f"duplicate value at $.comparisonInputs[].runId: {run_id}")
+        run_ids.add(run_id)
+        if input_item["inputKind"] != "workflow_result_summary":
+            raise ShapeError("unexpected value at $.comparisonInputs[].inputKind: expected workflow_result_summary")
+        true_fields = ["summaryOnly", "approvalRequired"]
+        false_fields = [
+            "localFileRead",
+            "rawTraceRead",
+            "rawReportRead",
+            "artifactRead",
+            "privatePathEchoAllowed",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogIncluded",
+            "artifactPathIncluded",
+        ]
+        require_bool_fields(input_item, path, true_fields + false_fields)
+        for field in true_fields:
+            if input_item[field] is not True:
+                raise ShapeError(f"unexpected value at $.comparisonInputs[].{field}: expected true")
+        for field in false_fields:
+            if input_item[field] is not False:
+                raise ShapeError(f"unexpected value at $.comparisonInputs[].{field}: expected false")
+        fields = require_object_array(
+            require_field(input_item, path, "fieldDescriptors"),
+            child(path, "fieldDescriptors"),
+            min_items=1,
+        )
+        for field in fields:
+            require_string_fields(
+                field,
+                "$.comparisonInputs[].fieldDescriptors[]",
+                ["fieldName", "valueKind", "policy"],
+            )
+
+    policy = expect_object(require_field(root, "$", "comparisonPolicy"), "$.comparisonPolicy")
+    require_string_fields(policy, "$.comparisonPolicy", ["state", "comparisonKind", "redactionRule"])
+    expect_integer(require_field(policy, "$.comparisonPolicy", "maxRuns"), "$.comparisonPolicy.maxRuns")
+    true_policy_flags = ["summaryOnly", "approvalRequired", "auditRequired"]
+    false_policy_flags = [
+        "commandExecutionAllowed",
+        "localFileReadAllowed",
+        "rawTraceReadAllowed",
+        "rawReportReadAllowed",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "pathEchoAllowed",
+        "stdoutAllowed",
+        "stderrAllowed",
+        "rawLogAllowed",
+        "privatePathsAllowed",
+        "generatedArtifactsAllowed",
+    ]
+    require_bool_fields(policy, "$.comparisonPolicy", true_policy_flags + false_policy_flags)
+    for flag in true_policy_flags:
+        if policy[flag] is not True:
+            raise ShapeError(f"unexpected value at $.comparisonPolicy.{flag}: expected true")
+    for flag in false_policy_flags:
+        if policy[flag] is not False:
+            raise ShapeError(f"unexpected value at $.comparisonPolicy.{flag}: expected false")
+
+    comparison = expect_object(require_field(root, "$", "sampleComparison"), "$.sampleComparison")
+    require_string_fields(
+        comparison,
+        "$.sampleComparison",
+        ["comparisonState", "baselineRunId", "candidateRunId", "overallStatus"],
+    )
+    if comparison["comparisonState"] != "summary_only_fixture":
+        raise ShapeError("unexpected value at $.sampleComparison.comparisonState: expected summary_only_fixture")
+    runs = require_object_array(require_field(comparison, "$.sampleComparison", "runs"), "$.sampleComparison.runs", min_items=2)
+    for run in runs:
+        path = "$.sampleComparison.runs[]"
+        require_string_fields(run, path, ["runId", "workflowId", "status"])
+        if run["runId"] not in run_ids:
+            raise ShapeError(f"unexpected value at $.sampleComparison.runs[].runId: unknown run {run['runId']}")
+        for field in ["diagnosticCount", "warningCount", "errorCount", "durationMs"]:
+            expect_integer(require_field(run, path, field), child(path, field))
+        run_false_fields = [
+            "pathIncluded",
+            "artifactPathIncluded",
+            "stdoutIncluded",
+            "stderrIncluded",
+            "rawLogsIncluded",
+        ]
+        require_bool_fields(run, path, run_false_fields)
+        for field in run_false_fields:
+            if run[field] is not False:
+                raise ShapeError(f"unexpected value at $.sampleComparison.runs[].{field}: expected false")
+
+    deltas = expect_object(require_field(comparison, "$.sampleComparison", "deltas"), "$.sampleComparison.deltas")
+    for field in ["diagnosticCountDelta", "warningCountDelta", "errorCountDelta"]:
+        expect_integer(require_field(deltas, "$.sampleComparison.deltas", field), f"$.sampleComparison.deltas.{field}")
+    require_string_array(require_field(deltas, "$.sampleComparison.deltas", "newDiagnosticKinds"), "$.sampleComparison.deltas.newDiagnosticKinds")
+    require_string_array(require_field(deltas, "$.sampleComparison.deltas", "resolvedDiagnosticKinds"), "$.sampleComparison.deltas.resolvedDiagnosticKinds")
+    comparison_true_fields = ["summaryOnly"]
+    comparison_false_fields = [
+        "pathIncluded",
+        "privatePathsIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "rawTraceIncluded",
+        "rawReportIncluded",
+    ]
+    require_bool_fields(comparison, "$.sampleComparison", comparison_true_fields + comparison_false_fields)
+    if comparison["summaryOnly"] is not True:
+        raise ShapeError("unexpected value at $.sampleComparison.summaryOnly: expected true")
+    for field in comparison_false_fields:
+        if comparison[field] is not False:
+            raise ShapeError(f"unexpected value at $.sampleComparison.{field}: expected false")
+
+    mutation = expect_object(require_field(root, "$", "noMutationEvidence"), "$.noMutationEvidence")
+    require_string_fields(mutation, "$.noMutationEvidence", ["state", "evidenceRule"])
+    mutation_false_fields = [
+        "trackedFileMutationAllowed",
+        "trackedFileDiffCaptured",
+        "artifactReadAllowed",
+        "artifactWriteAllowed",
+        "reportWriteAllowed",
+        "repositoryMutationAllowed",
+        "publicPushAllowed",
+        "releaseOrTagAllowed",
+    ]
+    require_bool_fields(mutation, "$.noMutationEvidence", mutation_false_fields)
+    for field in mutation_false_fields:
+        if mutation[field] is not False:
+            raise ShapeError(f"unexpected value at $.noMutationEvidence.{field}: expected false")
+
+    blocked_actions = require_field(root, "$", "blockedActions")
+    require_string_array(blocked_actions, "$.blockedActions", min_items=1)
+    for required in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ]:
+        if required not in blocked_actions:
+            raise ShapeError(f"missing blocked action at $.blockedActions: {required}")
+
+    safety = expect_object(require_field(root, "$", "safetyFlags"), "$.safetyFlags")
+    true_flags = ["dataOnly", "descriptorOnly", "readOnly", "comparisonFixtureOnly", "summaryOnly"]
+    false_flags = [
+        "mcpRuntimeImplemented",
+        "mcpServerImplemented",
+        "mcpClientImplemented",
+        "permissionExecutorImplemented",
+        "toolInvocationPathImplemented",
+        "commandExecution",
+        "shellExecution",
+        "runtimeExecution",
+        "localFileRead",
+        "rawTraceRead",
+        "rawReportRead",
+        "readsArtifacts",
+        "writesArtifacts",
+        "reportWriterImplemented",
+        "networkCalls",
+        "providerCalls",
+        "launcherExecution",
+        "editorExecution",
+        "hardwareAccess",
+        "kv260Access",
+        "fpgaRepoAccess",
+        "modelExecution",
+        "privatePathsIncluded",
+        "secretsIncluded",
+        "tokensIncluded",
+        "stdoutIncluded",
+        "stderrIncluded",
+        "rawLogsIncluded",
+        "artifactPathsIncluded",
+        "generatedArtifactsIncluded",
+        "telemetry",
+        "writeBack",
+        "repositoryMutation",
+        "publicPush",
+        "releaseOrTag",
+        "stableApiAbiClaim",
+    ]
+    require_bool_fields(safety, "$.safetyFlags", true_flags + false_flags)
+    for flag in true_flags:
+        if safety[flag] is not True:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected true")
+    for flag in false_flags:
+        if safety[flag] is not False:
+            raise ShapeError(f"unexpected value at $.safetyFlags.{flag}: expected false")
+
+    require_string_array(require_field(root, "$", "limitations"), "$.limitations", min_items=1)
+    require_string_array(require_field(root, "$", "issueRefs"), "$.issueRefs", min_items=1)
+
+
 def validate_mcp_permission_model(value: Any) -> None:
     root = expect_object(value, "$")
     require_schema(root, "$", "pccx.lab.mcp-permission-model.v0")
@@ -3655,6 +3926,7 @@ SPECS = [
     BoundarySpec("mcp-read-only-tool-plan", "docs/examples/mcp-read-only-tool-plan.example.json", validate_mcp_read_only_tool_plan),
     BoundarySpec("mcp-read-only-analysis-flow", "docs/examples/mcp-read-only-analysis-flow.example.json", validate_mcp_read_only_analysis_flow),
     BoundarySpec("mcp-read-only-report-contract", "docs/examples/mcp-read-only-report-contract.example.json", validate_mcp_read_only_report_contract),
+    BoundarySpec("mcp-verification-run-comparison", "docs/examples/mcp-verification-run-comparison.example.json", validate_mcp_verification_run_comparison),
     BoundarySpec("mcp-permission-model", "docs/examples/mcp-permission-model.example.json", validate_mcp_permission_model),
     BoundarySpec("mcp-approval-request", "docs/examples/mcp-approval-request.example.json", validate_mcp_approval_request),
     BoundarySpec("mcp-approval-decision", "docs/examples/mcp-approval-decision.example.json", validate_mcp_approval_decision),

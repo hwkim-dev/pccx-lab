@@ -463,6 +463,192 @@ fn mcp_read_only_report_contract_example_keeps_summary_only_boundary() {
 }
 
 #[test]
+fn mcp_verification_run_comparison_example_keeps_summary_only_boundary() {
+    let value: serde_json::Value = parse_example("mcp-verification-run-comparison.example.json");
+    let root = value
+        .as_object()
+        .expect("MCP verification-run comparison must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.mcp-verification-run-comparison.v0"
+    );
+    assert_eq!(root["comparisonState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+
+    let sources = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "workflow_results" && source["pathEchoAllowed"] == false
+    }));
+    assert!(sources.iter().any(|source| {
+        source["refId"] == "mcp_read_only_report_contract"
+            && source["artifactWriteAllowed"] == false
+    }));
+
+    let inputs = root["comparisonInputs"]
+        .as_array()
+        .expect("comparison inputs must be an array");
+    assert!(
+        inputs.len() >= 2,
+        "comparison boundary should include baseline and candidate summaries"
+    );
+    for input in inputs {
+        assert_eq!(input["inputKind"], "workflow_result_summary");
+        assert_eq!(input["inputState"], "approved_summary_only");
+        assert_eq!(input["summaryOnly"], true);
+        assert_eq!(input["approvalRequired"], true);
+        assert_eq!(input["localFileRead"], false);
+        assert_eq!(input["rawTraceRead"], false);
+        assert_eq!(input["rawReportRead"], false);
+        assert_eq!(input["artifactRead"], false);
+        assert_eq!(input["privatePathEchoAllowed"], false);
+        assert_eq!(input["stdoutIncluded"], false);
+        assert_eq!(input["stderrIncluded"], false);
+        assert_eq!(input["rawLogIncluded"], false);
+        assert_eq!(input["artifactPathIncluded"], false);
+    }
+
+    let policy = root["comparisonPolicy"]
+        .as_object()
+        .expect("comparison policy must be an object");
+    assert_eq!(policy["summaryOnly"], true);
+    assert_eq!(policy["approvalRequired"], true);
+    assert_eq!(policy["auditRequired"], true);
+    assert_eq!(policy["commandExecutionAllowed"], false);
+    assert_eq!(policy["localFileReadAllowed"], false);
+    assert_eq!(policy["rawTraceReadAllowed"], false);
+    assert_eq!(policy["rawReportReadAllowed"], false);
+    assert_eq!(policy["artifactReadAllowed"], false);
+    assert_eq!(policy["artifactWriteAllowed"], false);
+    assert_eq!(policy["reportWriteAllowed"], false);
+    assert_eq!(policy["repositoryMutationAllowed"], false);
+    assert_eq!(policy["pathEchoAllowed"], false);
+    assert_eq!(policy["stdoutAllowed"], false);
+    assert_eq!(policy["stderrAllowed"], false);
+    assert_eq!(policy["rawLogAllowed"], false);
+    assert_eq!(policy["privatePathsAllowed"], false);
+    assert_eq!(policy["generatedArtifactsAllowed"], false);
+
+    let comparison = root["sampleComparison"]
+        .as_object()
+        .expect("sample comparison must be an object");
+    assert_eq!(comparison["comparisonState"], "summary_only_fixture");
+    assert_eq!(comparison["summaryOnly"], true);
+    assert_eq!(comparison["pathIncluded"], false);
+    assert_eq!(comparison["privatePathsIncluded"], false);
+    assert_eq!(comparison["stdoutIncluded"], false);
+    assert_eq!(comparison["stderrIncluded"], false);
+    assert_eq!(comparison["rawLogsIncluded"], false);
+    assert_eq!(comparison["artifactPathsIncluded"], false);
+    assert_eq!(comparison["generatedArtifactsIncluded"], false);
+    assert_eq!(comparison["rawTraceIncluded"], false);
+    assert_eq!(comparison["rawReportIncluded"], false);
+
+    let runs = comparison["runs"]
+        .as_array()
+        .expect("sample comparison runs must be an array");
+    assert!(runs.iter().all(|run| {
+        run["pathIncluded"] == false
+            && run["artifactPathIncluded"] == false
+            && run["stdoutIncluded"] == false
+            && run["stderrIncluded"] == false
+            && run["rawLogsIncluded"] == false
+    }));
+
+    let mutation = root["noMutationEvidence"]
+        .as_object()
+        .expect("no mutation evidence must be an object");
+    assert_eq!(mutation["trackedFileMutationAllowed"], false);
+    assert_eq!(mutation["trackedFileDiffCaptured"], false);
+    assert_eq!(mutation["artifactReadAllowed"], false);
+    assert_eq!(mutation["artifactWriteAllowed"], false);
+    assert_eq!(mutation["reportWriteAllowed"], false);
+    assert_eq!(mutation["repositoryMutationAllowed"], false);
+    assert_eq!(mutation["publicPushAllowed"], false);
+    assert_eq!(mutation["releaseOrTagAllowed"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "mcp-server-start",
+        "mcp-client-session",
+        "permission-executor",
+        "tool-invocation",
+        "command-execution",
+        "arbitrary-shell-command",
+        "local-file-read",
+        "raw-trace-read",
+        "raw-report-read",
+        "artifact-read",
+        "artifact-write",
+        "report-write",
+        "repository-write-back",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "runtime-launch",
+        "model-load",
+        "telemetry-upload",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["comparisonFixtureOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["mcpRuntimeImplemented"], false);
+    assert_eq!(safety["mcpServerImplemented"], false);
+    assert_eq!(safety["mcpClientImplemented"], false);
+    assert_eq!(safety["permissionExecutorImplemented"], false);
+    assert_eq!(safety["toolInvocationPathImplemented"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["rawTraceRead"], false);
+    assert_eq!(safety["rawReportRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["reportWriterImplemented"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["artifactPathsIncluded"], false);
+    assert_eq!(safety["generatedArtifactsIncluded"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+}
+
+#[test]
 fn mcp_permission_model_example_keeps_permission_boundary_non_executing() {
     let value: serde_json::Value = parse_example("mcp-permission-model.example.json");
     let root = value

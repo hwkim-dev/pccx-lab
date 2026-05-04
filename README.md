@@ -83,6 +83,10 @@ boundary. There is no private back channel into lab internals. See
   summary-only report output shape for a future read-only tool adapter;
   it is not an MCP runtime, command executor, artifact writer, or report
   writer.
+- `docs/examples/mcp-verification-run-comparison.example.json` records a
+  summary-only comparison shape for approved workflow-result summaries;
+  it is not an MCP runtime, command executor, file reader, trace reader,
+  report writer, artifact writer, or repository mutation path.
 - `docs/examples/mcp-permission-model.example.json` records the
   descriptor-only permission profiles and approval gates for a future
   MCP/tool adapter; it is not a permission runtime or command executor.
