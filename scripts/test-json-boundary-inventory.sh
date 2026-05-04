@@ -130,6 +130,7 @@ run_case \
     "[mcp-permission-model] inventory ok" \
     "[mcp-approval-request] inventory ok" \
     "[mcp-approval-decision] inventory ok" \
+    "[mcp-blocked-invocation-result] inventory ok" \
     "[mcp-audit-event] inventory ok" \
     "[plugin-boundary-plan] inventory ok" \
     "[plugin-dry-run-flow] inventory ok" \

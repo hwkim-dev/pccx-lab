@@ -32,6 +32,7 @@ separate workflow logic island.
 | `docs/examples/mcp-permission-model.example.json` | planned permission map | Checked permission profiles and approval gates for a future MCP/tool adapter; no permission runtime or command executor is implemented. |
 | `docs/examples/mcp-approval-request.example.json` | planned approval request | Checked approval-request and repository-mutation gate for a future MCP/tool adapter; no permission executor or write path is implemented. |
 | `docs/examples/mcp-approval-decision.example.json` | planned approval decision | Checked denied approval-decision gate for a future MCP/tool adapter; no approval executor, tool invocation path, or write path is implemented. |
+| `docs/examples/mcp-blocked-invocation-result.example.json` | planned blocked result | Checked blocked, non-executed invocation result for a future MCP/tool adapter; no command executor or tool invocation path is implemented. |
 | `docs/examples/mcp-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for a future read-only MCP/tool adapter; no logger or runtime is implemented. |
 | `docs/examples/plugin-boundary-plan.example.json` | planned boundary map | Checked plugin manifest and host API plan; no plugin runtime is implemented. |
 | `docs/examples/plugin-dry-run-flow.example.json` | planned flow contract | Checked dry-run plugin flow contract over approved summaries; no plugin loader, runtime, sandbox, or command executor is implemented. |
@@ -75,6 +76,7 @@ aligned.
 | `mcp-permission-model` | `docs/examples/mcp-permission-model.example.json` | Reader only; planned permission profiles and approval gates for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-request` | `docs/examples/mcp-approval-request.example.json` | Reader only; planned approval-request and repository-mutation gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-approval-decision` | `docs/examples/mcp-approval-decision.example.json` | Reader only; planned denied approval-decision gate for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
+| `mcp-blocked-invocation-result` | `docs/examples/mcp-blocked-invocation-result.example.json` | Reader only; planned blocked, non-executed invocation result for a future MCP/tool adapter | Shape validator, inventory test, Rust JSON-shape test |
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
@@ -562,6 +564,28 @@ commands, write reports, mutate repositories, call providers, use the
 network, touch hardware, access KV260, access FPGA repos, launch runtime
 code, load models, upload telemetry, push publicly, or control
 releases/tags.
+
+## MCP blocked invocation result boundary
+
+[`docs/examples/mcp-blocked-invocation-result.example.json`](examples/mcp-blocked-invocation-result.example.json)
+defines the checked blocked-result shape for a future MCP/tool adapter.
+It is data-only and records a non-executed result that references the
+approval-request and denied approval-decision fixtures.
+
+The fixture keeps `resultState` as `blocked_by_policy` and
+`blockedResult.state` as `not_executed`. It records the planned
+fixed-argument request preview but blocks tool invocation, command
+execution, file reads, stdout/stderr capture, diagnostics production,
+report production, artifact writes, repository mutation, public push,
+and release/tag control.
+
+This fixture is not an MCP runtime, server, client, approval executor,
+permission executor, command executor, tool invocation path, file
+reader, artifact writer, audit logger, or write path. It does not
+approve inputs, read files, execute commands, produce diagnostics, write
+reports, mutate repositories, call providers, use the network, touch
+hardware, access KV260, access FPGA repos, launch runtime code, load
+models, upload telemetry, push publicly, or control releases/tags.
 
 ## MCP audit event boundary
 
