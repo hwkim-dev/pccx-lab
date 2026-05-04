@@ -46,6 +46,7 @@ separate workflow logic island.
 | `docs/examples/plugin-permission-model.example.json` | planned permission map | Checked plugin capability profiles, sandbox requirements, and approval gates; no plugin runtime, sandbox, or permission executor is implemented. |
 | `docs/examples/plugin-audit-event.example.json` | planned audit event shape | Checked redacted audit-event shape for future approved plugin metadata review; no logger, runtime, or plugin loader is implemented. |
 | `docs/examples/plugin-manifest-validation-result.example.json` | planned manifest validation result | Checked summary-only result shape for a future approved manifest validation request; no manifest reader, validator command, plugin runtime, or loader is implemented. |
+| `docs/examples/plugin-review-packet.example.json` | planned review packet contract | Checked summary-only review packet shape over plugin permission, input, output, blocked-result, manifest-validation, and audit summaries; no plugin loader, runtime, writer, package, marketplace, or repository mutation path is implemented. |
 | `lab_status` Tauri command | available | GUI reads the same core status struct. |
 | `theme_contract` Tauri command | experimental | GUI reads the same core theme-token struct. |
 | `workflow_descriptors` Tauri command | available | GUI reads descriptor-only workflow metadata. |
@@ -89,6 +90,7 @@ aligned.
 | `mcp-audit-event` | `docs/examples/mcp-audit-event.example.json` | Reader only; planned redacted audit-event shape for future read-only tool requests | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-boundary-plan` | `docs/examples/plugin-boundary-plan.example.json` | Reader only; planned plugin manifest and host API boundary over existing CLI/core commands | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-manifest-validation-result` | `docs/examples/plugin-manifest-validation-result.example.json` | Reader only; planned summary-only result shape for a future approved plugin manifest validation request | Shape validator, inventory test, Rust JSON-shape test |
+| `plugin-review-packet` | `docs/examples/plugin-review-packet.example.json` | Reader only; planned summary-only review packet shape over approved plugin permission, input, output, blocked-result, manifest-validation, and audit summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-dry-run-flow` | `docs/examples/plugin-dry-run-flow.example.json` | Reader only; planned dry-run plugin flow contract over approved manifest, capability, diagnostics, and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-input-contract` | `docs/examples/plugin-input-contract.example.json` | Reader only; planned summary-only plugin input shape over approved diagnostics and workflow-result summaries | Shape validator, inventory test, Rust JSON-shape test |
 | `plugin-trace-summary-input` | `docs/examples/plugin-trace-summary-input.example.json` | Reader only; planned summary-only trace metadata input gate for future plugin trace review | Shape validator, inventory test, Rust JSON-shape test |
@@ -738,6 +740,33 @@ ids, and redacted warning summaries. It is not a manifest reader,
 validator command, plugin loader, runtime, sandbox, permission executor,
 marketplace flow, package distribution flow, compatibility promise, or
 ABI promise.
+
+## plugin review packet boundary
+
+[`docs/examples/plugin-review-packet.example.json`](examples/plugin-review-packet.example.json)
+defines the checked summary-only review packet shape for future plugin
+metadata review. It is descriptor-only fixture data over approved plugin
+permission, input, output, blocked-result, manifest-validation, and audit
+summaries, not a plugin loader, runtime, sandbox, permission executor,
+input reader, trace importer, manifest reader, validator command,
+command executor, report writer, package installer, package
+distribution flow, marketplace flow, or repository mutation path.
+
+The fixture records bounded review sections, risk rows, checklist
+labels, and validation-line summaries. It excludes private paths, raw
+traces, raw reports, stdout, stderr, raw logs, secrets, tokens, model
+paths, artifact paths, generated artifacts, package data, and hardware
+evidence.
+
+This fixture does not load plugin code, start a runtime, start a
+sandbox, execute commands, read local files, read repositories, read raw
+traces, read raw reports, write reports, write artifacts, mutate
+repositories, install packages, publish packages, use a marketplace
+flow, load dynamic code, execute untrusted code, call providers, use the
+network, touch hardware, access KV260, access FPGA repos, launch runtime
+code, load models, upload telemetry, push publicly, or control
+releases/tags. No compatibility promise or marketplace claim is made.
+No stable plugin ABI is promised.
 
 ## plugin dry-run flow boundary
 
