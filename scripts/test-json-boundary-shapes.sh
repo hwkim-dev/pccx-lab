@@ -142,6 +142,7 @@ run_case \
     "[sail-evidence-manifest] shape ok" \
     "[sail-evidence-detail] shape ok" \
     "[sail-model-readiness] shape ok" \
+    "[sail-implementation-gap-matrix] shape ok" \
     "[hybrid-strategy-plan] shape ok" \
     "[hybrid-interface-boundary] shape ok" \
     "[hybrid-review-packet] shape ok" \

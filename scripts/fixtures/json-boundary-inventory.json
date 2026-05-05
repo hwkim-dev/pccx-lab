@@ -223,6 +223,23 @@
       "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-model-readiness-boundary"
     },
     {
+      "boundaryKind": "sail-implementation-gap-matrix",
+      "examplePath": "docs/examples/sail-implementation-gap-matrix.example.json",
+      "producingCommand": null,
+      "coreGeneratorOrReader": "docs/CLI_CORE_BOUNDARY.md#sail-implementation-gap-matrix-boundary",
+      "readerOnly": true,
+      "shapeValidation": {
+        "kind": "sail-implementation-gap-matrix",
+        "validator": "scripts/json_boundary_shape_validator.py",
+        "fixtureTest": "scripts/test-json-boundary-shapes.sh"
+      },
+      "rustValidation": {
+        "testPath": "crates/core/tests/json_boundary_examples.rs",
+        "testName": "sail_implementation_gap_matrix_example_keeps_descriptor_only_boundary"
+      },
+      "docsAnchor": "docs/CLI_CORE_BOUNDARY.md#sail-implementation-gap-matrix-boundary"
+    },
+    {
       "boundaryKind": "hybrid-strategy-plan",
       "examplePath": "docs/examples/hybrid-strategy-plan.example.json",
       "producingCommand": null,

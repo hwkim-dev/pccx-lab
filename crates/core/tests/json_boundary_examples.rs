@@ -7524,6 +7524,266 @@ fn sail_model_readiness_example_keeps_descriptor_only_boundary() {
 }
 
 #[test]
+fn sail_implementation_gap_matrix_example_keeps_descriptor_only_boundary() {
+    let value: serde_json::Value = parse_example("sail-implementation-gap-matrix.example.json");
+    let root = value
+        .as_object()
+        .expect("Sail implementation gap matrix must be an object");
+
+    assert_eq!(
+        root["schemaVersion"],
+        "pccx.lab.sail-implementation-gap-matrix.v0"
+    );
+    assert_eq!(root["matrixState"], "descriptor_only");
+    assert_eq!(root["adapterState"], "not_implemented");
+    assert_eq!(root["defaultMode"], "read_only");
+    assert_eq!(root["hostMode"], "cli_core_first_gui_second");
+    assert_eq!(root["matrixKind"], "future_sail_implementation_gap_matrix");
+
+    let refs = root["sourceBoundaryRefs"]
+        .as_array()
+        .expect("source boundary refs must be an array");
+    for ref_id in [
+        "sail_adoption_plan",
+        "sail_interface_boundary",
+        "sail_review_packet",
+        "sail_evidence_manifest",
+        "sail_evidence_detail",
+        "sail_model_readiness",
+    ] {
+        assert!(
+            refs.iter().any(|source| {
+                source["refId"] == ref_id
+                    && source["summaryOnly"] == true
+                    && source["gapInput"] == true
+            }),
+            "sourceBoundaryRefs must include {ref_id}"
+        );
+    }
+    assert!(refs.iter().any(|source| {
+        source["refId"] == "sail_model_readiness"
+            && source["sourceReaderAllowed"] == false
+            && source["rtlSourceReaderAllowed"] == false
+            && source["astReaderAllowed"] == false
+            && source["generatedModelReaderAllowed"] == false
+            && source["artifactReaderAllowed"] == false
+            && source["reportReaderAllowed"] == false
+            && source["commandExecutionAllowed"] == false
+            && source["modelExecutionAllowed"] == false
+            && source["hardwareControlAllowed"] == false
+    }));
+
+    let request = root["gapRequest"]
+        .as_object()
+        .expect("gap request must be an object");
+    assert_eq!(
+        request["requestKind"],
+        "planned_sail_implementation_gap_matrix"
+    );
+    assert_eq!(
+        request["sourceReferenceKind"],
+        "approved-sail-boundary-summaries"
+    );
+    assert_eq!(
+        request["outputBoundary"],
+        "pccx.lab.sail-implementation-gap-matrix.v0"
+    );
+    let fixed_args = request["fixedArgsPreview"]
+        .as_array()
+        .expect("fixed args preview must be an array");
+    assert_eq!(fixed_args[0], "sail-model");
+    assert_eq!(fixed_args[1], "gap-matrix");
+    assert_eq!(fixed_args[2], "--format");
+    assert_eq!(fixed_args[3], "json");
+    assert_eq!(request["summaryOnly"], true);
+    assert_eq!(request["inputRefOnly"], true);
+    assert_eq!(request["pathEchoAllowed"], false);
+    assert_eq!(request["privatePathEchoAllowed"], false);
+    assert_eq!(request["localFileReadAllowed"], false);
+    assert_eq!(request["repositoryReadAllowed"], false);
+    assert_eq!(request["sailSourceReadAllowed"], false);
+    assert_eq!(request["rtlSourceReadAllowed"], false);
+    assert_eq!(request["sailAstReadAllowed"], false);
+    assert_eq!(request["generatedModelReadAllowed"], false);
+    assert_eq!(request["parserExecutionAllowed"], false);
+    assert_eq!(request["compilerExecutionAllowed"], false);
+    assert_eq!(request["modelGenerationAllowed"], false);
+    assert_eq!(request["modelExecutionAllowed"], false);
+    assert_eq!(request["refinementCheckAllowed"], false);
+    assert_eq!(request["formalProofAllowed"], false);
+    assert_eq!(request["simulatorExecutionAllowed"], false);
+    assert_eq!(request["verificationRunAllowed"], false);
+    assert_eq!(request["hardwareControlAllowed"], false);
+    assert_eq!(request["providerCallAllowed"], false);
+    assert_eq!(request["networkCallAllowed"], false);
+    assert_eq!(request["hardwareAccessAllowed"], false);
+    assert_eq!(request["kv260AccessAllowed"], false);
+    assert_eq!(request["fpgaRepoAccessAllowed"], false);
+    assert_eq!(request["modelLoadAllowed"], false);
+    assert_eq!(request["stableApiAbiClaim"], false);
+    assert_eq!(request["marketplaceClaim"], false);
+    assert_eq!(request["runtimeClaim"], false);
+    assert_eq!(request["hardwareClaim"], false);
+
+    let rows = root["gapRows"]
+        .as_array()
+        .expect("gap rows must be an array");
+    for row_id in [
+        "source_boundary_gap",
+        "parser_model_generation_gap",
+        "execution_verification_gap",
+        "evidence_publication_gap",
+        "release_marketplace_claim_gap",
+    ] {
+        assert!(
+            rows.iter().any(|item| {
+                item["gapId"] == row_id
+                    && item["gapState"] == "blocked_pending_separate_boundary"
+                    && item["summaryOnly"] == true
+                    && item["requiredBeforeImplementation"] == true
+                    && item["separateBoundaryRequired"] == true
+                    && item["sourceReadAllowed"] == false
+                    && item["rtlSourceReadAllowed"] == false
+                    && item["astReadAllowed"] == false
+                    && item["generatedModelReadAllowed"] == false
+                    && item["parserExecutionAllowed"] == false
+                    && item["compilerExecutionAllowed"] == false
+                    && item["modelGenerationAllowed"] == false
+                    && item["modelExecutionAllowed"] == false
+                    && item["refinementCheckAllowed"] == false
+                    && item["formalProofAllowed"] == false
+                    && item["simulatorExecutionAllowed"] == false
+                    && item["verificationRunAllowed"] == false
+                    && item["hardwareControlAllowed"] == false
+                    && item["releaseAllowed"] == false
+                    && item["marketplaceAllowed"] == false
+            }),
+            "gapRows must include {row_id}"
+        );
+    }
+
+    let summary = root["gapSummary"]
+        .as_object()
+        .expect("gap summary must be an object");
+    assert_eq!(summary["summaryState"], "metadata_only");
+    assert_eq!(summary["implementationState"], "not_implemented");
+    assert_eq!(summary["gapDisposition"], "blocked_by_open_gaps");
+    assert_eq!(summary["summaryOnly"], true);
+    assert_eq!(summary["readyForImplementation"], false);
+    assert_eq!(summary["readyForSourceIntake"], false);
+    assert_eq!(summary["readyForParser"], false);
+    assert_eq!(summary["readyForCompiler"], false);
+    assert_eq!(summary["readyForModelGeneration"], false);
+    assert_eq!(summary["readyForModelExecution"], false);
+    assert_eq!(summary["readyForRefinementCheck"], false);
+    assert_eq!(summary["readyForFormalProof"], false);
+    assert_eq!(summary["readyForVerificationRun"], false);
+    assert_eq!(summary["readyForHardwareControl"], false);
+    assert_eq!(summary["readyForRelease"], false);
+    assert_eq!(summary["readyForMarketplace"], false);
+    assert_eq!(summary["runtimeClaim"], false);
+    assert_eq!(summary["hardwareClaim"], false);
+    assert_eq!(summary["stableApiAbiClaim"], false);
+    assert_eq!(summary["marketplaceClaim"], false);
+
+    let blocked = root["blockedActions"]
+        .as_array()
+        .expect("blocked actions must be an array");
+    for action in [
+        "sail-source-read",
+        "rtl-source-read",
+        "sail-ast-read",
+        "generated-model-read",
+        "sail-parser",
+        "sail-compiler",
+        "sail-model-generation",
+        "sail-model-execution",
+        "refinement-check",
+        "formal-proof",
+        "verification-run",
+        "simulator-execution",
+        "hardware-control",
+        "command-execution",
+        "local-file-read",
+        "repository-read",
+        "raw-report-read",
+        "raw-log-read",
+        "artifact-read",
+        "report-read",
+        "marketplace-flow",
+        "provider-call",
+        "network-call",
+        "hardware-probe",
+        "kv260-access",
+        "fpga-repo-access",
+        "model-load",
+        "public-push",
+        "release-or-tag",
+    ] {
+        assert!(
+            blocked.iter().any(|item| item == action),
+            "blockedActions must include {action}"
+        );
+    }
+
+    let safety = root["safetyFlags"]
+        .as_object()
+        .expect("safety flags must be an object");
+    assert_eq!(safety["dataOnly"], true);
+    assert_eq!(safety["descriptorOnly"], true);
+    assert_eq!(safety["readOnly"], true);
+    assert_eq!(safety["summaryOnly"], true);
+    assert_eq!(safety["sailImplementationGapMatrixFixtureOnly"], true);
+    assert_eq!(safety["sailSourceReaderImplemented"], false);
+    assert_eq!(safety["rtlSourceReaderImplemented"], false);
+    assert_eq!(safety["sailAstReaderImplemented"], false);
+    assert_eq!(safety["generatedModelReaderImplemented"], false);
+    assert_eq!(safety["sailParserImplemented"], false);
+    assert_eq!(safety["sailCompilerImplemented"], false);
+    assert_eq!(safety["sailModelGeneratorImplemented"], false);
+    assert_eq!(safety["sailImplementationImplemented"], false);
+    assert_eq!(safety["sailModelExecution"], false);
+    assert_eq!(safety["refinementExecution"], false);
+    assert_eq!(safety["formalProofExecution"], false);
+    assert_eq!(safety["simulatorExecution"], false);
+    assert_eq!(safety["verificationExecution"], false);
+    assert_eq!(safety["hardwareControl"], false);
+    assert_eq!(safety["commandExecution"], false);
+    assert_eq!(safety["shellExecution"], false);
+    assert_eq!(safety["runtimeExecution"], false);
+    assert_eq!(safety["localFileRead"], false);
+    assert_eq!(safety["repositoryRead"], false);
+    assert_eq!(safety["readsArtifacts"], false);
+    assert_eq!(safety["writesArtifacts"], false);
+    assert_eq!(safety["networkCalls"], false);
+    assert_eq!(safety["providerCalls"], false);
+    assert_eq!(safety["hardwareAccess"], false);
+    assert_eq!(safety["kv260Access"], false);
+    assert_eq!(safety["fpgaRepoAccess"], false);
+    assert_eq!(safety["modelExecution"], false);
+    assert_eq!(safety["modelWeightsIncluded"], false);
+    assert_eq!(safety["privatePathsIncluded"], false);
+    assert_eq!(safety["secretsIncluded"], false);
+    assert_eq!(safety["tokensIncluded"], false);
+    assert_eq!(safety["stdoutIncluded"], false);
+    assert_eq!(safety["stderrIncluded"], false);
+    assert_eq!(safety["rawLogsIncluded"], false);
+    assert_eq!(safety["rawReportIncluded"], false);
+    assert_eq!(safety["artifactPathsIncluded"], false);
+    assert_eq!(safety["hardwareDumpIncluded"], false);
+    assert_eq!(safety["boardDumpIncluded"], false);
+    assert_eq!(safety["telemetry"], false);
+    assert_eq!(safety["writeBack"], false);
+    assert_eq!(safety["repositoryMutation"], false);
+    assert_eq!(safety["publicPush"], false);
+    assert_eq!(safety["releaseOrTag"], false);
+    assert_eq!(safety["stableApiAbiClaim"], false);
+    assert_eq!(safety["marketplaceClaim"], false);
+    assert_eq!(safety["runtimeClaim"], false);
+    assert_eq!(safety["hardwareClaim"], false);
+}
+
+#[test]
 fn hybrid_strategy_plan_example_keeps_descriptor_only_boundary() {
     let value: serde_json::Value = parse_example("hybrid-strategy-plan.example.json");
     let root = value
